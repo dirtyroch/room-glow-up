@@ -40,6 +40,7 @@ type Options = {
 	x: number?,
 	z: number?,
 	material: string?,
+	shell: string?,
 }
 
 local function part(parent: Instance, name: string, shape: string, size: Vector3, cf: CFrame, color: Color3, opts: Options): Part
@@ -78,8 +79,25 @@ local function part(parent: Instance, name: string, shape: string, size: Vector3
 		piece:SetAttribute("CellX", opts.x or 0)
 		piece:SetAttribute("CellZ", opts.z or 0)
 	end
+	if opts.shell then
+		piece:SetAttribute("Shell", opts.shell)
+	end
 	piece.Parent = parent
 	return piece
+end
+
+local function packColor(family: string, name: string): Color3
+	local pack = Look.pack(family)
+	if name == "floorA" then
+		return rgb(pack.floorA)
+	elseif name == "floorB" then
+		return rgb(pack.floorB)
+	elseif name == "wallA" then
+		return rgb(pack.wallA)
+	elseif name == "wallB" then
+		return rgb(pack.wallB)
+	end
+	return shell(name)
 end
 
 local function wash(host: BasePart, color: Color3, brightness: number, range: number)
@@ -91,6 +109,20 @@ local function wash(host: BasePart, color: Color3, brightness: number, range: nu
 	light.Shadows = false
 	light:SetAttribute("SoftB", brightness)
 	light:SetAttribute("Kind", "wash")
+	light.Parent = host
+end
+
+local function keyLight(host: BasePart, color: Color3, brightness: number, range: number, face: Enum.NormalId)
+	local light = Instance.new("SurfaceLight")
+	light.Name = "SoftLight"
+	light.Color = color
+	light.Brightness = brightness
+	light.Range = range
+	light.Angle = 80
+	light.Face = face
+	light.Shadows = false
+	light:SetAttribute("SoftB", brightness)
+	light:SetAttribute("Kind", "key")
 	light.Parent = host
 end
 
@@ -147,10 +179,11 @@ local function dressRoom(shellModel: Model, pivot: CFrame, width: number, depth:
 		"Glass",
 		0.35
 	)
-	decor(shellModel, "Sill", "Block", Vector3.new(winW + 1.1, 0.28, 0.7), pivot * CFrame.new(0, winY - winH / 2 - 0.1, winZ + 0.2), shell("floorA"), "Wood", nil)
-	decor(shellModel, "Mullion", "Block", Vector3.new(0.18, winH, 0.16), pivot * CFrame.new(0, winY, winZ + 0.2), shell("floorA"), "Wood", nil)
-	decor(shellModel, "Rail", "Block", Vector3.new(winW, 0.18, 0.16), pivot * CFrame.new(0, winY, winZ + 0.2), shell("floorA"), "Wood", nil)
-	wash(glass, Color3.fromRGB(255, 220, 190), 0.5, 12)
+	decor(shellModel, "Sill", "Block", Vector3.new(winW + 1.1, 0.28, 0.7), pivot * CFrame.new(0, winY - winH / 2 - 0.1, winZ + 0.2), shell("trim"), "Wood", nil)
+	decor(shellModel, "Mullion", "Block", Vector3.new(0.18, winH, 0.16), pivot * CFrame.new(0, winY, winZ + 0.2), shell("trim"), "Wood", nil)
+	decor(shellModel, "Rail", "Block", Vector3.new(winW, 0.18, 0.16), pivot * CFrame.new(0, winY, winZ + 0.2), shell("trim"), "Wood", nil)
+	wash(glass, Color3.fromRGB(255, 200, 150), 0.35, 10)
+	keyLight(glass, Color3.fromRGB(255, 186, 120), 1.35, 22, Enum.NormalId.Back)
 end
 
 local function dressGinger(shellModel: Model, pivot: CFrame, width: number, depth: number, height: number)
@@ -176,7 +209,8 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 		"SmoothPlastic",
 		nil
 	)
-	wash(glass, Color3.fromRGB(255, 196, 150), 0.5, 12)
+	wash(glass, Color3.fromRGB(255, 200, 140), 0.3, 10)
+	keyLight(glass, Color3.fromRGB(255, 176, 110), 1.2, 20, Enum.NormalId.Right)
 	decor(shellModel, "Door", "Block", Vector3.new(3.4, 6.2, 0.35), pivot * CFrame.new(-width * 0.22, 4.2, planeZ + 0.48), shell("gingerB"), "Wood", nil)
 	decor(shellModel, "Knob", "Ball", Vector3.new(0.45, 0.45, 0.45), pivot * CFrame.new(-width * 0.22 + 1.1, 4.1, planeZ + 0.75), shell("hook"), "Metal", nil)
 	local caneH = math.clamp(height * 0.45, 6, 10)
@@ -189,7 +223,7 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 			"Cylinder",
 			Vector3.new(caneH, 0.7, 0.7),
 			pivot * CFrame.new(x, 1 + caneH / 2, caneZ) * CFrame.Angles(0, 0, math.rad(90)),
-			shell("icingB"),
+			shell("icingA"),
 			"SmoothPlastic",
 			nil
 		)
@@ -199,7 +233,7 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 			"Cylinder",
 			Vector3.new(caneH * 0.55, 0.78, 0.78),
 			pivot * CFrame.new(x, 1 + caneH * 0.35, caneZ) * CFrame.Angles(0, 0, math.rad(90)),
-			shell("trim"),
+			Color3.fromRGB(220, 50, 70),
 			"SmoothPlastic",
 			nil
 		)
@@ -228,6 +262,28 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 		)
 		local drop = if index % 2 == 0 then "trim" else "pine"
 		decor(shellModel, "Gumdrop", "Ball", Vector3.new(1.15, 0.9, 1.15), pivot * CFrame.new(x, 1.7, planeZ + 0.9), shell(drop), "SmoothPlastic", nil)
+	end
+	decor(
+		shellModel,
+		"IcingBase",
+		"Block",
+		Vector3.new(width - 0.2, 0.55, 0.7),
+		pivot * CFrame.new(0, 1.35, planeZ + 0.55),
+		shell("icingA"),
+		"SmoothPlastic",
+		nil
+	)
+	for _, side in ipairs({ -1, 1 }) do
+		decor(
+			shellModel,
+			"IcingPost",
+			"Block",
+			Vector3.new(0.55, height, 0.55),
+			pivot * CFrame.new(side * (width / 2 - 0.15), 1 + height / 2, planeZ + 0.5),
+			shell("icingA"),
+			"SmoothPlastic",
+			nil
+		)
 	end
 end
 
@@ -265,7 +321,7 @@ function Props.room(shellModel: Model)
 			if lx and ly and lz then
 				local tint = if (x + z) % 2 == 0 then "floorA" else "floorB"
 				local floorMat = if (x + z) % 3 == 0 then "Wood" elseif (x + z) % 3 == 1 then "WoodPlanks" else "Fabric"
-				part(shellModel, "Cell", "Block", Vector3.new(unit, 1, unit), pivot * CFrame.new(lx, ly, lz), shell(tint), {
+				part(shellModel, "Cell", "Block", Vector3.new(unit, 1, unit), pivot * CFrame.new(lx, ly, lz), packColor("hearth", tint), {
 					collide = true,
 					query = true,
 					shadow = true,
@@ -273,6 +329,7 @@ function Props.room(shellModel: Model)
 					x = x,
 					z = z,
 					material = floorMat,
+					shell = tint,
 				})
 			end
 		end
@@ -282,13 +339,14 @@ function Props.room(shellModel: Model)
 			local lx, ly, lz = Bases.tileCenter("room", "wall", x, row)
 			if lx and ly and lz then
 				local tint = if (x + row) % 2 == 0 then "wallA" else "wallB"
-				part(shellModel, "Cell", "Block", Vector3.new(unit, unit, 0.55), pivot * CFrame.new(lx, ly, lz), shell(tint), {
+				part(shellModel, "Cell", "Block", Vector3.new(unit, unit, 0.55), pivot * CFrame.new(lx, ly, lz), packColor("hearth", tint), {
 					collide = false,
 					query = true,
 					shadow = false,
 					surface = "wall",
 					x = x,
 					z = row,
+					shell = tint,
 				})
 			end
 		end
@@ -296,15 +354,17 @@ function Props.room(shellModel: Model)
 	local depth = floor.z * unit
 	local width = floor.x * unit
 	local height = wall.z * unit
-	part(shellModel, "Side", "Block", Vector3.new(0.7, height, depth), pivot * CFrame.new(-width / 2 - 0.2, 1 + height / 2, 0), shell("floorA"), {
+	part(shellModel, "Side", "Block", Vector3.new(0.7, height, depth), pivot * CFrame.new(-width / 2 - 0.2, 1 + height / 2, 0), packColor("hearth", "wallA"), {
 		collide = true,
 		query = false,
 		shadow = true,
+		shell = "wallA",
 	})
-	part(shellModel, "Side", "Block", Vector3.new(0.7, height, depth), pivot * CFrame.new(width / 2 + 0.2, 1 + height / 2, 0), shell("floorA"), {
+	part(shellModel, "Side", "Block", Vector3.new(0.7, height, depth), pivot * CFrame.new(width / 2 + 0.2, 1 + height / 2, 0), packColor("hearth", "wallA"), {
 		collide = true,
 		query = false,
 		shadow = true,
+		shell = "wallA",
 	})
 	part(shellModel, "Trim", "Block", Vector3.new(width, 0.4, 0.6), pivot * CFrame.new(0, 1.2, depth / 2 + 0.2), shell("trim"), {
 		collide = false,
@@ -355,7 +415,7 @@ function Props.gingerbread(shellModel: Model)
 		for row = 0, wall.z - 1 do
 			local lx, ly, lz = Bases.tileCenter("gingerbread", "wall", x, row)
 			if lx and ly and lz then
-				local tint = if (x + row) % 2 == 0 then "icingA" else "icingB"
+				local tint = if (x + row) % 2 == 0 then "gingerA" else "gingerB"
 				part(shellModel, "Cell", "Block", Vector3.new(unit, unit, 0.5), pivot * CFrame.new(lx, ly, lz), shell(tint), {
 					collide = false,
 					query = true,
@@ -363,6 +423,7 @@ function Props.gingerbread(shellModel: Model)
 					surface = "wall",
 					x = x,
 					z = row,
+					shell = tint,
 				})
 			end
 		end
@@ -371,7 +432,7 @@ function Props.gingerbread(shellModel: Model)
 		for z = 0, roof.z - 1 do
 			local lx, ly, lz = Bases.tileCenter("gingerbread", "roof", x, z)
 			if lx and ly and lz then
-				local tint = if (x + z) % 2 == 0 then "roofA" else "roofB"
+				local tint = if (x + z) % 2 == 0 then "gingerB" else "icingA"
 				part(shellModel, "Cell", "Block", Vector3.new(unit + 0.06, 0.4, unit + 0.06), pivot * CFrame.new(lx, ly, lz), shell(tint), {
 					collide = false,
 					query = true,
@@ -866,6 +927,20 @@ function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string)
 		end
 	end
 	return model
+end
+
+function Props.tintShell(plot: Instance, family: string)
+	if type(family) ~= "string" or family == "" then
+		family = "hearth"
+	end
+	for _, child in plot:GetDescendants() do
+		if child:IsA("BasePart") then
+			local name = child:GetAttribute("Shell")
+			if type(name) == "string" then
+				child.Color = packColor(family, name)
+			end
+		end
+	end
 end
 
 function Props.paintShell(plot: Instance, surface: string, colorName: string)

@@ -23,42 +23,43 @@
       "$properties": {
         "Technology": "Future",
         "ClockTime": 17.4,
-        "Brightness": 2.15,
+        "Brightness": 1.2,
         "GlobalShadows": true,
-        "Ambient": [0.61, 0.52, 0.55],
-        "OutdoorAmbient": [0.77, 0.66, 0.63],
-        "ColorShift_Top": [1.0, 0.84, 0.73],
-        "EnvironmentDiffuseScale": 0.45,
-        "EnvironmentSpecularScale": 0.35
+        "Ambient": [0.306, 0.22, 0.188],
+        "OutdoorAmbient": [0.549, 0.424, 0.353],
+        "ColorShift_Top": [1.0, 0.769, 0.588],
+        "EnvironmentDiffuseScale": 0.22,
+        "EnvironmentSpecularScale": 0.28,
+        "ExposureCompensation": -0.4
       },
       "Bloom": {
         "$className": "BloomEffect",
         "$properties": {
           "Enabled": true,
-          "Intensity": 0.42,
-          "Size": 22,
-          "Threshold": 0.84
+          "Intensity": 0.16,
+          "Size": 14,
+          "Threshold": 0.96
         }
       },
       "Grade": {
         "$className": "ColorCorrectionEffect",
         "$properties": {
           "Enabled": true,
-          "Brightness": 0.02,
-          "Contrast": 0.06,
-          "Saturation": 0.14,
-          "TintColor": [1.0, 0.925, 0.886]
+          "Brightness": -0.04,
+          "Contrast": 0.26,
+          "Saturation": 0.3,
+          "TintColor": [1.0, 0.957, 0.91]
         }
       },
       "SoftAir": {
         "$className": "Atmosphere",
         "$properties": {
-          "Density": 0.28,
-          "Offset": 0.15,
-          "Color": [0.95, 0.9, 0.92],
-          "Decay": [0.78, 0.7, 0.74],
-          "Glare": 0.2,
-          "Haze": 1.1
+          "Density": 0.1,
+          "Offset": 0.06,
+          "Color": [1.0, 0.824, 0.745],
+          "Decay": [0.588, 0.392, 0.314],
+          "Glare": 0.06,
+          "Haze": 0.28
         }
       }
     },
@@ -72,7 +73,7 @@
           "Anchored": true,
           "Size": [512, 1, 512],
           "Position": [0, -0.5, 0],
-          "Color": [0.96, 0.93, 0.88],
+          "Color": [0.55, 0.62, 0.58],
           "Material": "SmoothPlastic",
           "TopSurface": "Smooth",
           "BottomSurface": "Smooth"
