@@ -253,7 +253,8 @@ function Shop.start()
 				elseif policy == "paused" then
 					body = "Purchases are paused.\n" .. body
 				else
-					local odds = Crates.display(Crates.rows(raining(roundFolder)), itemName)
+					local published = roundFolder:GetAttribute("CrateOdds")
+					local odds = if type(published) == "string" and published ~= "" then published else Crates.display(Crates.rows(raining(roundFolder)), itemName)
 					body = "Odds\n" .. odds .. "\n\n" .. body
 				end
 			end
@@ -282,10 +283,18 @@ function Shop.start()
 				body = table.concat(names, ", ") .. "\n" .. tostring(row.price) .. " R$\n" .. row.desc
 			end
 			local label = "Buy"
+			local itemKey = row.key
 			if row.id == 0 then
 				label = "Not for sale yet"
 			end
-			addCard(index, row.name, body, label, row.key)
+			if row.random == true then
+				local policy = player:GetAttribute("CratePolicy")
+				if policy == "fallback" or policy == "paused" then
+					label = if policy == "paused" then "Purchases are paused" else "Not available here"
+					itemKey = nil
+				end
+			end
+			addCard(index, row.name, body, label, itemKey)
 		end
 	end
 

@@ -20,6 +20,7 @@ local Monetization: any = nil
 local RoundEngine: any = nil
 local RateLimiter: any = nil
 local Dream: any = nil
+local Save: any = nil
 local codeLimiter: any = nil
 local rainUntil = 0
 local rainName = ""
@@ -116,7 +117,14 @@ local function refresh(player: Player)
 	local bag = ctx.saves.session(key)
 	local profile = bag.profile
 	if bag.hold == true and type(profile) == "table" then
-		Shop.claimPass(profile, os.time())
+		if Save then
+			local draft = Save.clone(profile)
+			if Shop.claimPass(draft, os.time()) > 0 then
+				if ctx.saves.apply(key, draft) == true then
+					profile = bag.profile
+				end
+			end
+		end
 		if bag.dream and Dream then
 			Dream.ensureSlots(bag.dream, Monetization.extraDreamSlots(key))
 		end
@@ -202,12 +210,13 @@ local function prompt(player: Player, itemKey: string): (boolean, string?)
 	end
 	local bag = ctx.saves.session(keyOf(player))
 	local policyOk = true
+	local isRestricted = false
 	if entry.random == true then
 		local flag = restricted(player)
 		if flag == nil then
 			return false, "Purchases are paused."
 		end
-		policyOk = true
+		isRestricted = flag == true
 	end
 	local adds = 0
 	if type(ctx.round) == "table" and type(ctx.round.timeAdds) == "number" then
@@ -217,6 +226,7 @@ local function prompt(player: Player, itemKey: string): (boolean, string?)
 		hold = bag.hold == true,
 		phase = phaseNow(),
 		policyOk = policyOk,
+		restricted = isRestricted,
 		timeAdds = adds,
 		timeCap = Config.Shop.TimeCap,
 	})
@@ -258,7 +268,8 @@ local function onReceipt(receipt: any): Enum.ProductPurchaseDecision
 	local function save(nextProfile: any): boolean
 		return ctx.saves.apply(key, nextProfile) == true
 	end
-	local _installed, result = Shop.commit(bag.profile, productKey, receipt.PurchaseId, context, save)
+	local purchaseId = tostring(receipt.PurchaseId)
+	local _installed, result = Shop.commit(bag.profile, productKey, purchaseId, context, save)
 	if result.ok ~= true then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
@@ -281,7 +292,7 @@ function ShopService.init(c: any)
 	RoundEngine = require(Logic:WaitForChild("RoundEngine") :: ModuleScript) :: any
 	RateLimiter = require(Logic:WaitForChild("RateLimiter") :: ModuleScript) :: any
 	Dream = require(Logic:WaitForChild("Dream") :: ModuleScript) :: any
-	local Save = require(Logic:WaitForChild("Save") :: ModuleScript) :: any
+	Save = require(Logic:WaitForChild("Save") :: ModuleScript) :: any
 	codeLimiter = RateLimiter.new(Config.RateLimit.codeBurst, Config.RateLimit.codeRefill)
 
 	Monetization.setCoinSource(function(userId: string?): number

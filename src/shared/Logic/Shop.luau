@@ -136,6 +136,9 @@ function Shop.canPrompt(entry: any, state: { [string]: any }): (boolean, string?
 	if entry.random == true and state.policyOk ~= true then
 		return false, "Purchases are paused."
 	end
+	if entry.random == true and state.restricted == true then
+		return false, "This crate is not available here."
+	end
 	local cap = state.timeCap
 	if type(cap) ~= "number" then
 		cap = Config.Shop.TimeCap
