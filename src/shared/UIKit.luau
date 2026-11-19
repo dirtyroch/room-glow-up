@@ -6,11 +6,11 @@
 
 local UIKit = {
 	Palette = {
-		cream = { 255, 246, 234 },
-		coral = { 255, 186, 173 },
-		mint = { 186, 232, 206 },
-		butter = { 255, 226, 156 },
-		lavender = { 214, 201, 235 },
+		cream = { 255, 248, 236 },
+		coral = { 255, 150, 140 },
+		mint = { 120, 220, 180 },
+		butter = { 255, 214, 110 },
+		lavender = { 196, 170, 240 },
 		ink = { 47, 36, 56 },
 	},
 	-- Phone-readable sizes. The countdown is the largest type on the screen.
