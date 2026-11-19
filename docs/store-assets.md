@@ -33,4 +33,4 @@ The shop shows crate odds before you buy. Restricted accounts get a fixed set in
 | Experience icon | 512×512 | PNG |
 | Experience thumbnail | 1920×1080 | PNG |
 
-Rough drafts of the icon and the first thumbnail sit next to this note: `docs/store-icon.png` and `docs/store-thumbnail.png`.
+The icon and thumbnail next to this note are drawn by `scripts/render_scenes.py`, along with the lobby, room, tour, and podium stills in `docs/renders/`. They are approximate offline pictures. Nothing here is uploaded.

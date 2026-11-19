@@ -19,16 +19,36 @@
         }
       }
     },
-    "Lighting": {
+      "Lighting": {
       "$properties": {
-        "ClockTime": 16.5,
-        "Brightness": 2.2,
+        "Technology": "Future",
+        "ClockTime": 17.4,
+        "Brightness": 2.15,
         "GlobalShadows": true,
-        "Ambient": [0.62, 0.58, 0.66],
-        "OutdoorAmbient": [0.72, 0.7, 0.74],
-        "ColorShift_Top": [1.0, 0.9, 0.84],
+        "Ambient": [0.61, 0.52, 0.55],
+        "OutdoorAmbient": [0.77, 0.66, 0.63],
+        "ColorShift_Top": [1.0, 0.84, 0.73],
         "EnvironmentDiffuseScale": 0.45,
-        "EnvironmentSpecularScale": 0.3
+        "EnvironmentSpecularScale": 0.35
+      },
+      "Bloom": {
+        "$className": "BloomEffect",
+        "$properties": {
+          "Enabled": true,
+          "Intensity": 0.42,
+          "Size": 22,
+          "Threshold": 0.84
+        }
+      },
+      "Grade": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": {
+          "Enabled": true,
+          "Brightness": 0.02,
+          "Contrast": 0.06,
+          "Saturation": 0.14,
+          "TintColor": [1.0, 0.925, 0.886]
+        }
       },
       "SoftAir": {
         "$className": "Atmosphere",

@@ -38,7 +38,7 @@ function Home.start()
 	nextLabel.BackgroundTransparency = 0
 	nextLabel.Position = UDim2.new(0, 0, 0, 0)
 	nextLabel.Size = UDim2.new(1, 0, 0, 28)
-	UI.corner(nextLabel, 14)
+	UI.corner(nextLabel, 20)
 	UI.stroke(nextLabel, "ink", 2)
 
 	local row = Instance.new("Frame")

@@ -282,6 +282,7 @@ function PlotService.init(c: any)
 	ctx.Plots = require(Logic:WaitForChild("Plots") :: ModuleScript) :: any
 	Voting = require(Logic:WaitForChild("Voting") :: ModuleScript) :: any
 	ctx.Props = require(script.Parent.Parent:WaitForChild("Props") :: ModuleScript) :: any
+	local Plaza = require(script.Parent.Parent:WaitForChild("Plaza") :: ModuleScript) :: any
 	local Config = require(Shared:WaitForChild("Config") :: ModuleScript) :: any
 	state = ctx.Plots.create(Config.Plots)
 	local folder = Instance.new("Folder")
@@ -291,6 +292,7 @@ function PlotService.init(c: any)
 		buildPlot(index, folder)
 	end
 	show("room")
+	Plaza.build()
 	ctx.plots = {
 		assign = assign,
 		release = release,

@@ -15,17 +15,26 @@ local UIKit = {
 	},
 	-- Phone-readable sizes. The countdown is the largest type on the screen.
 	Text = {
-		eyebrow = 16,
+		eyebrow = 18,
 		body = 22,
 		theme = 26,
 		button = 28,
 		countdown = 64,
 		countdownMin = 32,
 		reveal = 32,
+		-- Nothing on a phone should sit under this.
+		min = 18,
+	},
+	-- One icon style: filled star, open star, a note, a spark.
+	Icons = {
+		star = "★",
+		starOff = "☆",
+		note = "♪",
+		spark = "✦",
 	},
 	Shape = {
-		corner = 22,
-		cornerChunky = 28,
+		corner = 24,
+		cornerChunky = 32,
 		stroke = 3,
 	},
 	-- Thumb reach: the primary button sits along the bottom, inside the safe area.
@@ -60,16 +69,16 @@ local UIKit = {
 			stroke = "ink",
 			height = 64,
 			textSize = 28,
-			corner = 28,
+			corner = 32,
 			strokeThickness = 3,
 		},
 		quiet = {
 			fill = "lavender",
 			text = "ink",
 			stroke = "ink",
-			height = 56,
+			height = 60,
 			textSize = 22,
-			corner = 24,
+			corner = 28,
 			strokeThickness = 3,
 		},
 	},

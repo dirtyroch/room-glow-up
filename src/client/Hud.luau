@@ -90,7 +90,7 @@ function Hud.start()
 	revealList.Parent = reveal
 	local revealScale = Instance.new("UIScale")
 	revealScale.Parent = reveal
-	local revealKicker = UI.label(reveal, "This round", UIKit.Text.body, 28)
+	local revealKicker = UI.label(reveal, UIKit.Icons.spark .. " This round", UIKit.Text.body, 28)
 	revealKicker.LayoutOrder = 1
 	revealKicker.ZIndex = 6
 	local revealName = UI.label(reveal, "", UIKit.Text.reveal, 48)

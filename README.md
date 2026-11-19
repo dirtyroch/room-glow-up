@@ -149,7 +149,19 @@ The Pibble Rug and the Unc Armchair are original props. Place enough rugs or sea
 
 ## Look
 
-Shared tokens live in `src/shared/UIKit.luau` (palette, type sizes, button styles, motion). The HUD uses them: cream, coral, mint, butter, and lavender, with dark ink text, chunky rounded shapes, a large countdown, and a DONE button along the bottom inside the safe area. The board pops when the phase changes. Theme reveal shows a short butter banner.
+Shared tokens live in `src/shared/UIKit.luau` (palette, type sizes, button styles, motion). The HUD uses them: cream, coral, mint, butter, and lavender, with dark ink text, chunky rounded shapes, a large countdown, and a DONE button along the bottom inside the safe area. The board pops when the phase changes. Theme reveal shows a short butter banner. Phone text stays at 18px or larger. Star marks use one filled and one open glyph.
+
+Props are multi-part models (cylinders, balls, wedges, and small trims) inside a 3 to 10 part budget. Ids, prices, and footprints stay the same. Each style pack has its own pastel and accent. Rooms add baseboards, crown trim, a glass window, and a soft light. Floors mix wood and fabric. `src/shared/Look.luau` holds a light preset for each theme family: warm hearth, gingerbread, glow, winter, and frost.
+
+The lobby is a pastel plaza with the Auntie Roch booth, a three-place stage, the game sign, and two photo spots. Names are written on the stage plates only during Results. The tour adds a light cone, a rising star, and confetti in the theme colors. Bloom, color grade, atmosphere, and Future lighting run in the lobby and on tour. Low-end turns those off.
+
+## Renders
+
+```bash
+python3 scripts/render_scenes.py
+```
+
+That writes approximate PNGs under `docs/renders/` plus a 512×512 icon and a 1920×1080 thumbnail. It does not upload anything.
 
 ## Setup
 
@@ -181,10 +193,10 @@ That writes `RoomGlowUp.rbxlx` next to the project file. It does not upload the 
 ## Layout
 
 ```
-src/shared/     Config, Themes, Items, Bases, UIKit, Logic
-src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService, FunnelService
-src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Shop, Juice, Settings, Tutorial, SpotGame, Listen
-scripts/        build.sh, create-shop.luau
-docs/           store-assets.md
+src/shared/     Config, Themes, Items, Bases, UIKit, Look, Logic
+src/server/     Main.server, Boot, Props, Plaza, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService, FunnelService
+src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Shop, Juice, Settings, Tutorial, SpotGame, Listen, Stage, Podium
+scripts/        build.sh, create-shop.luau, render_scenes.py
+docs/           store-assets.md, renders/
 tests/run.luau  Lune tests for rounds, plots, placement, voting, saves, progression, the shop, and the polish pass
 ```

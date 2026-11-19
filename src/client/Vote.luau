@@ -19,7 +19,7 @@ local Vote = {}
 
 local function starsText(average: number): string
 	local filled = math.clamp(math.floor(average + 0.5), 0, 5)
-	local marks = string.rep("★", filled) .. string.rep("☆", 5 - filled)
+	local marks = string.rep(UIKit.Icons.star, filled) .. string.rep(UIKit.Icons.starOff, 5 - filled)
 	return marks .. "  " .. string.format("%.1f", average)
 end
 
@@ -51,7 +51,7 @@ function Vote.start()
 	UI.stroke(caption, "ink", UIKit.Shape.stroke)
 	local capSize = Instance.new("UITextSizeConstraint")
 	capSize.MaxTextSize = UIKit.Text.body
-	capSize.MinTextSize = 16
+	capSize.MinTextSize = UIKit.Text.min
 	capSize.Parent = caption
 	local captionScale = Instance.new("UIScale")
 	captionScale.Parent = caption
@@ -210,7 +210,7 @@ function Vote.start()
 			score.Name = "Stars"
 			score.Position = UDim2.new(0, 0, 0.5, 0)
 			score.Font = Enum.Font.GothamBold
-			local credit = UI.label(frame, "Auntie Roch", 14, 18)
+			local credit = UI.label(frame, "Auntie Roch", UIKit.Text.min, 22)
 			credit.Position = UDim2.new(0, 10, 1, -50)
 			credit.Size = UDim2.new(1, -20, 0, 18)
 			local quote = UI.label(frame, cardData.line, UIKit.Text.eyebrow, 28)
@@ -266,17 +266,17 @@ function Vote.start()
 				avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(userId) .. "&w=150&h=150"
 			end
 			if row.name ~= "" then
-				local name = UI.label(slot, row.name, 14, 18)
+				local name = UI.label(slot, row.name, UIKit.Text.min, 22)
 				name.Name = "Owner"
 				name.Position = UDim2.new(0, 2, 0, 54)
 				name.Size = UDim2.new(1, -4, 0, 18)
 			end
-			local avg = UI.label(slot, string.format("%.1f", row.average), 16, 18)
+			local avg = UI.label(slot, UIKit.Icons.star .. " " .. string.format("%.1f", row.average), UIKit.Text.min, 22)
 			avg.Position = UDim2.new(0, 2, 0, if row.name ~= "" then 72 else 56)
 			avg.Size = UDim2.new(1, -4, 0, 18)
-			local note = UI.label(slot, row.comment, 12, 32)
-			note.Position = UDim2.new(0, 4, 1, -36)
-			note.Size = UDim2.new(1, -8, 0, 32)
+			local note = UI.label(slot, row.comment, UIKit.Text.min, 40)
+			note.Position = UDim2.new(0, 4, 1, -44)
+			note.Size = UDim2.new(1, -8, 0, 40)
 		end
 		for _, row in ipairs(rows) do
 			if row.rank > 3 then
@@ -435,14 +435,14 @@ function Vote.start()
 		button.Name = "Star" .. tostring(star)
 		button.AutoButtonColor = true
 		button.Font = UI.face()
-		button.Text = tostring(star)
-		button.TextSize = UIKit.Text.button
+		button.Text = UIKit.Icons.star .. " " .. tostring(star)
+		button.TextSize = 22
 		button.TextColor3 = UI.rgb("ink")
 		button.BackgroundColor3 = UI.rgb("lavender")
 		button.BorderSizePixel = 0
 		button.LayoutOrder = star
 		button.Parent = starRow
-		UI.corner(button, 16)
+		UI.corner(button, 22)
 		UI.stroke(button, "ink", 3)
 		local picked = star
 		button.Activated:Connect(function()

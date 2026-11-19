@@ -74,4 +74,26 @@ function LowEnd.lightScale(enabled: boolean): number
 	return 1
 end
 
+-- Heavy grade (bloom, color grade, atmosphere, future lights) drops out on low-end.
+function LowEnd.effects(enabled: boolean): { [string]: any }
+	if enabled == true then
+		return {
+			bloom = false,
+			correction = false,
+			atmosphere = false,
+			lights = false,
+			shadows = false,
+			technology = "ShadowMap",
+		}
+	end
+	return {
+		bloom = true,
+		correction = true,
+		atmosphere = true,
+		lights = true,
+		shadows = true,
+		technology = "Future",
+	}
+end
+
 return LowEnd

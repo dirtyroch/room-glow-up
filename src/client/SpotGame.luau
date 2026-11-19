@@ -24,7 +24,7 @@ function SpotGame.start()
 	local panel = Instance.new("Frame")
 	panel.Name = "SpotPanel"
 	panel.LayoutOrder = 100
-	panel.Size = UDim2.new(1, 0, 0, 112)
+	panel.Size = UDim2.new(1, 0, 0, 132)
 	panel.BackgroundColor3 = UI.rgb("mint")
 	panel.BorderSizePixel = 0
 	panel.Visible = false
@@ -39,8 +39,8 @@ function SpotGame.start()
 	local row = Instance.new("Frame")
 	row.Name = "Choices"
 	row.BackgroundTransparency = 1
-	row.Position = UDim2.fromOffset(8, 36)
-	row.Size = UDim2.new(1, -16, 0, 36)
+	row.Position = UDim2.fromOffset(8, 38)
+	row.Size = UDim2.new(1, -16, 0, 44)
 	row.Parent = panel
 	local list = Instance.new("UIListLayout")
 	list.FillDirection = Enum.FillDirection.Horizontal
@@ -49,15 +49,15 @@ function SpotGame.start()
 
 	local skip = Instance.new("TextButton")
 	skip.Name = "Skip"
-	skip.Position = UDim2.fromOffset(8, 76)
-	skip.Size = UDim2.fromOffset(88, 28)
+	skip.Position = UDim2.fromOffset(8, 88)
+	skip.Size = UDim2.fromOffset(108, 36)
 	skip.BackgroundColor3 = UI.rgb("lavender")
 	skip.Font = UI.face()
-	skip.TextSize = 16
+	skip.TextSize = 18
 	skip.TextColor3 = UI.rgb("ink")
 	skip.Text = "Skip"
 	skip.Parent = panel
-	UI.corner(skip, 12)
+	UI.corner(skip, 18)
 	UI.stroke(skip, "ink", 2)
 
 	local dismissed = false
@@ -89,15 +89,15 @@ function SpotGame.start()
 		for _, option in ipairs(options) do
 			local button = Instance.new("TextButton")
 			button.Name = option.id
-			button.Size = UDim2.fromOffset(120, 36)
+			button.Size = UDim2.fromOffset(132, 44)
 			button.BackgroundColor3 = UI.rgb("cream")
 			button.Font = UI.face()
-			button.TextSize = 14
+			button.TextSize = 18
 			button.TextColor3 = UI.rgb("ink")
 			button.Text = option.name
 			button.TextWrapped = true
 			button.Parent = row
-			UI.corner(button, 10)
+			UI.corner(button, 18)
 			UI.stroke(button, "ink", 2)
 			local themeId = option.id
 			button.Activated:Connect(function()
