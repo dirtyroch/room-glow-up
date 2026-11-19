@@ -98,7 +98,7 @@ local function remember(player: Player)
 		dream = Save.normalizeDream(nil),
 		settledProfile = Save.normalizeProfile(nil),
 		settledDream = Save.normalizeDream(nil),
-		lock = Save.locker(),
+		lock = Save.locker(pause, 30),
 	}
 	sessions[key] = placeholder
 	local profile, profileHeld = loadKey(profileStore, Save.profileKey(key), Save.normalizeProfile)
@@ -214,13 +214,29 @@ function SaveService.init(c: any)
 			local profileDoc = Save.clone(doc)
 			profileDoc.schema = 1
 			profileDoc.luck = nil
+			local live = doc == bag.profile
 			local wrote = writeDoc(profileStore, Save.profileKey(key), bag, profileDoc)
 			if not wrote then
 				return false
 			end
-			bag.profile = profileDoc
+			-- A save of the live table keeps that table. Swapping in the copy would
+			-- drop anything that changed while the write was waiting on the store.
+			if not live then
+				bag.profile = profileDoc
+			end
 			bag.settledProfile = Save.clone(profileDoc)
 			return true
+		end,
+		-- Saves the live profile without making the caller wait. For small things
+		-- (a minigame payout, a funnel mark, an Easter egg) that the next results
+		-- or leave write would cover anyway. Never for receipts.
+		queue = function(key: string)
+			task.spawn(function()
+				local bag = sessions[key]
+				if bag and bag.hold == true then
+					ctx.saves.apply(key, bag.profile)
+				end
+			end)
 		end,
 	}
 	Players.PlayerAdded:Connect(remember)

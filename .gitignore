@@ -5,3 +5,4 @@ globalTypes.d.luau
 *.rbxlx.lock
 *.rbxlx
 .DS_Store
+playtest/out/

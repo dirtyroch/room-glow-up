@@ -370,11 +370,15 @@ function RoomService.init(c: any)
 			if not visiting then
 				local bag = bagOf(key)
 				if bag and bag.hold == true and Easter then
+					local owned = bag.profile.owned
+					local before = if type(owned) == "table" then #owned else 0
 					Easter.note(bag.profile, Items.get(args[1]), levelFor(key))
-					if ctx.saves and type(ctx.saves.apply) == "function" then
-						pcall(function()
-							ctx.saves.apply(key, bag.profile)
-						end)
+					owned = bag.profile.owned
+					local after = if type(owned) == "table" then #owned else 0
+					-- Counting rugs and seats rides on the results save. Only a new
+					-- unlock is written now, and without holding up the next tap.
+					if after ~= before and ctx.saves and type(ctx.saves.queue) == "function" then
+						ctx.saves.queue(key)
 					end
 				end
 				if ctx.funnel and type(ctx.funnel.onPlace) == "function" then

@@ -8,6 +8,10 @@ local RunService = game:GetService("RunService")
 local RoundService = {}
 local ctx: any = nil
 local state: any = nil
+-- The phase the phase hooks last ran for. A DONE press, a leave, or a report can
+-- move the round between heartbeats, so compare against this, not the tick start.
+local seenPhase: string? = nil
+local seenRound: number? = nil
 local RoundEngine: any = nil
 
 local function now(): number
@@ -131,6 +135,8 @@ function RoundService.init(c: any)
 	for _, player in Players:GetPlayers() do
 		onJoin(player)
 	end
+	seenPhase = state.phase
+	seenRound = state.roundIndex
 	publish(now())
 	ctx.republish = function()
 		publish(now())
@@ -150,12 +156,15 @@ function RoundService.start()
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt: number)
 		local at = now()
-		local before = state.phase
+		local before = seenPhase
 		local beforeTour = state.tourIndex
 		local wasLocked = RoundEngine.roomLocked(state, at)
 		RoundEngine.advance(state, at)
 		local nowLocked = RoundEngine.roomLocked(state, at)
-		if state.phase ~= before then
+		local changed = state.phase ~= before or state.roundIndex ~= seenRound
+		seenPhase = state.phase
+		seenRound = state.roundIndex
+		if changed then
 			if ctx.progress and type(ctx.progress.onPhase) == "function" then
 				ctx.progress.onPhase(state)
 			end
@@ -173,7 +182,7 @@ function RoundService.start()
 			end
 		end
 		acc += dt
-		if state.phase ~= before or state.tourIndex ~= beforeTour or wasLocked ~= nowLocked or acc >= 0.25 then
+		if changed or state.tourIndex ~= beforeTour or wasLocked ~= nowLocked or acc >= 0.25 then
 			acc = 0
 			publish(at)
 		end

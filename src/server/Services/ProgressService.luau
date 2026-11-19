@@ -249,6 +249,7 @@ local function settle(round: any)
 			return Monetization.luck(userId)
 		end,
 	}
+	local toSave: { string } = {}
 	for _, player in Players:GetPlayers() do
 		local key = tostring(player.UserId)
 		local bag = bagOf(key)
@@ -345,8 +346,13 @@ local function settle(round: any)
 		player:SetAttribute("QuestLine", "Quests " .. tostring(questDone) .. "/3")
 		player:SetAttribute("Purse", profile.coins)
 		player:SetAttribute("SaveOk", true)
-		if ctx.saves then
-			ctx.saves.commit(key, "results")
+		table.insert(toSave, key)
+	end
+	-- Everyone sees their coins first. Then the writes run side by side, so ten
+	-- saves do not hold the podium, the minigame, and the last kid's payout.
+	if ctx.saves then
+		for _, key in ipairs(toSave) do
+			task.spawn(ctx.saves.commit, key, "results")
 		end
 	end
 end

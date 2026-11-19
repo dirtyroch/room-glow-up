@@ -48,10 +48,8 @@ local function remember(player: Player?, bag: any, event: string)
 		return
 	end
 	local key = if player then keyOf(player) else ""
-	if key ~= "" and ctx.saves and type(ctx.saves.apply) == "function" then
-		pcall(function()
-			ctx.saves.apply(key, bag.profile)
-		end)
+	if key ~= "" and ctx.saves and type(ctx.saves.queue) == "function" then
+		ctx.saves.queue(key)
 	end
 	if player then
 		emit(player, event)
@@ -107,13 +105,21 @@ local function leftover(): number?
 end
 
 -- A just-opened lobby is only 20s. Hold it so a 30s Mini Room can finish.
+-- The hold never runs past one Lobby plus one Mini Room from when the lobby
+-- opened, so new kids arriving every few seconds cannot keep everyone waiting.
 local function keepLobby(untilAt: number)
 	local round = ctx.round
 	if type(round) ~= "table" or round.phase ~= "Lobby" then
 		return
 	end
-	if type(round.phaseEndsAt) ~= "number" or untilAt > round.phaseEndsAt then
-		round.phaseEndsAt = untilAt
+	local cap = untilAt
+	local phases = if type(round.config) == "table" then round.config.Phases else nil
+	if type(round.phaseStartedAt) == "number" and type(phases) == "table" and type(phases.Lobby) == "number" then
+		cap = round.phaseStartedAt + phases.Lobby + Tutorial.pace().duration
+	end
+	local target = math.min(untilAt, cap)
+	if type(round.phaseEndsAt) ~= "number" or target > round.phaseEndsAt then
+		round.phaseEndsAt = target
 	end
 end
 
@@ -290,9 +296,7 @@ function FunnelService.init(c: any)
 		end
 		local correct = Spot.grade(args[1], themeIdOf(round))
 		local coins = Spot.pay(bag.profile, roundKey(round), correct)
-		pcall(function()
-			ctx.saves.apply(key, bag.profile)
-		end)
+		ctx.saves.queue(key)
 		if correct and coins > 0 then
 			return true, "Plus " .. tostring(coins) .. " coins."
 		end
@@ -305,9 +309,7 @@ function FunnelService.init(c: any)
 			local bag = ctx.saves.session(key)
 			if bag.hold == true then
 				Spot.pay(bag.profile, roundKey(round), false)
-				pcall(function()
-					ctx.saves.apply(key, bag.profile)
-				end)
+				ctx.saves.queue(key)
 			end
 		end
 		return true, "Skipped."

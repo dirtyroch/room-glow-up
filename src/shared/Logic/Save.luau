@@ -422,18 +422,36 @@ function Save.close(store: Store, key: string, sessionId: string): (any?, string
 end
 
 -- One in-flight write per session. A nested call is refused.
-function Save.locker(): { run: (any) -> (any?, any?) }
+-- One writer per player. With a wait function, a second caller from another
+-- thread waits for the first instead of being dropped, so a leave right after
+-- a save still writes and still releases the lock. A nested call from the same
+-- thread is refused, since waiting there could never finish.
+function Save.locker(waitFn: ((number) -> ())?, maxWait: number?): { run: (any) -> (any?, any?) }
 	local busy = false
+	local owner: thread? = nil
 	return {
 		run = function(fn: any): (any?, any?)
 			if busy then
-				return nil, "Busy."
+				if waitFn == nil or owner == coroutine.running() then
+					return nil, "Busy."
+				end
+				local cap = maxWait or 30
+				local waited = 0
+				while busy and waited < cap do
+					waitFn(0.1)
+					waited += 0.1
+				end
+				if busy then
+					return nil, "Busy."
+				end
 			end
 			busy = true
+			owner = coroutine.running()
 			local ok, a, b = pcall(function()
 				return fn()
 			end)
 			busy = false
+			owner = nil
 			if not ok then
 				return nil, a
 			end

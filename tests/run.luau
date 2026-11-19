@@ -2874,7 +2874,239 @@ test("pibble and unc are free, and Dream Wing adds two homes", function()
 	truthy(string.find(progressSource, "Easter.grant", 1, true) ~= nil)
 	local roomSource = fs.readFile("src/server/Services/RoomService.luau")
 	truthy(string.find(roomSource, "Easter.note", 1, true) ~= nil)
-	truthy(string.find(roomSource, "saves.apply", 1, true) ~= nil)
+	truthy(string.find(roomSource, "saves.queue", 1, true) ~= nil)
+end)
+
+-- Headless playtest regressions. These boot the real server scripts on the
+-- fake Roblox in playtest/World.luau and drive them through the Action remote.
+local World = require("../playtest/World")
+
+local function server(options)
+	local opts = options or {}
+	opts.root = "."
+	return World.new(opts):boot()
+end
+
+local function stepFor(world, seconds)
+	local n = math.floor(seconds / 0.1 + 0.5)
+	for _ = 1, n do
+		world:step(0.1)
+	end
+end
+
+local function untilPhase(world, phase, cap)
+	local limit = world.clock + (cap or 600)
+	while world.ctx.round.phase ~= phase and world.clock < limit do
+		world:step(0.1)
+	end
+	eq(world.ctx.round.phase, phase, "reached " .. phase)
+end
+
+local function noErrors(world)
+	for _, e in ipairs(world.log.error) do
+		error("server error: " .. e.msg, 2)
+	end
+	for _, e in ipairs(world.log.warn) do
+		error("server warning: " .. e.msg, 2)
+	end
+end
+
+test("playtest: a leave on the last tour stop still pays everyone else", function()
+	local world = server()
+	local a = world:addPlayer("aa_kid", "Aaa")
+	local b = world:addPlayer("bb_kid", "Bbb")
+	world:invoke(a, "TutorialSkip")
+	world:invoke(b, "TutorialSkip")
+	untilPhase(world, "Build")
+	stepFor(world, 10)
+	world:invoke(a, "Place", "mint_pouf", 1, 1)
+	stepFor(world, 10)
+	world:invoke(b, "Place", "mint_pouf", 2, 2)
+	stepFor(world, 10)
+	world:invoke(a, "Done")
+	stepFor(world, 1)
+	world:invoke(b, "Done")
+	stepFor(world, 1)
+	local round = world.ctx.round
+	eq(round.phase, "Tour")
+	eq(#round.tourStops, 2)
+	while round.tourIndex < #round.tourStops do
+		world:step(0.1)
+	end
+	stepFor(world, 2)
+	local last = round.tourStops[#round.tourStops]
+	local leaver = if last == tostring(a.UserId) then a else b
+	local stayer = if leaver == a then b else a
+	world:removePlayer(leaver)
+	-- The round jumps to Results inside the leave, between heartbeats.
+	eq(round.phase, "Results")
+	stepFor(world, 1)
+	truthy(type(stayer:GetAttribute("AwardCoins")) == "number", "stayer was paid")
+	local podium = world.game:GetService("ReplicatedStorage").RoundState:GetAttribute("Podium")
+	truthy(type(podium) == "string" and podium ~= "", "podium shown")
+	noErrors(world)
+end)
+
+test("playtest: placing a piece does not hold the next tap behind a save", function()
+	local world = server()
+	local kid = world:addPlayer("tapper", "Tapper")
+	world:invoke(kid, "TutorialSkip")
+	untilPhase(world, "Build")
+	stepFor(world, 8)
+	local results = {}
+	for i, spot in ipairs({ { 0, 0 }, { 2, 0 }, { 4, 0 }, { 0, 2 } }) do
+		local payload, status = world:invoke(kid, "Place", "mint_pouf", spot[1], spot[2])
+		eq(status, "done", "tap " .. i .. " answered at once")
+		results[i] = payload
+		stepFor(world, 0.3)
+	end
+	for i, payload in ipairs(results) do
+		eq(payload.ok, true, "tap " .. i .. " placed")
+	end
+	noErrors(world)
+end)
+
+test("playtest: a save lock waits for the other writer instead of dropping it", function()
+	local waits = 0
+	local lock = Save.locker(function(_seconds)
+		waits += 1
+		coroutine.yield()
+	end, 5)
+	local order = {}
+	local first = coroutine.create(function()
+		lock.run(function()
+			table.insert(order, "first")
+			coroutine.yield()
+			return true
+		end)
+	end)
+	local second = coroutine.create(function()
+		local ok = lock.run(function()
+			table.insert(order, "second")
+			return true
+		end)
+		table.insert(order, if ok then "second ok" else "second dropped")
+	end)
+	coroutine.resume(first)
+	coroutine.resume(second)
+	eq(#order, 1)
+	coroutine.resume(first)
+	coroutine.resume(second)
+	eq(order[2], "second")
+	eq(order[3], "second ok")
+	truthy(waits >= 1)
+	-- Same-thread nesting still refuses rather than waiting on itself.
+	local nested = "unset"
+	lock.run(function()
+		nested = lock.run(function()
+			return "inner"
+		end)
+		return true
+	end)
+	eq(nested, nil)
+end)
+
+test("playtest: leaving right after a save still writes and frees the lock", function()
+	local store = {}
+	local world = server({ datastore = store })
+	local kid = world:addPlayer("leaver", "Leaver")
+	stepFor(world, 1)
+	local key = tostring(kid.UserId)
+	local bag = world.ctx.saves.session(key)
+	eq(bag.hold, true)
+	-- A write is in flight, then coins change and the kid leaves.
+	world:spawn("apply", function()
+		world.ctx.saves.apply(key, bag.profile)
+	end)
+	world.ctx.saves.session(key).profile.coins += 77
+	world:removePlayer(kid)
+	stepFor(world, 30)
+	local doc = nil
+	for k, v in pairs(store[Config.Progress.ProfileStore]) do
+		if string.find(k, key, 1, true) then
+			doc = v
+		end
+	end
+	truthy(doc ~= nil, "profile stored")
+	eq(doc.coins, 77)
+	truthy(doc.lock == nil or doc.lock.session == nil, "lock released")
+	noErrors(world)
+end)
+
+test("playtest: saving the live profile keeps changes made during the write", function()
+	local world = server()
+	local kid = world:addPlayer("keeper", "Keeper")
+	stepFor(world, 1)
+	local key = tostring(kid.UserId)
+	local bag = world.ctx.saves.session(key)
+	local live = bag.profile
+	local done = false
+	world:spawn("apply", function()
+		world.ctx.saves.apply(key, live)
+		done = true
+	end)
+	live.coins += 5
+	stepFor(world, 15)
+	truthy(done, "write finished")
+	eq(world.ctx.saves.session(key).profile, live)
+	eq(world.ctx.saves.session(key).profile.coins, 5)
+end)
+
+test("playtest: results pay every kid before any save finishes", function()
+	local world = server()
+	local kids = {}
+	for i = 1, 10 do
+		local kid = world:addPlayer("kid" .. i, "Kid" .. i)
+		world:invoke(kid, "TutorialSkip")
+		table.insert(kids, kid)
+	end
+	untilPhase(world, "Build")
+	stepFor(world, 5)
+	for i, kid in ipairs(kids) do
+		world:invoke(kid, "Place", "mint_pouf", i % 6, 0)
+	end
+	stepFor(world, 10)
+	for _, kid in ipairs(kids) do
+		world:invoke(kid, "Done")
+	end
+	untilPhase(world, "Results")
+	-- One heartbeat after Results starts.
+	world:step(0.1)
+	for i, kid in ipairs(kids) do
+		truthy(type(kid:GetAttribute("AwardCoins")) == "number", "kid " .. i .. " sees coins")
+	end
+	local spot = world.game:GetService("ReplicatedStorage").RoundState:GetAttribute("SpotChoices")
+	truthy(type(spot) == "string" and spot ~= "", "Spot the Theme dealt")
+	noErrors(world)
+end)
+
+test("playtest: a first-time kid gets the Mini Room as soon as the save loads", function()
+	local world = server()
+	local kid = world:addPlayer("brand_new", "Newbie")
+	stepFor(world, 1)
+	-- Roblox spaces writes to one key about 6 s apart. The join mark must not
+	-- make the Mini Room wait behind that, or the 20 s lobby is too short for it.
+	eq(kid:GetAttribute("TutorialActive"), true)
+	local payload, status = world:invoke(kid, "TutorialPlace")
+	eq(status, "done")
+	eq(payload.ok, true)
+	noErrors(world)
+end)
+
+test("playtest: new kids arriving cannot hold the lobby open", function()
+	local world = server()
+	world:addPlayer("first_kid", "First")
+	local started = world.clock
+	local joined = 1
+	while world.ctx.round.phase == "Lobby" and world.clock - started < 300 do
+		world:step(0.1)
+		if joined < 10 and world.clock - started >= joined * 10 then
+			joined += 1
+			world:addPlayer("kid" .. joined, "Kid" .. joined)
+		end
+	end
+	local held = world.clock - started
+	truthy(held <= Config.Phases.Lobby + Config.Tutorial.Duration + 0.5, "lobby held " .. held .. " s")
 end)
 
 print(string.format("\n%d passed, %d failed", passed, failed))
