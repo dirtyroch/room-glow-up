@@ -154,12 +154,54 @@ local function writeLine(parent: Instance, text: string, origin: CFrame, color: 
 end
 
 local function pine(parent: Instance, at: Vector3, scale: number, pot: Color3, leaf: Color3, snow: Color3)
-	bit(parent, "Pot", "Cylinder", Vector3.new(1.1 * scale, 1.2 * scale, 1.2 * scale), stand(CFrame.new(at.X, 0.7 * scale, at.Z)), pot, Enum.Material.SmoothPlastic, true, nil)
-	bit(parent, "Trunk", "Cylinder", Vector3.new(1.6 * scale, 0.4 * scale, 0.4 * scale), stand(CFrame.new(at.X, 1.6 * scale, at.Z)), Color3.fromRGB(110, 78, 52), Enum.Material.Wood, true, nil)
-	bit(parent, "Leaf", "Cylinder", Vector3.new(1.4 * scale, 2.6 * scale, 2.6 * scale), stand(CFrame.new(at.X, 2.6 * scale, at.Z)), leaf, Enum.Material.Grass, false, nil)
-	bit(parent, "Leaf", "Cylinder", Vector3.new(1.3 * scale, 1.9 * scale, 1.9 * scale), stand(CFrame.new(at.X, 3.7 * scale, at.Z)), leaf, Enum.Material.Grass, false, nil)
-	bit(parent, "Tip", "Cylinder", Vector3.new(1.1 * scale, 1.2 * scale, 1.2 * scale), stand(CFrame.new(at.X, 4.7 * scale, at.Z)), leaf, Enum.Material.Grass, false, nil)
-	bit(parent, "Snow", "Cylinder", Vector3.new(0.28 * scale, 1.4 * scale, 1.4 * scale), stand(CFrame.new(at.X, 5.2 * scale, at.Z)), snow, Enum.Material.Fabric, false, nil)
+	bit(parent, "Pot", "Cylinder", Vector3.new(0.9 * scale, 1.0 * scale, 1.0 * scale), stand(CFrame.new(at.X, 0.6 * scale, at.Z)), pot, Enum.Material.SmoothPlastic, true, nil)
+	bit(parent, "Trunk", "Cylinder", Vector3.new(1.4 * scale, 0.32 * scale, 0.32 * scale), stand(CFrame.new(at.X, 1.4 * scale, at.Z)), Color3.fromRGB(110, 78, 52), Enum.Material.Wood, true, nil)
+	local tiers = {
+		{ y = 2.15, d = 2.4, h = 1.35 },
+		{ y = 3.15, d = 1.85, h = 1.25 },
+		{ y = 4.05, d = 1.3, h = 1.15 },
+		{ y = 4.8, d = 0.8, h = 1.0 },
+	}
+	for _, row in ipairs(tiers) do
+		bit(parent, "Leaf", "Cylinder", Vector3.new(row.h * scale, row.d * scale, row.d * scale), stand(CFrame.new(at.X, row.y * scale, at.Z)), leaf, Enum.Material.Grass, false, nil)
+	end
+	bit(parent, "Snow", "Cylinder", Vector3.new(0.22 * scale, 0.55 * scale, 0.55 * scale), stand(CFrame.new(at.X, 5.35 * scale, at.Z)), snow, Enum.Material.Fabric, false, nil)
+end
+
+local function span(parent: Instance, name: string, p0: Vector3, p1: Vector3, radius: number, color: Color3)
+	local delta = p1 - p0
+	local len = delta.Magnitude
+	if len < 0.2 then
+		return
+	end
+	local mid = (p0 + p1) * 0.5
+	bit(parent, name, "Cylinder", Vector3.new(len, radius * 2, radius * 2), CFrame.lookAt(mid, p1) * CFrame.Angles(0, math.rad(90), 0), color, Enum.Material.SmoothPlastic, false, nil)
+end
+
+local function spark(parent: Instance, at: Vector3, color: Color3, size: number): BasePart
+	local arm = bit(parent, "StarArm", "Block", Vector3.new(size, size * 0.22, size * 0.22), CFrame.new(at), color, Enum.Material.Neon, false, nil)
+	bit(parent, "StarArm", "Block", Vector3.new(size * 0.22, size, size * 0.22), CFrame.new(at), color, Enum.Material.Neon, false, nil)
+	bit(parent, "StarArm", "Block", Vector3.new(size * 0.72, size * 0.2, size * 0.2), CFrame.new(at) * CFrame.Angles(0, 0, math.rad(45)), color, Enum.Material.Neon, false, nil)
+	bit(parent, "StarArm", "Block", Vector3.new(size * 0.72, size * 0.2, size * 0.2), CFrame.new(at) * CFrame.Angles(0, 0, math.rad(-45)), color, Enum.Material.Neon, false, nil)
+	return arm
+end
+
+local function swag(parent: Instance, a: Vector3, b: Vector3, drop: number, butter: Color3, coral: Color3, lit: boolean)
+	local mid = Vector3.new((a.X + b.X) * 0.5, math.min(a.Y, b.Y) - drop, (a.Z + b.Z) * 0.5)
+	local cord = Color3.fromRGB(70, 62, 78)
+	span(parent, "Cord", a, mid, 0.06, cord)
+	span(parent, "Cord", mid, b, 0.06, cord)
+	local bulbs = {
+		{ p = a:Lerp(mid, 0.35), c = butter },
+		{ p = mid, c = coral },
+		{ p = mid:Lerp(b, 0.65), c = butter },
+	}
+	for index, row in ipairs(bulbs) do
+		local bulb = bit(parent, "Fairy", "Ball", Vector3.new(0.38, 0.38, 0.38), CFrame.new(row.p), row.c, Enum.Material.Neon, false, nil)
+		if lit and index == 2 then
+			glow(bulb, butter, 0.35, 7)
+		end
+	end
 end
 
 local function gift(parent: Instance, at: Vector3, box: Color3, ribbon: Color3)
@@ -172,26 +214,44 @@ local function heroTree(parent: Instance, at: Vector3, cream: Color3, coral: Col
 	local tree = Instance.new("Model")
 	tree.Name = "HeroTree"
 	tree.Parent = parent
-	local scale = 2.0
+	local scale = 2.05
 	local snow = Color3.fromRGB(245, 250, 255)
-	local leaf = Color3.fromRGB(40, 156, 88)
-	bit(tree, "Ring", "Cylinder", Vector3.new(0.35, 7.6, 7.6), stand(CFrame.new(at.X, 0.55, at.Z)), cream, Enum.Material.SmoothPlastic, true, nil)
-	pine(tree, at, scale, cream, leaf, snow)
-	local star = bit(tree, "TreeStar", "Ball", Vector3.new(1.3, 1.3, 1.3), CFrame.new(at.X, 5.6 * scale, at.Z), butter, Enum.Material.Neon, false, nil)
-	glow(star, butter, 0.7, 14)
+	local leaf = Color3.fromRGB(36, 150, 82)
+	bit(tree, "Ring", "Cylinder", Vector3.new(0.28, 3.6, 3.6), stand(CFrame.new(at.X, 0.45, at.Z)), cream, Enum.Material.SmoothPlastic, true, nil)
+	bit(tree, "Trunk", "Cylinder", Vector3.new(2.4 * scale, 0.55 * scale, 0.55 * scale), stand(CFrame.new(at.X, 1.4 * scale, at.Z)), Color3.fromRGB(110, 78, 52), Enum.Material.Wood, true, nil)
+	-- A tapered cone: six shrinking tiers, not a fat even stack.
+	local tiers = {
+		{ y = 2.15, d = 4.6, h = 1.7 },
+		{ y = 3.3, d = 3.75, h = 1.6 },
+		{ y = 4.4, d = 2.95, h = 1.5 },
+		{ y = 5.4, d = 2.2, h = 1.4 },
+		{ y = 6.3, d = 1.5, h = 1.25 },
+		{ y = 7.05, d = 0.9, h = 1.1 },
+	}
+	for _, row in ipairs(tiers) do
+		bit(tree, "TreeTier", "Cylinder", Vector3.new(row.h * scale, row.d * scale, row.d * scale), stand(CFrame.new(at.X, row.y * scale, at.Z)), leaf, Enum.Material.Grass, false, nil)
+	end
+	bit(tree, "Snow", "Cylinder", Vector3.new(0.2 * scale, 0.5 * scale, 0.5 * scale), stand(CFrame.new(at.X, 7.65 * scale, at.Z)), snow, Enum.Material.Fabric, false, nil)
+	spark(tree, Vector3.new(at.X, 8.05 * scale, at.Z), butter, 1.15)
+	local tip = tree:FindFirstChild("StarArm")
+	if tip and tip:IsA("BasePart") then
+		glow(tip, butter, 0.55, 10)
+	end
 	local ornaments: { { x: number, y: number, z: number, color: Color3 } } = {
-		{ x = 1.6, y = 4.2, z = 0.6, color = coral },
-		{ x = -1.5, y = 5.4, z = 0.8, color = butter },
-		{ x = 0.4, y = 6.8, z = -1.5, color = lavender },
-		{ x = -1.2, y = 8.2, z = 0.9, color = coral },
-		{ x = 1.3, y = 9.4, z = -0.7, color = butter },
-		{ x = -0.6, y = 3.6, z = -1.4, color = lavender },
+		{ x = 1.9, y = 3.0, z = 1.1, color = coral },
+		{ x = -1.7, y = 3.6, z = 1.4, color = butter },
+		{ x = 0.9, y = 4.8, z = -1.6, color = lavender },
+		{ x = -1.5, y = 5.5, z = 0.9, color = coral },
+		{ x = 1.2, y = 6.4, z = -0.7, color = butter },
+		{ x = -0.7, y = 7.0, z = 0.8, color = mint },
+		{ x = 0.6, y = 2.6, z = -1.8, color = lavender },
+		{ x = -1.1, y = 4.2, z = -1.3, color = mint },
 	}
 	for _, row in ipairs(ornaments) do
-		bit(tree, "Bauble", "Ball", Vector3.new(0.85, 0.85, 0.85), CFrame.new(at.X + row.x, row.y, at.Z + row.z), row.color, Enum.Material.SmoothPlastic, false, nil)
+		bit(tree, "Bauble", "Ball", Vector3.new(0.55, 0.55, 0.55), CFrame.new(at.X + row.x, row.y * scale * 0.92, at.Z + row.z), row.color, Enum.Material.SmoothPlastic, false, nil)
 	end
-	gift(tree, Vector3.new(at.X - 2.2, 0, at.Z + 1.6), coral, butter)
-	gift(tree, Vector3.new(at.X + 2.0, 0, at.Z + 1.3), mint, lavender)
+	gift(tree, Vector3.new(at.X - 1.6, 0, at.Z + 1.3), coral, butter)
+	gift(tree, Vector3.new(at.X + 1.5, 0, at.Z + 1.1), mint, lavender)
 end
 
 function Plaza.build()
@@ -219,12 +279,13 @@ function Plaza.build()
 		bit(folder, "Path", "Block", Vector3.new(6, 0.35, 2.6), CFrame.new(0, 0.3, z), tint, Enum.Material.SmoothPlastic, true, nil)
 	end
 
-	bit(folder, "Sign", "Block", Vector3.new(18, 5.2, 0.6), CFrame.new(0, 8.2, cz - 16), cream, Enum.Material.SmoothPlastic, true, nil)
+	-- Taller, wider sign so the title stays clear above the plaza from spawn.
+	bit(folder, "Sign", "Block", Vector3.new(24, 7.2, 0.7), CFrame.new(0, 12.6, cz - 16), cream, Enum.Material.SmoothPlastic, true, nil)
 	-- Title is built from letter parts so it also shows in 3D previews.
-	bit(folder, "Post", "Cylinder", Vector3.new(6.2, 0.7, 0.7), stand(CFrame.new(-7.2, 3.2, cz - 16)), ink, Enum.Material.Wood, true, nil)
-	bit(folder, "Post", "Cylinder", Vector3.new(6.2, 0.7, 0.7), stand(CFrame.new(7.2, 3.2, cz - 16)), ink, Enum.Material.Wood, true, nil)
-	bit(folder, "Star", "Ball", Vector3.new(1.4, 1.4, 1.4), CFrame.new(-8.2, 10.6, cz - 15.4), butter, Enum.Material.Neon, false, nil)
-	bit(folder, "Star", "Ball", Vector3.new(1.1, 1.1, 1.1), CFrame.new(8.2, 10.4, cz - 15.4), coral, Enum.Material.Neon, false, nil)
+	bit(folder, "Post", "Cylinder", Vector3.new(9.2, 0.75, 0.75), stand(CFrame.new(-10.2, 4.7, cz - 16)), ink, Enum.Material.Wood, true, nil)
+	bit(folder, "Post", "Cylinder", Vector3.new(9.2, 0.75, 0.75), stand(CFrame.new(10.2, 4.7, cz - 16)), ink, Enum.Material.Wood, true, nil)
+	spark(folder, Vector3.new(-11.4, 16.4, cz - 15.4), butter, 1.35)
+	spark(folder, Vector3.new(11.4, 16.3, cz - 15.4), coral, 1.15)
 
 	local boothX = -16
 	bit(folder, "Counter", "Block", Vector3.new(8, 3.2, 3.2), CFrame.new(boothX, 2.2, cz + 2), cream, Enum.Material.Wood, true, nil)
@@ -263,15 +324,13 @@ function Plaza.build()
 		local plate = bit(folder, "Nameplate", "Block", Vector3.new(2.8, 1.15, 0.2), CFrame.new(15 + place.x, 1.7 + place.h * 0.45, cz + 1.8), cream, Enum.Material.SmoothPlastic, false, nil)
 		labelOn(plate, "Place", place.word, place.rank, 40)
 		if place.rank == 1 then
-			local star = bit(folder, "CrownStar", "Ball", Vector3.new(0.9, 0.9, 0.9), CFrame.new(15, 1.7 + place.h + 0.7, cz), butter, Enum.Material.Neon, false, nil)
+			local star = spark(folder, Vector3.new(15, 1.55 + place.h + 0.85, cz), butter, 1.2)
+			star.Name = "CrownStar"
 			glow(star, butter, 0.5, 10)
 			glow(plinth, butter, 0.25, 8)
 		end
 		cap.Name = "PlinthCap"
 	end
-
-	local burst = bit(folder, "Confetti", "Ball", Vector3.new(1, 1, 1), CFrame.new(15, 8.5, cz), cream, Enum.Material.SmoothPlastic, false, 1)
-	burst.CanCollide = false
 
 	for _, side in ipairs({ -1, 1 }) do
 		local x = side * 12
@@ -307,7 +366,7 @@ function Plaza.build()
 		glow(shade, butter, 0.45, 11)
 	end
 
-	for index, spot in ipairs({ Vector3.new(-20, 0, cz), Vector3.new(8, 0, cz - 14), Vector3.new(-8, 0, -20), Vector3.new(22, 0, -40) }) do
+	for index, spot in ipairs({ Vector3.new(-20, 0, cz), Vector3.new(18, 0, cz - 12), Vector3.new(-8, 0, -20), Vector3.new(22, 0, -40) }) do
 		bit(folder, "Planter", "Cylinder", Vector3.new(1.3, 1.6, 1.6), stand(CFrame.new(spot.X, 1.2, spot.Z)), cream, Enum.Material.SmoothPlastic, true, nil)
 		bit(folder, "Leaf", "Ball", Vector3.new(1.8, 1.6, 1.8), CFrame.new(spot.X, 2.5, spot.Z), mint, Enum.Material.Grass, false, nil)
 		local berry = if index % 2 == 0 then coral else butter
@@ -330,10 +389,10 @@ function Plaza.build()
 	end
 	local top = words[1] or "ROOM"
 	local bottom = if #words > 1 then table.concat(words, " ", 2) else ""
-	local signCf = CFrame.new(0, 8.2, cz - 15.55)
-	writeLine(folder, top, signCf * CFrame.new(0, 1.25, 0), ink, 0.46, 0.32)
+	local signCf = CFrame.new(0, 12.6, cz - 15.5)
+	writeLine(folder, top, signCf * CFrame.new(0, 1.7, 0), ink, 0.62, 0.36)
 	if bottom ~= "" then
-		writeLine(folder, bottom, signCf * CFrame.new(0, -1.25, 0), ink, 0.38, 0.32)
+		writeLine(folder, bottom, signCf * CFrame.new(0, -1.75, 0), ink, 0.5, 0.36)
 	end
 
 	-- Snowy ring, trees, gifts, and paths around the plaza.
@@ -347,9 +406,9 @@ function Plaza.build()
 		bit(folder, "Drift", "Ball", Vector3.new(4.2, 1.7, 3.0), CFrame.new(x, 0.85, z), snow, Enum.Material.Fabric, false, nil)
 		if index % 2 == 0 then
 			local tx, tz = x * 1.08, cz + (z - cz) * 1.08
-			-- Leave a gap for the display room and the center tree.
-			local nearDisplay = tx > -20 and tx < 0 and tz > cz - 16 and tz < cz - 2
-			local nearTree = tx > -2 and tx < 11 and tz > cz - 4 and tz < cz + 8
+			-- Leave a gap for the side display room and the side tree.
+			local nearDisplay = tx < -18 and tz > cz - 16 and tz < cz + 6
+			local nearTree = tx > 16 and tz > cz - 22 and tz < cz - 6
 			if not (nearDisplay or nearTree) then
 				pine(folder, Vector3.new(tx, 0, tz), 1.28, cream, Color3.fromRGB(56, 176, 108), snow)
 			end
@@ -377,26 +436,18 @@ function Plaza.build()
 		bit(folder, "CaneStripe", "Cylinder", Vector3.new(2.2, 0.52, 0.52), stand(CFrame.new(side * 4.2, 1.7, 6)), Color3.fromRGB(220, 50, 70), Enum.Material.SmoothPlastic, false, nil)
 	end
 
-	-- String lights between lamp posts.
-	local lampSpots = { Vector3.new(-22, 0, -22), Vector3.new(22, 0, -22), Vector3.new(-22, 0, -48), Vector3.new(22, 0, -48) }
-	for i = 1, #lampSpots do
-		local a = lampSpots[i]
-		local b = lampSpots[i % #lampSpots + 1]
-		for k = 1, 4 do
-			local alpha = k / 5
-			local x = a.X + (b.X - a.X) * alpha
-			local z = a.Z + (b.Z - a.Z) * alpha
-			local bulb = bit(folder, "Fairy", "Ball", Vector3.new(0.45, 0.45, 0.45), CFrame.new(x, 5.4 + math.sin(k + i) * 0.25, z), if k % 2 == 0 then butter else coral, Enum.Material.Neon, false, nil)
-			if i + k == 3 or i + k == 6 then
-				glow(bulb, butter, 0.4, 8)
-			end
-		end
-	end
+	-- String lights on visible cords, only on the sides and front so they never cross the sign.
+	local lampY = 6.05
+	swag(folder, Vector3.new(-22, lampY, -22), Vector3.new(22, lampY, -22), 1.6, butter, coral, true)
+	swag(folder, Vector3.new(-22, lampY, -22), Vector3.new(-22, lampY, -48), 1.2, butter, coral, false)
+	swag(folder, Vector3.new(22, lampY, -22), Vector3.new(22, lampY, -48), 1.2, coral, butter, false)
+	-- A short garland along the top of the sign, on a visible cord.
+	swag(folder, Vector3.new(-11.2, 16.4, cz - 15.3), Vector3.new(11.2, 16.4, cz - 15.3), 0.7, butter, coral, true)
 
-	-- Tree slightly right of center; the last-winner room sits left of the sign under a spotlight.
-	heroTree(folder, Vector3.new(9, 0, cz + 8), cream, coral, mint, butter, lavender)
+	-- Winner room and tree sit on the sides, leaving a clear aisle to the title.
+	heroTree(folder, Vector3.new(24, 0, cz - 14), cream, coral, mint, butter, lavender)
 
-	local dx, dz = -11, cz - 8
+	local dx, dz = -28, cz - 6
 	local display = Instance.new("Model")
 	display.Name = "DisplayRoom"
 	display.Parent = folder
@@ -422,24 +473,20 @@ function Plaza.build()
 	bit(display, "ShowSign", "Block", Vector3.new(7.0, 1.3, 0.2), CFrame.new(dx, 3.4, dz + 5.6), cream, Enum.Material.SmoothPlastic, false, nil)
 	writeLine(display, "WINNER", CFrame.new(dx, 3.4, dz + 5.75), ink, 0.16, 0.16)
 
-	-- Compact spotlight above the display, no tall post in the foreground.
-	local lamp = bit(folder, "HeroSpot", "Ball", Vector3.new(1.8, 1.3, 1.8), CFrame.new(dx, 11.4, dz), butter, Enum.Material.Neon, false, 0.05)
-	glow(lamp, Color3.fromRGB(255, 236, 200), 1.6, 24)
+	-- A small metal can above the display, not a floating globe.
+	local lamp = bit(folder, "HeroSpot", "Cylinder", Vector3.new(0.9, 0.7, 0.7), CFrame.new(dx, 10.6, dz) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(50, 52, 70), Enum.Material.Metal, false, nil)
+	glow(lamp, Color3.fromRGB(255, 236, 200), 1.4, 22)
 	local beam = Instance.new("SpotLight")
 	beam.Name = "SoftLight"
 	beam.Face = Enum.NormalId.Bottom
 	beam.Angle = 60
-	beam.Brightness = 3.4
-	beam.Range = 22
+	beam.Brightness = 3.2
+	beam.Range = 20
 	beam.Color = Color3.fromRGB(255, 236, 200)
 	beam.Shadows = false
-	beam:SetAttribute("SoftB", 3.4)
+	beam:SetAttribute("SoftB", 3.2)
 	beam:SetAttribute("Kind", "key")
 	beam.Parent = lamp
-
-	for index = 0, 2 do
-		bit(folder, "Cloud", "Ball", Vector3.new(7 - index, 3.2, 4), CFrame.new(-18 + index * 16, 22 + index, cz - 4), cream, Enum.Material.SmoothPlastic, false, 0.18)
-	end
 end
 
 return Plaza
