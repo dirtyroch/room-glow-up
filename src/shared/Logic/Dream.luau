@@ -105,6 +105,7 @@ function Dream.roomFrom(pieces: { any }, cap: number?): any
 			color = piece.color,
 			cost = piece.cost,
 			placedAt = piece.placedAt,
+			material = if type(piece.material) == "string" then piece.material else nil,
 		}
 		table.insert(room.pieces, copy)
 		if type(piece.id) == "number" and piece.id >= nextId then
@@ -154,6 +155,7 @@ function Dream.piecesOf(room: any): { any }
 			color = piece.color,
 			cost = piece.cost,
 			placedAt = piece.placedAt,
+			material = if type(piece.material) == "string" then piece.material else nil,
 		})
 	end
 	return list

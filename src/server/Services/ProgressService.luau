@@ -16,6 +16,9 @@ local Quests: any = nil
 local Collections: any = nil
 local Rank: any = nil
 local Monetization: any = nil
+local Season: any = nil
+local Shop: any = nil
+local Owned: any = nil
 local Themes: any = nil
 local Items: any = nil
 local Voting: any = nil
@@ -63,6 +66,9 @@ local function present(player: Player)
 	player:SetAttribute("NextUnlock", Levels.next(level))
 	player:SetAttribute("Purse", bag.profile.coins)
 	player:SetAttribute("DuoOn", group.opted[key] == true)
+	if ctx.shop and type(ctx.shop.refresh) == "function" then
+		ctx.shop.refresh(player)
+	end
 end
 
 local function handOf(key: string): { props: number, recolors: number }
@@ -91,7 +97,17 @@ local function homeRoom(key: string): (any, any)
 	if not homes[key] then
 		homes[key] = Dream.roomFrom(bag.dream.homes[1].pieces, Dream.cap(level))
 	end
-	return homes[key], Dream.context(level, catalog(), workspace:GetServerTimeNow())
+	local dreamCtx = Dream.context(level, catalog(), workspace:GetServerTimeNow())
+	if Owned and bag.profile then
+		dreamCtx.allow = function(itemId: string): boolean
+			return Owned.has(bag.profile, itemId, level)
+		end
+	end
+	if Shop and bag.profile then
+		dreamCtx.tools = Shop.hasPass(bag.profile, "DesignerTools") == true
+		dreamCtx.materials = Config.Shop.Materials
+	end
+	return homes[key], dreamCtx
 end
 
 local function clearPlot(key: string)
@@ -204,8 +220,10 @@ local function settle(round: any)
 	local rows = if ballots then Voting.standings(ballots) else {}
 	local eyeMap = if ballots then ballots.eyeCoins else {}
 	local themeId, themeLabel = themeName(round)
-	local dayKey = Quests.dayKey(os.time(), Config.TimezoneOffsetHours)
-	local monthId = Rank.month(os.time(), Config.TimezoneOffsetHours)
+	local clock = os.time()
+	local offset = if Season then Season.centralOffset(clock) else Config.TimezoneOffsetHours
+	local dayKey = Quests.dayKey(clock, offset)
+	local monthId = Rank.month(clock, offset)
 	local roundId = ctx.sessionId .. ":" .. tostring(round.roundIndex)
 	local hooks = {
 		coinMultiplier = function(userId: string?): number
@@ -330,6 +348,9 @@ function ProgressService.init(c: any)
 	Rank = require(Logic:WaitForChild("Rank") :: ModuleScript) :: any
 	Monetization = require(Logic:WaitForChild("Monetization") :: ModuleScript) :: any
 	Voting = require(Logic:WaitForChild("Voting") :: ModuleScript) :: any
+	Season = require(Logic:WaitForChild("Season") :: ModuleScript) :: any
+	Shop = require(Logic:WaitForChild("Shop") :: ModuleScript) :: any
+	Owned = require(Logic:WaitForChild("Owned") :: ModuleScript) :: any
 	group = Duo.create()
 
 	ctx.duo = {
@@ -351,6 +372,15 @@ function ProgressService.init(c: any)
 				round.tourSkip[partner] = nil
 			end
 			return partner, wasLead
+		end,
+	}
+	ctx.family = {
+		duoAll = function(ids: { string }, phase: string, enabled: boolean): (boolean, string?)
+			local ok, msg = Duo.setAll(group, ids, phase, enabled)
+			if ctx.round then
+				publishDuo(ctx.round)
+			end
+			return ok, msg
 		end,
 	}
 	ctx.dream = {

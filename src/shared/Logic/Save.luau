@@ -36,6 +36,14 @@ function Save.blankProfile(): { [string]: any }
 		rankMonth = "",
 		rankPoints = 0,
 		rankClaimed = {},
+		receipts = {},
+		codes = {},
+		passes = {},
+		owned = {},
+		designPassStart = 0,
+		designPassClaimed = {},
+		dreamExtra = 0,
+		hintRound = "",
 	}
 end
 
@@ -122,6 +130,16 @@ function Save.normalizeProfile(raw: any): { [string]: any }
 	end
 	doc.rankPoints = math.max(0, math.floor(asNumber(raw.rankPoints, 0)))
 	doc.rankClaimed = numberList(raw.rankClaimed)
+	doc.receipts = stringList(raw.receipts)
+	doc.codes = stringList(raw.codes)
+	doc.passes = stringList(raw.passes)
+	doc.owned = stringList(raw.owned)
+	doc.designPassStart = math.max(0, math.floor(asNumber(raw.designPassStart, 0)))
+	doc.designPassClaimed = numberList(raw.designPassClaimed)
+	doc.dreamExtra = math.max(0, math.floor(asNumber(raw.dreamExtra, 0)))
+	if type(raw.hintRound) == "string" then
+		doc.hintRound = raw.hintRound
+	end
 	return doc
 end
 
@@ -142,6 +160,7 @@ local function pieceList(value: any): { any }
 				color = if type(entry.color) == "string" then entry.color else "cream",
 				cost = math.max(0, math.floor(asNumber(entry.cost, 0))),
 				placedAt = asNumber(entry.placedAt, 0),
+				material = if type(entry.material) == "string" then entry.material else nil,
 			})
 		end
 	end
@@ -190,12 +209,45 @@ function Save.normalizeDream(raw: any): { [string]: any }
 	return doc
 end
 
+-- steps[n] upgrades a document that is already at schema n - 1.
+-- Schema 1 is the baseline. The next save format adds a step here and bumps Save.Schema.
+local steps: { [number]: (any) -> () } = {}
+
+function Save.migrate(raw: any): (any?, string?)
+	if type(raw) ~= "table" then
+		return nil, "Schema."
+	end
+	local schema = raw.schema
+	if type(schema) ~= "number" or schema ~= schema or schema ~= math.floor(schema) then
+		return nil, "Schema."
+	end
+	if schema > Save.Schema or schema < 0 then
+		return nil, "Schema."
+	end
+	local doc = Save.clone(raw)
+	local version = schema
+	while version < Save.Schema do
+		local step = steps[version + 1]
+		if step then
+			step(doc)
+		end
+		version += 1
+		doc.schema = version
+	end
+	doc.schema = Save.Schema
+	return doc, nil
+end
+
 function Save.claim(current: any, sessionId: string, now: number, ttl: number): (any?, string?)
 	if current ~= nil and type(current) ~= "table" then
 		return nil, "Schema."
 	end
-	if type(current) == "table" and current.schema ~= nil and current.schema ~= 1 then
-		return nil, "Schema."
+	if type(current) == "table" and current.schema ~= nil and current.schema ~= Save.Schema then
+		local migrated, err = Save.migrate(current)
+		if not migrated then
+			return nil, err or "Schema."
+		end
+		current = migrated
 	end
 	local lock = if type(current) == "table" then current.lock else nil
 	if type(lock) == "table" and type(lock.session) == "string" and lock.session ~= sessionId then

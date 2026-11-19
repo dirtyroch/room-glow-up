@@ -1,6 +1,5 @@
 --!strict
--- Hooks for a later shop. This milestone does not sell anything.
--- The server owns every source. Client actions cannot set them.
+-- Hooks the shop fills in. The server owns every source. Client actions cannot set them.
 
 local Monetization = {}
 

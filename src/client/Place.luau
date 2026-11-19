@@ -353,6 +353,13 @@ function Place.recolor()
 	end
 	busy = true
 	local ok, msg = Net.act("Recolor", selectedPiece, nextColor)
+	local player = Players.LocalPlayer
+	if player:GetAttribute("DesignerTools") == true then
+		local materials = Config.Shop.Materials
+		local material = materials[((selectedPiece or 1) - 1) % #materials + 1]
+		Net.act("Finish", selectedPiece, material)
+		Net.act("Surface", aimSurface, nextColor)
+	end
 	busy = false
 	if msg and msg ~= "" then
 		note(msg)

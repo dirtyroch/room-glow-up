@@ -55,6 +55,9 @@ export type State = {
 	hasWork: ((string) -> any)?,
 	-- Partner ids in a duo room. They build, but the tour stops once.
 	tourSkip: { [string]: boolean },
+	-- Extra minutes bought for this round. Reset when the next lobby starts.
+	timeAdds: number,
+	bankedTime: number,
 }
 
 local function activeCount(state: State): number
@@ -170,11 +173,16 @@ end
 local function beginBuild(state: State, now: number)
 	state.phase = "Build"
 	state.phaseStartedAt = now
+	local extra = state.bankedTime
+	if type(extra) ~= "number" or extra ~= extra or extra < 0 then
+		extra = 0
+	end
+	state.bankedTime = 0
 	if activeCount(state) < 1 then
 		-- Nobody left to decorate; skip the 240s wait and go to Tour.
 		state.phaseEndsAt = now
 	else
-		state.phaseEndsAt = now + state.config.Phases.Build
+		state.phaseEndsAt = now + state.config.Phases.Build + extra
 	end
 	note(state, "Build", now)
 end
@@ -238,6 +246,8 @@ local function beginLobby(state: State, now: number)
 	state.phase = "Lobby"
 	state.phaseStartedAt = now
 	state.tourSkip = {}
+	state.timeAdds = 0
+	state.bankedTime = 0
 	if activeCount(state) >= 1 then
 		state.phaseEndsAt = now + state.config.Phases.Lobby
 	else
@@ -374,6 +384,8 @@ function RoundEngine.create(options: {
 		trace = {},
 		hasWork = nil,
 		tourSkip = {},
+		timeAdds = 0,
+		bankedTime = 0,
 	}
 	state.season = Season.resolve(state.config.Season, state.unixNow(), state.config.TimezoneOffsetHours)
 	note(state, "Lobby", 0)
@@ -403,6 +415,35 @@ function RoundEngine.setHostTheme(state: State, themeId: string?): (boolean, str
 	end
 	state.hostThemeId = themeId
 	return true, nil
+end
+
+-- +60s for the whole server. Lobby and theme bank it onto Build. Tour does not.
+-- The cap is per round. A refused call does not spend a charge.
+function RoundEngine.extend(state: State, seconds: number, cap: number): (boolean, string?)
+	if type(state.timeAdds) ~= "number" then
+		state.timeAdds = 0
+	end
+	if type(seconds) ~= "number" or seconds ~= seconds or seconds <= 0 then
+		return false, "Bad request."
+	end
+	if type(cap) ~= "number" or cap < 1 then
+		cap = 1
+	end
+	if state.timeAdds >= cap then
+		return false, "This round already has two extra minutes."
+	end
+	local add = math.floor(seconds)
+	if state.phase == "Build" and type(state.phaseEndsAt) == "number" then
+		state.timeAdds += 1
+		state.phaseEndsAt += add
+		return true, "Added a minute for everyone."
+	end
+	if state.phase == "Lobby" or state.phase == "ThemeReveal" then
+		state.timeAdds += 1
+		state.bankedTime = (state.bankedTime or 0) + add
+		return true, "The next build gets an extra minute."
+	end
+	return false, "Extra time waits for the lobby."
 end
 
 function RoundEngine.join(state: State, id: string, now: number)

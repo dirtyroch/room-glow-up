@@ -13,6 +13,14 @@ local function rgb(triple: { number }): Color3
 	return Color3.fromRGB(triple[1], triple[2], triple[3])
 end
 
+local function asMaterial(name: string): Enum.Material?
+	local material = (Enum.Material :: any)[name]
+	if typeof(material) ~= "EnumItem" then
+		return nil
+	end
+	return material :: Enum.Material
+end
+
 local function named(colorName: string): Color3
 	local channels = UIKit.color(colorName)
 	return Color3.fromRGB(channels[1], channels[2], channels[3])
@@ -336,7 +344,31 @@ function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string)
 	else
 		add(model, cf, "Body", "Block", Vector3.new(sx * 0.9, math.max(sy, 0.3), sz * 0.9), Vector3.zero, main, true)
 	end
+	local materialName = piece.material
+	if type(materialName) == "string" then
+		local material = asMaterial(materialName)
+		if material then
+			for _, child in model:GetDescendants() do
+				if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
+					child.Material = material
+				end
+			end
+			model:SetAttribute("Material", materialName)
+		end
+	end
 	return model
+end
+
+function Props.paintShell(plot: Instance, surface: string, colorName: string)
+	local ok, color = pcall(named, colorName)
+	if not ok then
+		return
+	end
+	for _, child in plot:GetDescendants() do
+		if child:IsA("BasePart") and child:GetAttribute("Surface") == surface then
+			child.Color = color
+		end
+	end
 end
 
 function Props.recolor(model: Model, colorName: string)
@@ -345,6 +377,19 @@ function Props.recolor(model: Model, colorName: string)
 	for _, child in model:GetDescendants() do
 		if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
 			child.Color = main
+		end
+	end
+end
+
+function Props.finish(model: Model, materialName: string)
+	local material = asMaterial(materialName)
+	if not material then
+		return
+	end
+	model:SetAttribute("Material", materialName)
+	for _, child in model:GetDescendants() do
+		if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
+			child.Material = material
 		end
 	end
 end
