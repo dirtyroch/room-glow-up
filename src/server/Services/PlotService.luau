@@ -1,6 +1,7 @@
 --!strict
 -- Builds ten plots and the three shells. Assigns a plot on join and frees it on leave.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -217,6 +218,7 @@ local function release(player: Player)
 	local key = tostring(player.UserId)
 	local index = ctx.Plots.release(state, key)
 	player:SetAttribute("Plot", nil)
+	player:SetAttribute("BuildPlot", nil)
 	if not index then
 		return
 	end
@@ -230,6 +232,45 @@ local function release(player: Player)
 	model:SetAttribute("CoinsLeft", 0)
 	displayNames[index] = nil
 	writeSign(index, phaseNow())
+end
+
+local function handOff(fromPlayer: Player, toKey: string): number?
+	local fromKey = tostring(fromPlayer.UserId)
+	local keep, freed = ctx.Plots.transfer(state, fromKey, toKey)
+	fromPlayer:SetAttribute("Plot", nil)
+	fromPlayer:SetAttribute("BuildPlot", nil)
+	if type(freed) == "number" then
+		clearIndex(freed)
+		local empty = models[freed]
+		if empty then
+			empty:SetAttribute("OwnerKey", nil)
+			empty:SetAttribute("ThemeMatch", 0)
+			empty:SetAttribute("CoinsLeft", 0)
+		end
+		displayNames[freed] = nil
+		writeSign(freed, phaseNow())
+	end
+	if type(keep) ~= "number" then
+		return nil
+	end
+	local userId = tonumber(toKey)
+	local toPlayer = if userId then Players:GetPlayerByUserId(userId) else nil
+	if toPlayer then
+		toPlayer:SetAttribute("Plot", keep)
+		toPlayer:SetAttribute("BuildPlot", keep)
+		local display = toPlayer.DisplayName
+		if display == "" then
+			display = toPlayer.Name
+		end
+		displayNames[keep] = display
+	end
+	local model = models[keep]
+	local phase = phaseNow()
+	if model and phase ~= "Tour" and phase ~= "Results" then
+		model:SetAttribute("OwnerKey", toKey)
+	end
+	writeSign(keep, phase)
+	return keep
 end
 
 function PlotService.init(c: any)
@@ -253,6 +294,7 @@ function PlotService.init(c: any)
 	ctx.plots = {
 		assign = assign,
 		release = release,
+		handOff = handOff,
 		veil = veil,
 		indexOf = function(key: string): number?
 			return ctx.Plots.plotOf(state, key)

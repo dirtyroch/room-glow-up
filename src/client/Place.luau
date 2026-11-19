@@ -38,7 +38,24 @@ local function roundType(): string
 	return "room"
 end
 
+local function atHome(): boolean
+	local folder = roundFolder()
+	local player = Players.LocalPlayer
+	return folder ~= nil and folder:GetAttribute("Phase") == "Lobby" and player:GetAttribute("AtHome") == true
+end
+
+local function gridKind(): string
+	local grid = Players.LocalPlayer:GetAttribute("Grid")
+	if type(grid) == "string" and grid ~= "" then
+		return grid
+	end
+	return roundType()
+end
+
 local function canEdit(): boolean
+	if atHome() then
+		return true
+	end
 	local folder = roundFolder()
 	if not folder or folder:GetAttribute("Phase") ~= "Build" then
 		return false
@@ -52,7 +69,10 @@ end
 
 local function myPlot(): Model?
 	local player = Players.LocalPlayer
-	local index = player:GetAttribute("Plot")
+	local index = player:GetAttribute("BuildPlot")
+	if type(index) ~= "number" then
+		index = player:GetAttribute("Plot")
+	end
 	if type(index) ~= "number" then
 		return nil
 	end
@@ -68,8 +88,8 @@ local function myPlot(): Model?
 end
 
 local function surfaces(): { string }
-	local kind = roundType()
-	if kind == "gingerbread" then
+	local kind = gridKind()
+	if kind == "gingerbread" or kind == "duo_gingerbread" then
 		return { "wall", "roof" }
 	end
 	if kind == "tree" then
@@ -99,7 +119,7 @@ local function clampAim()
 		end
 		return
 	end
-	local grid = Bases.grid(roundType(), aimSurface)
+	local grid = Bases.grid(gridKind(), aimSurface)
 	if not grid then
 		aimX = 0
 		aimZ = 0
@@ -169,7 +189,7 @@ local function showPreview()
 		d = item.d
 		h = item.h
 	end
-	local spot = Bases.pivot(roundType(), surface, aimX, aimZ, 0, w, d, h)
+	local spot = Bases.pivot(gridKind(), surface, aimX, aimZ, 0, w, d, h)
 	if not spot then
 		hidePreview()
 		return

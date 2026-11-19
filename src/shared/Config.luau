@@ -22,7 +22,8 @@ local Config = {
 		-- lock-in beat: votes freeze, then the camera moves with the next index.
 		TourPerRoom = 10,
 		TourLockIn = 2,
-		Results = 25,
+		-- Long enough for the podium, then coins, XP, and unlocks.
+		Results = 30,
 	},
 	PhaseOrder = { "Lobby", "ThemeReveal", "Build", "Tour", "Results" },
 	PhaseLabels = {
@@ -85,13 +86,58 @@ local Config = {
 		TrimAt = 5,
 		-- Judge's Eye: within this many stars of the final average.
 		EyeWindow = 1,
-		-- Placeholder purse until saves land. Not written to a store.
+		-- Judge's Eye coins. The server turns these into real coins after Results.
+		-- The EyeCoins attribute is a display copy. Payout never reads it.
 		EyeCoins = 8,
-		-- A room drops after this many different players report it, or this
-		-- share of the people who can vote, whichever is higher.
+		-- A room drops after this many different reports, or this share of the
+		-- people who can vote, whichever is higher. Half, rounded up.
 		ReportMin = 3,
-		ReportFraction = 0.4,
+		ReportFraction = 0.5,
 		Podium = 3,
+	},
+	-- Profile saves, levels, and the dream home. The shop reads the hooks later.
+	Progress = {
+		Schema = 1,
+		ProfileStore = "RoomGlowProfile_v1",
+		DreamStore = "RoomGlowDream_v1",
+		-- Long enough to cover a full 10-player round plus a long lobby sit.
+		-- A second server cannot take the lock until this many seconds pass.
+		LockSeconds = 1800,
+		PaidCap = 48,
+		Lookbook = 3,
+		StampStars = 4,
+		SetBonusCoins = 40,
+		SetBonusXp = 24,
+		QuestCoins = 12,
+		MaxLevel = 50,
+		-- XP to leave level L is XpBase + (L - 1) * XpStep.
+		XpBase = 20,
+		XpStep = 6,
+		DuoScale = 1.5,
+		LoftLevel = 15,
+		HouseLevel = 30,
+		StudioItems = 16,
+		LoftItems = 24,
+		HouseItems = 36,
+		RetrySeconds = { 0.5, 1, 2, 4 },
+	},
+	-- Granted once per round id. Placement, stars, and the podium each add some.
+	Rewards = {
+		PlaceCoins = { 36, 24, 18, 12, 8 },
+		PlaceXp = { 40, 30, 24, 18, 14 },
+		StarCoins = 4,
+		StarXp = 6,
+		PodiumCoins = { 20, 14, 8 },
+		PodiumXp = { 20, 14, 8 },
+		EyeRate = 1,
+	},
+	-- Monthly designer track. Points only rise inside the month.
+	RankTrack = {
+		{ points = 100, coins = 20 },
+		{ points = 250, coins = 30 },
+		{ points = 450, coins = 40 },
+		{ points = 700, coins = 55 },
+		{ points = 1000, coins = 75 },
 	},
 	-- Reveal show. The client plays these when the server tour attributes change.
 	-- Crowd marks are not votes and never enter the average.

@@ -36,6 +36,29 @@ local Grids = {
 		wall = { x = 8, z = 5 } :: Grid,
 		roof = { x = 8, z = 4 } :: Grid,
 	},
+	-- Dream home grows in place. The studio matches the contest room.
+	-- The loft is wider. The house lifts the back half up a storey.
+	studio = {
+		floor = { x = 6, z = 6 } :: Grid,
+		wall = { x = 6, z = 3 } :: Grid,
+	},
+	loft = {
+		floor = { x = 8, z = 6 } :: Grid,
+		wall = { x = 8, z = 3 } :: Grid,
+	},
+	house = {
+		floor = { x = 8, z = 6 } :: Grid,
+		wall = { x = 8, z = 3 } :: Grid,
+	},
+	-- Duo rooms share one wider shell.
+	duo_room = {
+		floor = { x = 8, z = 6 } :: Grid,
+		wall = { x = 8, z = 3 } :: Grid,
+	},
+	duo_gingerbread = {
+		wall = { x = 10, z = 5 } :: Grid,
+		roof = { x = 10, z = 4 } :: Grid,
+	},
 }
 
 Bases.HookCount = 12
@@ -158,6 +181,14 @@ local function cell(): number
 	return Bases.worldCell()
 end
 
+-- The back half of a two-storey home sits one floor above the studio walls.
+local function floorLift(roundType: string, surface: string, z: number): number
+	if roundType ~= "house" or surface ~= "floor" or z < 3 then
+		return 0
+	end
+	return 3 * cell()
+end
+
 function Bases.tileCenter(roundType: string, surface: string, x: number, z: number): (number?, number?, number?)
 	local unit = cell()
 	if surface == "hook" then
@@ -177,7 +208,7 @@ function Bases.tileCenter(roundType: string, surface: string, x: number, z: numb
 	if surface == "floor" then
 		local lx = (-grid.x / 2 + x + 0.5) * unit
 		local lz = (-grid.z / 2 + z + 0.5) * unit
-		return lx, 0.5, lz
+		return lx, 0.5 + floorLift(roundType, surface, z), lz
 	end
 	if surface == "wall" then
 		local planeZ = Bases.wallPlane(roundType)
@@ -259,7 +290,7 @@ function Bases.pivot(
 	if surface == "floor" then
 		return {
 			x = (-grid.x / 2 + x + aw / 2) * unit,
-			y = 1 + (h * unit) / 2,
+			y = 1 + (h * unit) / 2 + floorLift(roundType, surface, z),
 			z = (-grid.z / 2 + z + ad / 2) * unit,
 			yaw = rot * math.pi / 2,
 		}

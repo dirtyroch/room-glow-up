@@ -51,4 +51,27 @@ function Plots.release(state: State, id: string): number?
 	return index
 end
 
+-- Move a furnished plot to a remaining duo partner. Returns the kept index
+-- and any unused plot the partner already held, which the caller should clear.
+function Plots.transfer(state: State, fromId: string, toId: string): (number?, number?)
+	if fromId == toId then
+		return state.plotOf[fromId], nil
+	end
+	local keep = state.plotOf[fromId]
+	if not keep then
+		return nil, nil
+	end
+	local freed = state.plotOf[toId]
+	if freed then
+		state.plotOf[toId] = nil
+		if state.owner[freed] == toId then
+			state.owner[freed] = nil
+		end
+	end
+	state.plotOf[fromId] = nil
+	state.owner[keep] = toId
+	state.plotOf[toId] = keep
+	return keep, freed
+end
+
 return Plots

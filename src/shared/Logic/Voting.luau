@@ -18,6 +18,8 @@ export type Gate = {
 	role: string,
 	ownerPresent: boolean,
 	voterCount: number,
+	-- Duo partners. Both are blocked from voting and reporting this room.
+	owners: { string }?,
 }
 
 export type Ballot = {
@@ -85,6 +87,7 @@ function Voting.threshold(voters: number, config: any): number
 	local minimum = config.Voting.ReportMin
 	local fraction = config.Voting.ReportFraction
 	local scaled = voters * fraction
+	-- ceil, so half of an odd ballot rounds up.
 	local percent = math.floor(scaled)
 	if scaled - percent > 1e-9 then
 		percent += 1
@@ -153,6 +156,21 @@ function Voting.critic(facts: RoomFacts, config: any): (number, string)
 	return stars, lines[index]
 end
 
+local function sharesRoom(gate: Gate, person: string, owner: string): boolean
+	if person == owner then
+		return true
+	end
+	if type(gate.owners) ~= "table" then
+		return false
+	end
+	for _, id in ipairs(gate.owners) do
+		if id == person then
+			return true
+		end
+	end
+	return false
+end
+
 local function starOk(stars: number, config: any): boolean
 	if type(stars) ~= "number" then
 		return false
@@ -179,7 +197,7 @@ function Voting.cast(state: State, voter: string, owner: string, stars: number, 
 	if gate.role ~= "active" and gate.role ~= "spectator" then
 		return false, "You are not in this round."
 	end
-	if voter == owner then
+	if sharesRoom(gate, voter, owner) then
 		return false, "You cannot vote on your own room."
 	end
 	local existing = state.rooms[owner]
@@ -212,7 +230,7 @@ function Voting.report(state: State, reporter: string, owner: string, gate: Gate
 	if gate.role ~= "active" and gate.role ~= "spectator" then
 		return false, "You are not in this round.", false
 	end
-	if reporter == owner then
+	if sharesRoom(gate, reporter, owner) then
 		return false, "You cannot report your own room.", false
 	end
 	if gate.tourTarget ~= owner then
@@ -282,6 +300,51 @@ function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, pr
 		return a.average > b.average
 	end)
 	return rows
+end
+
+-- Move a ballot to the remaining duo partner when the lead leaves.
+function Voting.reassign(state: State, fromId: string, toId: string)
+	if type(fromId) ~= "string" or type(toId) ~= "string" or fromId == toId or toId == "" then
+		return
+	end
+	local room = state.rooms[fromId]
+	if not room then
+		return
+	end
+	if state.rooms[toId] == nil then
+		state.rooms[toId] = room
+	end
+	state.rooms[fromId] = nil
+end
+
+-- Read the board after finalize. Does not grant coins or change ballots.
+function Voting.standings(state: State): { ScoreRow }
+	local rows: { ScoreRow } = {}
+	for owner, ballot in pairs(state.rooms) do
+		if ballot.removed ~= true and (ballot.criticStars > 0 or ballot.comment ~= "") then
+			table.insert(rows, {
+				owner = owner,
+				average = ballot.average,
+				comment = ballot.comment,
+				criticStars = ballot.criticStars,
+			})
+		end
+	end
+	table.sort(rows, function(a, b)
+		if a.average == b.average then
+			return a.owner < b.owner
+		end
+		return a.average > b.average
+	end)
+	return rows
+end
+
+-- The podium uses the first half of Results. Coins and XP use the rest.
+function Voting.showRewards(timeLeft: number, span: number): boolean
+	if type(timeLeft) ~= "number" or type(span) ~= "number" or span <= 0 then
+		return false
+	end
+	return timeLeft <= math.floor(span / 2)
 end
 
 -- Plot signs through Tour and Results. The owner's name stays off the sign.
