@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items") :: ModuleScript) :: any
 local Logic = Shared:WaitForChild("Logic")
 local Levels = require(Logic:WaitForChild("Levels") :: ModuleScript) :: any
+local Hints = require(Logic:WaitForChild("Hints") :: ModuleScript) :: any
 local UIKit = UI.kit
 
 local Tray = {}
@@ -212,6 +213,14 @@ function Tray.start()
 		return level
 	end
 
+	local function shopOwns(itemId: string): boolean
+		local raw = player:GetAttribute("OwnedItems")
+		if type(raw) ~= "string" or raw == "" then
+			return false
+		end
+		return string.find("," .. raw .. ",", "," .. itemId .. ",", 1, true) ~= nil
+	end
+
 	local function visibleItems(): { any }
 		if atHome() then
 			local list: { any } = {}
@@ -288,7 +297,8 @@ function Tray.start()
 			local button = buttons[item.id]
 			if button then
 				local gate = Levels.gate(item.id, level)
-				if gate.owned ~= true then
+				local owned = gate.owned == true or shopOwns(item.id)
+				if owned ~= true then
 					button.Text = item.name .. "\nLv " .. tostring(gate.level)
 					button.TextTransparency = 0.45
 					button.BackgroundTransparency = 0.35
@@ -441,7 +451,17 @@ function Tray.start()
 			end
 			hint.Text = nextUnlock
 		else
-			hint.Text = hintFor(kind)
+			local text = hintFor(kind)
+			if player:GetAttribute("ThemeHint") == true then
+				local themeId = roundFolder:GetAttribute("ThemeId")
+				if type(themeId) == "string" then
+					local extra = Hints.line(themeId, Items.list)
+					if extra ~= "" then
+						text = text .. " Fits: " .. extra
+					end
+				end
+			end
+			hint.Text = text
 		end
 		layout()
 		refreshStats()

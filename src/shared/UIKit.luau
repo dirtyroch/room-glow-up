@@ -206,4 +206,44 @@ function UIKit.bands(viewportHeight: number): Bands
 	}
 end
 
+export type ShopFit = {
+	top: number,
+	bottom: number,
+	header: number,
+	tabs: number,
+	bodyTop: number,
+	bodyBottom: number,
+	body: number,
+	close: number,
+}
+
+-- Shop overlay. From 420px tall the tabs, the list, and the close button all fit.
+function UIKit.shop(viewportHeight: number): ShopFit
+	local height = math.floor(viewportHeight)
+	if height < 1 then
+		height = 1
+	end
+	local L = UIKit.Layout
+	local top = L.top
+	local bottom = height - L.bottom
+	local header = 36
+	local tabs = 48
+	local close = UIKit.Buttons.primary.height
+	local bodyTop = top + header + L.stackGap + tabs
+	local bodyBottom = bottom - close - L.stackGap
+	if bodyBottom < bodyTop then
+		bodyBottom = bodyTop
+	end
+	return {
+		top = top,
+		bottom = bottom,
+		header = header,
+		tabs = tabs,
+		bodyTop = bodyTop,
+		bodyBottom = bodyBottom,
+		body = bodyBottom - bodyTop,
+		close = close,
+	}
+end
+
 return UIKit

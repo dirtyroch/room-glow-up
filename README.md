@@ -4,7 +4,7 @@ Players decorate a tiny room to a theme against the clock. The server then tours
 
 Auntie Roch, the NPC critic, adds one vote, so a solo round still has a judge. A server holds up to 10 players.
 
-This milestone adds progression and saves. The shop comes later. The place file is built locally and is not published.
+This milestone adds the shop, codes, and Family Night private servers. The place file is built locally and is not published.
 
 ## Round
 
@@ -18,7 +18,7 @@ This milestone adds progression and saves. The shop comes later. The place file 
 
 Someone who joins after Lobby spectates until the next Lobby. Phase, time left, theme, and season are replicated with attributes on `ReplicatedStorage.RoundState`. The only client remote is `Remotes.Action`. Requests are type-checked and rate-limited. The client is not trusted.
 
-`RoundService.setHostTheme` is the hook for a private-server host to choose the next theme. It is not wired to a remote yet.
+`RoundService.setHostTheme` is the Family Night hook. Only the private-server owner can set it, and only to a theme on the server allowlist.
 
 ## Themes
 
@@ -70,7 +70,7 @@ Coins and XP are granted once per round id, from placement, star average, podium
 
 ## Dream home
 
-From the lobby a player can visit their dream home. It reuses placement with no budget and only owned items. The shell grows from a studio to a loft at level 15 and a two-storey house at level 30. Up to 3 Lookbook snapshots keep their best contest rooms. A coin multiplier, an extra home slot, and a server luck flag are hooks for the shop. They do not change the game yet.
+From the lobby a player can visit their dream home. It reuses placement with no budget and only owned items. The shell grows from a studio to a loft at level 15 and a two-storey house at level 30. Up to 3 Lookbook snapshots keep their best contest rooms. A coin multiplier, extra home slots, and a server luck flag are filled in by the shop. Luck adds a flat coin bonus. Extra slots never raise the 36-piece cap.
 
 ## Duo
 
@@ -79,6 +79,49 @@ A lobby toggle pairs two opted-in players, such as siblings, into one wider room
 ## Collections, quests, and rank
 
 A theme stamp is earned at 4 stars or better, with a bonus for finishing a season set. Three daily quests are fixed by the Central date and can be finished in about 3 to 4 rounds. Designer Rank is a monthly track. Points do not decay, and the month is not the holiday or winter theme season.
+
+## Shop
+
+One catalog in `Config.Shop`. Every pass and product id starts at 0, and an id of 0 never opens a purchase prompt. `scripts/create-shop.luau` is a dry run until you pass a universe id and `--apply`. It does not publish the place.
+
+| Item | Kind | Price |
+| --- | --- | --- |
+| VIP | Pass | 399 |
+| Designer Tools | Pass | 249 |
+| 2x Coins | Pass | 199 |
+| Hearth Style Pack | Product | 149 |
+| Gingerbread Style Pack | Product | 199 |
+| Winter Style Pack | Product | 249 |
+| Glow Style Pack | Product | 299 |
+| Carol Piano | Product | 79 |
+| Nutcracker Portrait | Product | 49 |
+| Lavender Settee | Product | 99 |
+| Quilt Table | Product | 69 |
+| +60 Seconds | Product | 49 |
+| Decor Crate | Product | 99 |
+| Decor Rain | Product | 129 |
+| Theme Hint | Product | 29 |
+| Design Pass | Product | 349 |
+| Dream Nook | Product | 99 |
+| Dream Wing | Product | 179 |
+
+VIP draws a butter frame in the lobby only. It is hidden during Tour, and it does not put a name on the plot. Designer Tools recolor the floor, wall, roof, and hooks, and set a material. Style packs and single pieces are shown in full before the buy button. +60 seconds is for the whole server, twice per round. 2x Coins uses the coin multiplier and does not stack. The Design Pass is a 30-day track beside the level unlocks. Dream Nook and Dream Wing add homes through `extraDreamSlots` and leave the 36-piece cap alone.
+
+Decor Crate odds are on the card before purchase. The server rolls after the receipt. A duplicate becomes coins, once per receipt. `PolicyService:ArePaidRandomItemsRestricted` is checked per player. Restricted players get a fixed set, and a failed policy check does not open a prompt. Decor Rain is a server luck event. It changes crate odds and the coin bonus. The buyer's name is announced in the lobby only.
+
+Theme Hint lists pieces that fit the theme. The theme name stays on the board without it.
+
+`ProcessReceipt` records the purchase id and saves that profile before the grant is shown. The same id does not grant twice. A session whose save did not load cannot buy or be granted. Pass ownership is `UserOwnsGamePassAsync` on the server.
+
+The shop has Boosts, Decor, and Passes. It is open in the lobby, including crate opens. It uses the UI kit and fits a 420px-tall phone. Nothing in the shop is a countdown or a sale label. Stars, votes, and a bigger contest room are not for sale.
+
+## Codes
+
+`WELCOME` grants coins. `GLOWUP` grants the sleigh bell. The server redeems each code once per player, saves it, and rate-limits attempts.
+
+## Family Night
+
+Private servers are free. The owner picks the next theme from `Config.Shop.HostThemes` and can turn Duo on for everyone in the lobby. A public server and anyone who is not the owner are refused. A theme that exists but is not on the list is refused.
 
 ## Look
 
@@ -115,7 +158,8 @@ That writes `RoomGlowUp.rbxlx` next to the project file. It does not upload the 
 
 ```
 src/shared/     Config, Themes, Items, Bases, UIKit, Logic
-src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService
-src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Juice
-tests/run.luau  Lune tests for rounds, plots, placement, voting, saves, and progression
+src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService
+src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Shop, Juice
+scripts/        build.sh, create-shop.luau
+tests/run.luau  Lune tests for rounds, plots, placement, voting, saves, progression, and the shop
 ```

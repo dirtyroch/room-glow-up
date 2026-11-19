@@ -14,6 +14,8 @@ local Placement: any = nil
 local RoundEngine: any = nil
 local Levels: any = nil
 local Duo: any = nil
+local Owned: any = nil
+local Shop: any = nil
 
 local function catalog(): any
 	return {
@@ -23,12 +25,20 @@ local function catalog(): any
 	}
 end
 
-local function levelFor(key: string): number
-	if not ctx.saves or not Levels then
-		return 1
+local function bagOf(key: string): any
+	if not ctx.saves then
+		return nil
 	end
 	local bag = ctx.saves.session(key)
-	if type(bag) ~= "table" or type(bag.profile) ~= "table" then
+	if type(bag) ~= "table" or bag.hold ~= true or type(bag.profile) ~= "table" then
+		return nil
+	end
+	return bag
+end
+
+local function levelFor(key: string): number
+	local bag = bagOf(key)
+	if not bag or not Levels then
 		return 1
 	end
 	return Levels.fromXp(bag.profile.xp)
@@ -58,6 +68,9 @@ local function contextFor(key: string): any
 		gridType = Duo.gridType(roundType, paired)
 	end
 	local level = levelFor(key)
+	local bag = bagOf(key)
+	local profile = if bag then bag.profile else nil
+	local tools = profile ~= nil and Shop ~= nil and Shop.hasPass(profile, "DesignerTools") == true
 	return {
 		catalog = catalog(),
 		roundType = roundType,
@@ -74,7 +87,12 @@ local function contextFor(key: string): any
 		now = Workspace:GetServerTimeNow(),
 		undoCap = Config.UndoCap,
 		gridType = gridType,
+		tools = tools,
+		materials = Config.Shop.Materials,
 		allow = function(itemId: string): boolean
+			if profile and Owned then
+				return Owned.has(profile, itemId, level)
+			end
 			if not Levels then
 				return true
 			end
@@ -307,6 +325,9 @@ function RoomService.init(c: any)
 	RoundEngine = require(Logic:WaitForChild("RoundEngine") :: ModuleScript) :: any
 	Levels = require(Logic:WaitForChild("Levels") :: ModuleScript) :: any
 	Duo = require(Logic:WaitForChild("Duo") :: ModuleScript) :: any
+	Owned = require(Logic:WaitForChild("Owned") :: ModuleScript) :: any
+	Shop = require(Logic:WaitForChild("Shop") :: ModuleScript) :: any
+	local Props = require(script.Parent.Parent:WaitForChild("Props") :: ModuleScript) :: any
 	ctx.rooms = {
 		welcome = RoomService.welcome,
 		forget = RoomService.forget,
@@ -389,6 +410,35 @@ function RoomService.init(c: any)
 			return true, msg, { id = piece.id }
 		end
 		return false, msg
+	end)
+
+	ctx.actions.register("Surface", { "string", "string" }, function(key: string, args: { any })
+		local player = playerFromKey(key)
+		if not player then
+			return false, "You are not in this round."
+		end
+		local room, c, _grid, index = resolve(key)
+		local ok, msg = Placement.paint(room, c, args[1], args[2])
+		if ok and type(index) == "number" and ctx.plots then
+			local model = ctx.plots.model(index)
+			if model then
+				Props.paintShell(model, args[1], args[2])
+			end
+		end
+		return ok, msg
+	end)
+
+	ctx.actions.register("Finish", { "number", "string" }, function(key: string, args: { any })
+		local player = playerFromKey(key)
+		if not player then
+			return false, "You are not in this round."
+		end
+		local room, c, grid = resolve(key)
+		local ok, msg, piece = Placement.finish(room, c, args[1], args[2])
+		if ok and piece then
+			apply(key, { kind = "update", piece = piece }, grid)
+		end
+		return ok, msg
 	end)
 
 	ctx.actions.register("Undo", {}, function(key: string, _args: { any })

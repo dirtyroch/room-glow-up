@@ -84,8 +84,14 @@ function Rewards.grant(profile: { [string]: any }, input: Input, config: any, ho
 			lucky = hooks.luck(input.userId) == true
 		end
 	end
-	-- The luck flag is reported for a later reward tweak. It does not change this payout.
+	-- Luck adds a flat coin bonus on top of the multiplier. It does not multiply again.
 	coins = whole(coins * mult)
+	if lucky and type(config.Shop) == "table" then
+		local extra = config.Shop.LuckBonusCoins
+		if type(extra) == "number" and extra == extra and extra > 0 then
+			coins += math.floor(extra)
+		end
+	end
 	Save.markPaid(profile, input.roundId, config.Progress.PaidCap)
 	profile.coins += coins
 	profile.xp += xp

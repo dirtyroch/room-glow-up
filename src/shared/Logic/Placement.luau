@@ -27,6 +27,7 @@ export type Piece = {
 	color: string,
 	cost: number,
 	placedAt: number,
+	material: string?,
 }
 
 export type Room = {
@@ -59,6 +60,9 @@ export type Context = {
 	gridType: string?,
 	allow: ((string) -> boolean)?,
 	freeSpend: boolean?,
+	-- Designer Tools. Absent means palette recolors only, on the piece itself.
+	tools: boolean?,
+	materials: { string }?,
 }
 
 local function copyPiece(piece: Piece): Piece
@@ -72,6 +76,7 @@ local function copyPiece(piece: Piece): Piece
 		color = piece.color,
 		cost = piece.cost,
 		placedAt = piece.placedAt,
+		material = if type(piece.material) == "string" then piece.material else nil,
 	}
 end
 
@@ -344,6 +349,79 @@ function Placement.recolor(room: Room, ctx: Context, pieceId: number, color: str
 	return true, "Recolored.", copyPiece(piece)
 end
 
+local function materialOk(ctx: Context, material: string): boolean
+	local list = ctx.materials
+	if type(list) ~= "table" then
+		return false
+	end
+	for _, name in ipairs(list) do
+		if name == material then
+			return true
+		end
+	end
+	return false
+end
+
+local function shellOf(room: Room): { [string]: string }
+	local anyRoom = room :: any
+	if type(anyRoom.shell) ~= "table" then
+		anyRoom.shell = {}
+	end
+	return anyRoom.shell
+end
+
+-- Designer Tools recolor the room itself: floor, wall, roof, or hook.
+function Placement.paint(room: Room, ctx: Context, surface: string, color: string): (boolean, string?)
+	local allowed, why = gate(ctx)
+	if not allowed then
+		return false, why
+	end
+	if ctx.tools ~= true then
+		return false, "Designer Tools recolor the room."
+	end
+	if surface ~= "floor" and surface ~= "wall" and surface ~= "roof" and surface ~= "hook" then
+		return false, "That surface is not part of this room."
+	end
+	if not paletteHas(ctx, color) then
+		return false, "Pick a color from the palette."
+	end
+	local shell = shellOf(room)
+	local previous = shell[surface]
+	if previous == nil or previous == "" then
+		previous = "cream"
+	end
+	if previous == color then
+		return true, "Already that color."
+	end
+	shell[surface] = color
+	pushUndo(room, ctx, { kind = "paint", surface = surface, color = previous })
+	return true, "Recolored."
+end
+
+function Placement.finish(room: Room, ctx: Context, pieceId: number, material: string): (boolean, string?, Piece?)
+	local allowed, why = gate(ctx)
+	if not allowed then
+		return false, why, nil
+	end
+	if ctx.tools ~= true then
+		return false, "Designer Tools change the finish.", nil
+	end
+	if not materialOk(ctx, material) then
+		return false, "Pick a material from the list.", nil
+	end
+	local _, piece = findPiece(room, pieceId)
+	if not piece then
+		return false, "That piece is gone.", nil
+	end
+	local previous = piece.material or ""
+	if previous == material then
+		return true, "Already that finish.", copyPiece(piece)
+	end
+	piece.material = material
+	pushUndo(room, ctx, { kind = "finish", id = piece.id, material = previous })
+	return true, "Finished.", copyPiece(piece)
+end
+
 function Placement.delete(room: Room, ctx: Context, pieceId: number): (boolean, string?, Piece?)
 	local allowed, why = gate(ctx)
 	if not allowed then
@@ -408,6 +486,28 @@ function Placement.undo(room: Room, ctx: Context): (boolean, string?, any)
 		table.insert(room.pieces, restored)
 		table.remove(room.undo)
 		return true, "Undone.", effectFor("spawn", restored)
+	end
+	if op.kind == "paint" then
+		local shell = shellOf(room)
+		if type(op.surface) == "string" and type(op.color) == "string" then
+			shell[op.surface] = op.color
+		end
+		table.remove(room.undo)
+		return true, "Undone.", { kind = "paint", surface = op.surface, color = op.color }
+	end
+	if op.kind == "finish" then
+		local _, piece = findPiece(room, op.id)
+		if not piece then
+			table.remove(room.undo)
+			return false, "That piece is gone.", nil
+		end
+		if type(op.material) == "string" and op.material ~= "" then
+			piece.material = op.material
+		else
+			piece.material = nil
+		end
+		table.remove(room.undo)
+		return true, "Undone.", effectFor("update", copyPiece(piece))
 	end
 	if op.kind == "rotate" or op.kind == "recolor" then
 		local _, piece = findPiece(room, op.id)

@@ -28,11 +28,12 @@ local ctx = {
 	Progress = require(Services:WaitForChild("ProgressService")),
 	Saves = require(Services:WaitForChild("SaveService")),
 	Round = require(Services:WaitForChild("RoundService")),
+	Shop = require(Services:WaitForChild("ShopService")),
 }
 
 Boot.run(
 	ctx,
-	{ "Actions", "Plots", "Rooms", "Votes", "Progress", "Saves", "Round" },
-	{ "Actions", "Rooms", "Round", "Saves" }
+	{ "Actions", "Plots", "Rooms", "Votes", "Progress", "Saves", "Round", "Shop" },
+	{ "Actions", "Rooms", "Round", "Saves", "Shop" }
 )
 print("[Room Glow Up] server ready")

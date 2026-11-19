@@ -202,6 +202,23 @@ function SaveService.init(c: any)
 				commit(key, reason)
 			end
 		end,
+		-- Writes even during Tour. Used after a receipt is stored and before it is shown.
+		apply = function(key: string, doc: any): boolean
+			local bag = sessions[key]
+			if not bag or bag.hold ~= true or type(doc) ~= "table" then
+				return false
+			end
+			local profileDoc = Save.clone(doc)
+			profileDoc.schema = 1
+			profileDoc.luck = nil
+			local wrote = writeDoc(profileStore, Save.profileKey(key), bag, profileDoc)
+			if not wrote then
+				return false
+			end
+			bag.profile = profileDoc
+			bag.settledProfile = Save.clone(profileDoc)
+			return true
+		end,
 	}
 	Players.PlayerAdded:Connect(remember)
 	Players.PlayerRemoving:Connect(function(player: Player)

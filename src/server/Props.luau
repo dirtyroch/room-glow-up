@@ -336,7 +336,31 @@ function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string)
 	else
 		add(model, cf, "Body", "Block", Vector3.new(sx * 0.9, math.max(sy, 0.3), sz * 0.9), Vector3.zero, main, true)
 	end
+	local materialName = piece.material
+	if type(materialName) == "string" then
+		local material = (Enum.Material :: any)[materialName]
+		if typeof(material) == "EnumItem" then
+			for _, child in model:GetDescendants() do
+				if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
+					child.Material = material
+				end
+			end
+			model:SetAttribute("Material", materialName)
+		end
+	end
 	return model
+end
+
+function Props.paintShell(plot: Instance, surface: string, colorName: string)
+	local ok, color = pcall(named, colorName)
+	if not ok then
+		return
+	end
+	for _, child in plot:GetDescendants() do
+		if child:IsA("BasePart") and child:GetAttribute("Surface") == surface then
+			child.Color = color
+		end
+	end
 end
 
 function Props.recolor(model: Model, colorName: string)
@@ -345,6 +369,19 @@ function Props.recolor(model: Model, colorName: string)
 	for _, child in model:GetDescendants() do
 		if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
 			child.Color = main
+		end
+	end
+end
+
+function Props.finish(model: Model, materialName: string)
+	local material = (Enum.Material :: any)[materialName]
+	if typeof(material) ~= "EnumItem" then
+		return
+	end
+	model:SetAttribute("Material", materialName)
+	for _, child in model:GetDescendants() do
+		if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
+			child.Material = material
 		end
 	end
 end

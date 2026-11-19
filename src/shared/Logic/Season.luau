@@ -69,4 +69,26 @@ function Season.resolve(setting: string, unix: number, offsetHours: number): str
 	return "winter"
 end
 
+-- US Central. UTC-6 in winter, UTC-5 from the second Sunday in March at 2:00 AM
+-- through the first Sunday in November at 2:00 AM. The clock change is the real one.
+function Season.centralOffset(unix: number): number
+	local year = Season.parts(unix, -6).year
+	local function weekdaySunday1(at: number): number
+		local day = math.floor(at / 86400)
+		return ((day + 4) % 7) + 1
+	end
+	local function nthSunday(month: number, n: number): number
+		local w = weekdaySunday1(Season.unix(year, month, 1, 0, 0, 0))
+		local first = 1 + ((1 - w) % 7)
+		return first + (n - 1) * 7
+	end
+	-- 2:00 AM standard time is 08:00 UTC. 2:00 AM daylight time is 07:00 UTC.
+	local startUtc = Season.unix(year, 3, nthSunday(3, 2), 8, 0, 0)
+	local endUtc = Season.unix(year, 11, nthSunday(11, 1), 7, 0, 0)
+	if unix >= startUtc and unix < endUtc then
+		return -5
+	end
+	return -6
+end
+
 return Season

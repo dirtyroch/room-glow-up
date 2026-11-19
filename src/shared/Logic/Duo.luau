@@ -45,6 +45,24 @@ function Duo.toggle(group: Group, id: string, phase: string): (boolean, string?)
 	return true, "Duo on."
 end
 
+-- Family Night turns Duo on or off for every id in the lobby.
+function Duo.setAll(group: Group, ids: { string }, phase: string, enabled: boolean): (boolean, string?)
+	if phase ~= "Lobby" then
+		return false, "Duo is only in the lobby."
+	end
+	for _, id in ipairs(ids) do
+		if enabled then
+			group.opted[id] = true
+		else
+			group.opted[id] = nil
+		end
+	end
+	if enabled then
+		return true, "Duo is on for everyone."
+	end
+	return true, "Duo is off."
+end
+
 function Duo.freeze(group: Group, ids: { string })
 	local wanting: { string } = {}
 	for _, id in ipairs(ids) do
