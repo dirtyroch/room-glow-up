@@ -150,13 +150,15 @@ function Show.start()
 		local gold = tone(themeId, 1)
 		local across = bit("Across", Vector3.new(2.4, 0.35, 0.35), CFrame.new(origin), gold, Enum.PartType.Block)
 		local up = bit("Up", Vector3.new(0.35, 2.4, 0.35), CFrame.new(origin), gold, Enum.PartType.Block)
+		local diagA = bit("DiagA", Vector3.new(2.1, 0.3, 0.3), CFrame.new(origin) * CFrame.Angles(0, 0, math.rad(45)), gold, Enum.PartType.Block)
+		local diagB = bit("DiagB", Vector3.new(2.1, 0.3, 0.3), CFrame.new(origin) * CFrame.Angles(0, 0, math.rad(-45)), gold, Enum.PartType.Block)
 		local core = bit("Core", Vector3.new(0.7, 0.7, 0.7), CFrame.new(origin), tone(themeId, 3), Enum.PartType.Ball)
 		model.Parent = Workspace
 		local info = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 		local lift = Vector3.new(0, 8, 0)
-		TweenService:Create(across, info, { CFrame = across.CFrame + lift }):Play()
-		TweenService:Create(up, info, { CFrame = up.CFrame + lift }):Play()
-		TweenService:Create(core, info, { CFrame = core.CFrame + lift }):Play()
+		for _, piece in ipairs({ across, up, diagA, diagB, core }) do
+			TweenService:Create(piece, info, { CFrame = piece.CFrame + lift }):Play()
+		end
 		confetti(origin, themeId)
 		Debris:AddItem(model, 2.2)
 	end
