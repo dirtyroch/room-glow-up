@@ -226,17 +226,26 @@ function Hud.start()
 				UI.pop(boardScale, UIKit.Motion.phase)
 			end
 		end
+		local modifier = read("Modifier", "")
+		local revealText = themeName
+		if type(modifier) == "string" and modifier ~= "" then
+			revealText = themeName .. "\n" .. modifier
+			local mystery = read("MysteryItem", "")
+			if type(mystery) == "string" and mystery ~= "" then
+				revealText = revealText .. " · free"
+			end
+		end
 		local showing = phase == "ThemeReveal" and themeName ~= ""
 		if showing and not revealShown then
 			revealShown = true
 			reveal.Visible = true
-			revealName.Text = themeName
+			revealName.Text = revealText
 			UI.pop(revealScale, UIKit.Motion.reveal)
 		elseif not showing and revealShown then
 			revealShown = false
 			reveal.Visible = false
 		elseif showing then
-			revealName.Text = themeName
+			revealName.Text = revealText
 		end
 	end
 

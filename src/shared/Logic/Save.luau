@@ -44,6 +44,11 @@ function Save.blankProfile(): { [string]: any }
 		designPassClaimed = {},
 		dreamExtra = 0,
 		hintRound = "",
+		tutorialDone = false,
+		funnel = {},
+		spotPaid = {},
+		rugPlaces = 0,
+		seatPlaces = 0,
 	}
 end
 
@@ -140,6 +145,11 @@ function Save.normalizeProfile(raw: any): { [string]: any }
 	if type(raw.hintRound) == "string" then
 		doc.hintRound = raw.hintRound
 	end
+	doc.tutorialDone = raw.tutorialDone == true
+	doc.funnel = stringList(raw.funnel)
+	doc.spotPaid = stringList(raw.spotPaid)
+	doc.rugPlaces = math.max(0, math.floor(asNumber(raw.rugPlaces, 0)))
+	doc.seatPlaces = math.max(0, math.floor(asNumber(raw.seatPlaces, 0)))
 	return doc
 end
 

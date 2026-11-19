@@ -228,6 +228,9 @@ function VoteService.init(c: any)
 		local ok, msg = Voting.cast(ballots, key, owner, args[1], gate, Config)
 		if ok then
 			sync(round)
+			if ctx.funnel and type(ctx.funnel.onVote) == "function" then
+				pcall(ctx.funnel.onVote, key)
+			end
 		end
 		return ok, msg
 	end)

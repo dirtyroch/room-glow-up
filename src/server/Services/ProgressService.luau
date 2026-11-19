@@ -22,6 +22,7 @@ local Owned: any = nil
 local Themes: any = nil
 local Items: any = nil
 local Voting: any = nil
+local Easter: any = nil
 
 local group: any = nil
 local visiting: { [string]: boolean } = {}
@@ -61,6 +62,20 @@ local function present(player: Player)
 		return
 	end
 	local level = levelOf(bag.profile)
+	if Easter then
+		local owned = 0
+		if type(bag.profile.owned) == "table" then
+			owned = #bag.profile.owned
+		end
+		Easter.grant(bag.profile, level)
+		if type(bag.profile.owned) == "table" and #bag.profile.owned ~= owned then
+			if ctx.saves and type(ctx.saves.apply) == "function" then
+				pcall(function()
+					ctx.saves.apply(key, bag.profile)
+				end)
+			end
+		end
+	end
 	Dream.ensureSlots(bag.dream, Monetization.extraDreamSlots(key))
 	player:SetAttribute("Level", level)
 	player:SetAttribute("NextUnlock", Levels.next(level))
@@ -157,6 +172,7 @@ local function publishDuo(round: any)
 		local key = tostring(player.UserId)
 		local paired = Duo.paired(group, key)
 		player:SetAttribute("DuoOn", group.opted[key] == true)
+		player:SetAttribute("PartnerName", nil)
 		if paired and ctx.plots then
 			local lead = Duo.leadOf(group, key)
 			local index = ctx.plots.indexOf(lead)
@@ -296,6 +312,9 @@ local function settle(round: any)
 		local rankXp = if payout.duplicate then 0 else payout.xp
 		local ranked = Rank.award(profile, monthId, rankXp, Config.RankTrack)
 		local after = levelOf(profile)
+		if Easter then
+			Easter.grant(profile, after)
+		end
 		local sets = Levels.setsBetween(before, after)
 		local names: { string } = {}
 		for _, unlock in ipairs(sets) do
@@ -351,6 +370,7 @@ function ProgressService.init(c: any)
 	Season = require(Logic:WaitForChild("Season") :: ModuleScript) :: any
 	Shop = require(Logic:WaitForChild("Shop") :: ModuleScript) :: any
 	Owned = require(Logic:WaitForChild("Owned") :: ModuleScript) :: any
+	Easter = require(Logic:WaitForChild("Easter") :: ModuleScript) :: any
 	group = Duo.create()
 
 	ctx.duo = {
@@ -421,7 +441,11 @@ function ProgressService.init(c: any)
 			end
 			if round.phase == "ThemeReveal" then
 				endVisits()
-				Duo.freeze(group, activeIds(round))
+				if round.modifier == "mirror" then
+					Duo.pairAll(group, activeIds(round))
+				else
+					Duo.freeze(group, activeIds(round))
+				end
 				applySkip(round)
 				publishDuo(round)
 				return

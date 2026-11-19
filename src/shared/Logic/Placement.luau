@@ -63,6 +63,8 @@ export type Context = {
 	-- Designer Tools. Absent means palette recolors only, on the piece itself.
 	tools: boolean?,
 	materials: { string }?,
+	-- One free piece for a Mystery Item round. Later copies cost coins.
+	freeItem: string?,
 }
 
 local function copyPiece(piece: Piece): Piece
@@ -268,7 +270,20 @@ function Placement.place(room: Room, ctx: Context, itemId: string, x: number, z:
 	if not Bases.fits(grid, item.surface, x, z, item.w, item.d, 0) then
 		return false, "That spot does not fit.", nil
 	end
-	if overBudget(ctx, room, item.cost) then
+	local cost = item.cost
+	if ctx.freeItem == itemId then
+		local used = false
+		for _, piece in ipairs(room.pieces) do
+			if piece.itemId == itemId and piece.cost == 0 then
+				used = true
+				break
+			end
+		end
+		if not used then
+			cost = 0
+		end
+	end
+	if overBudget(ctx, room, cost) then
 		return false, "Not enough coins.", nil
 	end
 	local layer = layerOf(item)
@@ -287,11 +302,11 @@ function Placement.place(room: Room, ctx: Context, itemId: string, x: number, z:
 		z = z,
 		rot = 0,
 		color = item.color,
-		cost = item.cost,
+		cost = cost,
 		placedAt = ctx.now or 0,
 	}
 	room.nextId += 1
-	room.spent += item.cost
+	room.spent += cost
 	table.insert(room.pieces, piece)
 	pushUndo(room, ctx, { kind = "place", id = piece.id })
 	return true, "Placed.", copyPiece(piece)

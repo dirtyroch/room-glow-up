@@ -147,6 +147,9 @@ function Shop.canPrompt(entry: any, state: { [string]: any }): (boolean, string?
 	if type(adds) ~= "number" then
 		adds = 0
 	end
+	if entry.time == true and state.speed == true then
+		return false, "Speed Round keeps its clock."
+	end
 	if entry.time == true and adds >= cap then
 		return false, "This round already has two extra minutes."
 	end

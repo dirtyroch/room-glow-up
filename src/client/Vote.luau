@@ -156,7 +156,7 @@ function Vote.start()
 
 	local function clearResults()
 		for _, child in results:GetChildren() do
-			if not child:IsA("UIListLayout") then
+			if not child:IsA("UIListLayout") and child.Name ~= "SpotPanel" then
 				child:Destroy()
 			end
 		end

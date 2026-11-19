@@ -43,6 +43,8 @@ local function publish(at: number)
 	end
 	folder:SetAttribute("TourPlot", tourPlot)
 	folder:SetAttribute("Critic", snap.critic)
+	folder:SetAttribute("Modifier", snap.modifierLabel or "")
+	folder:SetAttribute("MysteryItem", snap.mysteryItem or "")
 	if ctx.plots and type(ctx.plots.veil) == "function" then
 		ctx.plots.veil(snap.phase)
 	end
@@ -165,6 +167,9 @@ function RoundService.start()
 			end
 			if ctx.progress and type(ctx.progress.settle) == "function" then
 				ctx.progress.settle(state)
+			end
+			if ctx.funnel and type(ctx.funnel.onPhase) == "function" then
+				pcall(ctx.funnel.onPhase, state)
 			end
 		end
 		acc += dt

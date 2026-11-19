@@ -2,6 +2,19 @@
 -- Server-side votes, reports, Auntie Roch, and Judge's Eye.
 -- The client can ask. This module decides. Crowd emoji are not votes.
 
+local function sibling(name: string): any
+	local ok, loaded = pcall(function()
+		local child = script.Parent:WaitForChild(name)
+		return (require :: any)(child)
+	end)
+	if ok then
+		return loaded
+	end
+	return (require :: any)("./" .. name)
+end
+
+local Easter = sibling("Easter")
+
 local Voting = {}
 
 export type RoomFacts = {
@@ -9,6 +22,7 @@ export type RoomFacts = {
 	unique: number,
 	pieces: number,
 	maxItems: number,
+	itemIds: { string }?,
 }
 
 export type Gate = {
@@ -270,6 +284,10 @@ function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, pr
 				facts = { meter = 0, unique = 0, pieces = 0, maxItems = 0 }
 			end
 			local stars, line = Voting.critic(facts, config)
+			local joke = Easter.line(facts.itemIds)
+			if joke ~= "" then
+				line = joke
+			end
 			ballot.votes[criticId] = stars
 			ballot.criticStars = stars
 			ballot.comment = line

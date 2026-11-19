@@ -229,6 +229,7 @@ local function prompt(player: Player, itemKey: string): (boolean, string?)
 		restricted = isRestricted,
 		timeAdds = adds,
 		timeCap = Config.Shop.TimeCap,
+		speed = type(ctx.round) == "table" and ctx.round.modifier == "speed",
 	})
 	if not allowed then
 		return false, why
