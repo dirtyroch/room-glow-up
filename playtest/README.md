@@ -16,7 +16,7 @@ votes, and a late joiner.
 
 ```
 lune run playtest/run.luau          # 56 rounds: 1, 2, 5, and 10 players, every twist
-lune run playtest/run.luau --quick  # about 18 rounds, used in CI
+lune run playtest/run.luau --quick  # about 18 rounds, for a fast check
 ```
 
 It writes `playtest/out/report.md` and `report.json` (ignored by git) and exits 1
