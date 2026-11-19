@@ -256,21 +256,24 @@ function RoomService.restore(player: Player): boolean
 	return true
 end
 
--- A room big enough that its DONE should count toward the 30-second rush.
-function RoomService.realBuild(key: string): boolean
+-- Share of the budget spent, and when the last piece went down.
+function RoomService.pace(key: string): (number, number)
 	local room = rooms[key]
-	if not room then
-		return false
+	if not room or #room.pieces == 0 then
+		return 0, 0
 	end
-	local rush = Config.BuildRush or {}
-	local minPieces = if type(rush.MinPieces) == "number" then rush.MinPieces else 3
-	local spendShare = if type(rush.RealSpend) == "number" then rush.RealSpend else 0.5
-	if #room.pieces >= minPieces then
-		return true
+	local last = 0
+	for _, piece in ipairs(room.pieces) do
+		if type(piece.placedAt) == "number" and piece.placedAt > last then
+			last = piece.placedAt
+		end
 	end
 	local c = contextFor(key)
 	local budget = if type(c.budget) == "number" then c.budget else 0
-	return budget > 0 and room.spent >= budget * spendShare
+	if budget <= 0 then
+		return 1, last
+	end
+	return math.clamp(room.spent / budget, 0, 1), last
 end
 
 function RoomService.inspect(key: string): any
@@ -554,7 +557,7 @@ function RoomService.start()
 	RoundEngine.setHasWork(ctx.round, function(id: string): boolean
 		return Placement.hasPieces(rooms[id])
 	end)
-	RoundEngine.setRealBuild(ctx.round, RoomService.realBuild)
+	RoundEngine.setPace(ctx.round, RoomService.pace)
 	local Props = require(script.Parent.Parent:WaitForChild("Props") :: ModuleScript) :: any
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local folder = ReplicatedStorage:FindFirstChild("PropPreviews")

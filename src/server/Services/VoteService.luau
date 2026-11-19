@@ -15,6 +15,9 @@ local Voting: any = nil
 local ballots: any = nil
 local streak: { [string]: number } = {}
 local scored: { [string]: boolean } = {}
+-- Stops in a row a kid let pass without voting. A kid who has stopped voting
+-- does not hold each room on screen waiting for a vote that will not come.
+local quiet: { [string]: number } = {}
 
 local function displayName(key: string): string
 	local userId = tonumber(key)
@@ -53,12 +56,21 @@ local function voterCount(round: any, owner: string): number
 	return n
 end
 
+local function quietAfter(): number
+	local n = Config.Voting.QuietAfter
+	if type(n) ~= "number" or n < 1 then
+		return math.huge
+	end
+	return n
+end
+
 local function everyoneVoted(round: any, owner: string): boolean
 	local owners = ownerSet(owner)
 	local pending = 0
 	local room = ballots.rooms[owner]
 	for id, player in pairs(round.players) do
-		if owners[id] ~= true and (player.role == "active" or player.role == "spectator") then
+		local waitFor = (quiet[id] or 0) < quietAfter()
+		if owners[id] ~= true and (player.role == "active" or player.role == "spectator") and waitFor then
 			pending += 1
 			if not room or type(room.votes[id]) ~= "number" then
 				return false
@@ -163,6 +175,7 @@ local function onPhase(round: any, _at: number)
 		Voting.reset(ballots)
 		streak = {}
 		scored = {}
+		quiet = {}
 		clearCards()
 		for _, player in Players:GetPlayers() do
 			player:SetAttribute("MyStars", nil)
@@ -275,6 +288,15 @@ function VoteService.init(c: any)
 			end
 			local hits = Voting.eyeHits(ballot, facts, Config)
 			local owners = ownerSet(owner)
+			for id, person in pairs(round.players) do
+				if owners[id] ~= true and (person.role == "active" or person.role == "spectator") then
+					if type(ballot.votes[id]) == "number" then
+						quiet[id] = 0
+					else
+						quiet[id] = (quiet[id] or 0) + 1
+					end
+				end
+			end
 			for _, player in Players:GetPlayers() do
 				local key = tostring(player.UserId)
 				local person = round.players[key]
@@ -301,7 +323,23 @@ function VoteService.init(c: any)
 			return false, "That room is not on stage."
 		end
 		if not stillOnStage(owner, args[2]) then
-			return false, "That room already moved on."
+			-- Sent before the camera moved and landed just after: a first vote
+			-- for the room that just left still counts.
+			local late = RoundEngine.lateStop(round, at)
+			local lateRoom = if late then ballots.rooms[late] else nil
+			local already = lateRoom ~= nil and lateRoom.votes[key] ~= nil
+			if late == nil or already or not stillOnStage(late, args[2]) then
+				return false, "That room already moved on."
+			end
+			local lateGate = gateFor(round, late, at)
+			lateGate.role = roleOf(round, key)
+			lateGate.tourTarget = late
+			lateGate.locked = false
+			local lateOk, lateMsg = Voting.cast(ballots, key, late, args[1], lateGate, Config)
+			if lateOk and ctx.funnel and type(ctx.funnel.onVote) == "function" then
+				pcall(ctx.funnel.onVote, key)
+			end
+			return lateOk, lateMsg
 		end
 		local gate = gateFor(round, owner, at)
 		gate.role = roleOf(round, key)

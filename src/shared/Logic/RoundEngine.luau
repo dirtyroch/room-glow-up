@@ -54,11 +54,17 @@ export type State = {
 	-- Returns true when that player has placed at least one prop.
 	-- Wired by the room service. Nil keeps the older DONE-only tour.
 	hasWork: ((string) -> any)?,
-	-- True when a DONE builder made a real room (a few pieces or half the
-	-- budget). A one-piece DONE does not push the 30-second rush. Nil = any.
-	realBuild: ((string) -> any)?,
+	-- Share of the budget a builder has spent (0 to 1) and when they last
+	-- placed a piece (server time). Drives the 30-second rush. Nil = DONE only.
+	pace: ((string) -> (number, number))?,
 	-- Seconds bought this build (+60 s). The rush never cuts these away.
 	paidSeconds: number,
+	-- Minutes bought on the tour or results, held for the next round.
+	heldAdds: number,
+	heldTime: number,
+	-- Purchase ids that already added time, so a retried receipt does not.
+	timeReceipts: { [string]: boolean },
+	timeReceiptOrder: { string },
 	-- Partner ids in a duo room. They build, but the tour stops once.
 	tourSkip: { [string]: boolean },
 	-- Extra minutes bought for this round. Reset when the next lobby starts.
@@ -102,12 +108,14 @@ local function countsForRush(state: State, id: string, player: PlayerState): boo
 		return false
 	end
 	if player.done then
-		-- One piece and DONE is the same as idle: it neither waits on the
-		-- others nor pushes them to hurry.
-		local real = state.realBuild
-		if type(real) == "function" then
-			local ok, value = pcall(real, id)
-			return ok and value == true
+		-- A DONE on a room that spent under RealSpend of the budget (one piece
+		-- and quit) is the same as idle: it neither waits nor pushes.
+		local fn = state.pace
+		if type(fn) == "function" then
+			local ok, share = pcall(fn, id)
+			local spec = state.config.BuildRush
+			local need = if type(spec) == "table" and type(spec.RealSpend) == "number" then spec.RealSpend else 0.5
+			return ok and type(share) == "number" and share >= need - 1e-9
 		end
 		return true
 	end
@@ -164,6 +172,34 @@ local function rushReady(state: State): boolean
 	return done / eligible >= fraction - 1e-9
 end
 
+-- A kid still placing pieces who has spent under HoldSpend of the budget
+-- (a slow tapper on a phone, say) holds the rush, but only up to MaxHold
+-- seconds into the build, and only while they keep placing (HoldIdle).
+local function holdForSlowBuilders(state: State, now: number): boolean
+	local fn = state.pace
+	local spec = state.config.BuildRush
+	if type(fn) ~= "function" or type(spec) ~= "table" then
+		return false
+	end
+	local maxHold = if type(spec.MaxHold) == "number" then spec.MaxHold else 0
+	local holdSpend = if type(spec.HoldSpend) == "number" then spec.HoldSpend else 0
+	local holdIdle = if type(spec.HoldIdle) == "number" then spec.HoldIdle else 0
+	if now - state.phaseStartedAt >= maxHold then
+		return false
+	end
+	for id, player in pairs(state.players) do
+		if player.role == "active" and not player.done then
+			local ok, share, lastAt = pcall(fn, id)
+			if ok and type(share) == "number" and type(lastAt) == "number" and share > 0 then
+				if share < holdSpend and now - lastAt <= holdIdle then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
 local function maybeRush(state: State, now: number)
 	if state.phase ~= "Build" or state.rush then
 		return
@@ -175,6 +211,9 @@ local function maybeRush(state: State, now: number)
 		return
 	end
 	if not rushReady(state) then
+		return
+	end
+	if holdForSlowBuilders(state, now) then
 		return
 	end
 	local _, seconds = rushKnobs(state)
@@ -254,18 +293,39 @@ local function collectStops(state: State): { string }
 	return ids
 end
 
+-- Seconds a stop stays on stage. A big tour (TourShort.MinRooms or more)
+-- moves faster after the first TourShort.After rooms.
+local function stopSeconds(config: any, stops: number, index: number): number
+	local per = config.Phases.TourPerRoom
+	if type(per) ~= "number" or per <= 0 then
+		return 0
+	end
+	local short = config.TourShort
+	if type(short) == "table" and type(short.MinRooms) == "number" and type(short.After) == "number" and type(short.Seconds) == "number" then
+		if stops >= short.MinRooms and index > short.After and short.Seconds > 0 then
+			return math.min(per, short.Seconds)
+		end
+	end
+	return per
+end
+RoundEngine.stopSeconds = stopSeconds
+
 local function retimeTour(state: State, now: number, restarted: boolean)
 	if restarted then
 		state.tourSegmentStartedAt = now
 	end
-	local per = state.config.Phases.TourPerRoom
-	local remaining = #state.tourStops - state.tourIndex + 1
+	local count = #state.tourStops
+	local remaining = count - state.tourIndex + 1
 	if remaining < 1 then
 		-- Use the scheduled end (last room end, or "now" when the last stop
 		-- was just dropped and tourSegmentStartedAt was reset).
 		state.phaseEndsAt = state.tourSegmentStartedAt
 	else
-		state.phaseEndsAt = state.tourSegmentStartedAt + per * remaining
+		local total = 0
+		for index = state.tourIndex, count do
+			total += stopSeconds(state.config, count, index)
+		end
+		state.phaseEndsAt = state.tourSegmentStartedAt + total
 	end
 end
 
@@ -392,8 +452,11 @@ local function beginLobby(state: State, now: number)
 	state.phase = "Lobby"
 	state.phaseStartedAt = now
 	state.tourSkip = {}
-	state.timeAdds = 0
-	state.bankedTime = 0
+	-- Minutes bought on the last tour or results carry into this round.
+	state.timeAdds = state.heldAdds or 0
+	state.bankedTime = state.heldTime or 0
+	state.heldAdds = 0
+	state.heldTime = 0
 	state.modifier = Modifiers.pick(state.roundIndex)
 	if activeCount(state) >= 1 then
 		state.phaseEndsAt = now + state.config.Phases.Lobby
@@ -430,7 +493,7 @@ local function enterNext(state: State, now: number)
 end
 
 local function tourBeat(state: State): (number, number, number)
-	local per = state.config.Phases.TourPerRoom
+	local per = stopSeconds(state.config, #state.tourStops, state.tourIndex)
 	local beat = state.config.Phases.TourLockIn or 0
 	local grace = state.config.Phases.TourVoteGrace or 0
 	if type(per) ~= "number" or per <= 0 then
@@ -475,6 +538,23 @@ function RoundEngine.votesClosed(state: State, now: number): boolean
 	return (now - state.tourSegmentStartedAt) >= closeAt
 end
 
+-- A vote sent just before the camera moved can land a moment after. For
+-- TourLateVote seconds into a stop, the room before it still takes votes.
+function RoundEngine.lateStop(state: State, now: number): string?
+	if state.phase ~= "Tour" or state.tourIndex < 2 or state.tourIndex > #state.tourStops then
+		return nil
+	end
+	local window = state.config.Phases.TourLateVote
+	if type(window) ~= "number" or window <= 0 then
+		return nil
+	end
+	local into = now - state.tourSegmentStartedAt
+	if into < 0 or into >= window then
+		return nil
+	end
+	return state.tourStops[state.tourIndex - 1]
+end
+
 -- Everyone who can vote has voted. End this room after a short beat.
 function RoundEngine.hurryTour(state: State, now: number)
 	if state.phase ~= "Tour" or #state.tourStops == 0 then
@@ -506,12 +586,13 @@ local function advanceTour(state: State, now: number)
 	if state.phase ~= "Tour" then
 		return
 	end
-	local per = state.config.Phases.TourPerRoom
-	if type(per) ~= "number" or per <= 0 then
+	local base = state.config.Phases.TourPerRoom
+	if type(base) ~= "number" or base <= 0 then
 		state.phaseEndsAt = now
 		return
 	end
 	while state.tourIndex <= #state.tourStops do
+		local per = stopSeconds(state.config, #state.tourStops, state.tourIndex)
 		local roomEnd = state.tourSegmentStartedAt + per
 		if now < roomEnd then
 			break
@@ -583,8 +664,12 @@ function RoundEngine.create(options: {
 		season = "",
 		trace = {},
 		hasWork = nil,
-		realBuild = nil,
+		pace = nil,
 		paidSeconds = 0,
+		heldAdds = 0,
+		heldTime = 0,
+		timeReceipts = {},
+		timeReceiptOrder = {},
 		tourSkip = {},
 		timeAdds = 0,
 		bankedTime = 0,
@@ -601,8 +686,8 @@ function RoundEngine.setHasWork(state: State, fn: (string) -> any)
 	state.hasWork = fn
 end
 
-function RoundEngine.setRealBuild(state: State, fn: (string) -> any)
-	state.realBuild = fn
+function RoundEngine.setPace(state: State, fn: (string) -> (number, number))
+	state.pace = fn
 end
 
 function RoundEngine.setUnixNow(state: State, unixNow: () -> number)
@@ -628,12 +713,20 @@ end
 
 -- +60s for the whole server. Lobby and theme bank it onto Build. Tour does not.
 -- The cap is per round. A refused call does not spend a charge.
-function RoundEngine.extend(state: State, seconds: number, cap: number): (boolean, string?)
+-- `purchaseId` makes a retried receipt a no-op: the minute it already added
+-- is not added again, even when the save after it failed the first time.
+function RoundEngine.extend(state: State, seconds: number, cap: number, purchaseId: string?): (boolean, string?)
 	if type(state.timeAdds) ~= "number" then
 		state.timeAdds = 0
 	end
-	if not Modifiers.allowsTime(state.modifier) then
-		return false, "Speed Round keeps its clock."
+	if type(state.timeReceipts) ~= "table" then
+		state.timeReceipts = {}
+	end
+	if type(state.timeReceiptOrder) ~= "table" then
+		state.timeReceiptOrder = {}
+	end
+	if type(purchaseId) == "string" and purchaseId ~= "" and state.timeReceipts[purchaseId] == true then
+		return true, "Already added."
 	end
 	if type(seconds) ~= "number" or seconds ~= seconds or seconds <= 0 then
 		return false, "Bad request."
@@ -641,21 +734,53 @@ function RoundEngine.extend(state: State, seconds: number, cap: number): (boolea
 	if type(cap) ~= "number" or cap < 1 then
 		cap = 1
 	end
+	local add = math.floor(seconds)
+	local function stamp()
+		if type(purchaseId) == "string" and purchaseId ~= "" then
+			state.timeReceipts[purchaseId] = true
+			table.insert(state.timeReceiptOrder, purchaseId)
+			-- Bounded memory on a long-lived server.
+			while #state.timeReceiptOrder > 256 do
+				local old = table.remove(state.timeReceiptOrder, 1)
+				if old then
+					state.timeReceipts[old] = nil
+				end
+			end
+		end
+	end
+	-- Bought on the tour or results: held for the next build, which has its
+	-- own two-minute cap. A Speed Round next keeps its clock.
+	if state.phase == "Tour" or state.phase == "Results" then
+		if not Modifiers.allowsTime(Modifiers.pick(state.roundIndex + 1)) then
+			return false, "The next round is a Speed Round."
+		end
+		if (state.heldAdds or 0) >= cap then
+			return false, "The next round already has two extra minutes."
+		end
+		state.heldAdds = (state.heldAdds or 0) + 1
+		state.heldTime = (state.heldTime or 0) + add
+		stamp()
+		return true, "The next build gets an extra minute."
+	end
+	if not Modifiers.allowsTime(state.modifier) then
+		return false, "Speed Round keeps its clock."
+	end
 	if state.timeAdds >= cap then
 		return false, "This round already has two extra minutes."
 	end
-	local add = math.floor(seconds)
 	if state.phase == "Build" and type(state.phaseEndsAt) == "number" then
 		state.timeAdds += 1
 		state.phaseEndsAt += add
 		state.paidSeconds = (state.paidSeconds or 0) + add
 		-- Paid time is not the rush banner. The rush does not fire again.
 		state.showBanner = false
+		stamp()
 		return true, "Added a minute for everyone."
 	end
 	if state.phase == "Lobby" or state.phase == "ThemeReveal" then
 		state.timeAdds += 1
 		state.bankedTime = (state.bankedTime or 0) + add
+		stamp()
 		return true, "The next build gets an extra minute."
 	end
 	return false, "Extra time waits for the lobby."
@@ -808,7 +933,10 @@ function RoundEngine.untilNextRound(state: State, now: number): number
 	if rooms < 1 then
 		rooms = 1
 	end
-	local tour = phases.TourPerRoom * rooms
+	local tour = 0
+	for index = 1, rooms do
+		tour += stopSeconds(state.config, rooms, index)
+	end
 	if state.phase == "ThemeReveal" then
 		return left + build + tour + phases.Results
 	end

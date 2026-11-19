@@ -38,7 +38,8 @@ export type GrantContext = {
 	restricted: boolean?,
 	raining: boolean?,
 	level: number?,
-	extend: ((number) -> boolean)?,
+	extend: ((number, string?) -> boolean)?,
+	purchaseId: string?,
 	startRain: ((string, number) -> ())?,
 	buyerName: string?,
 	roundId: string?,
@@ -328,7 +329,7 @@ local function applyProduct(profile: { [string]: any }, entry: any, ctx: GrantCo
 		local extend = ctx.extend
 		local ok = false
 		if extend then
-			ok = extend(Config.Shop.TimeBonus) == true
+			ok = extend(Config.Shop.TimeBonus, ctx.purchaseId) == true
 		end
 		detail.extended = ok
 		if not ok then
@@ -380,7 +381,13 @@ end
 
 -- Returns a new profile. The input is left as it was so a failed save grants nothing.
 function Shop.grant(profile: { [string]: any }, key: string, purchaseId: string, ctx: GrantContext?): ({ [string]: any }, { [string]: any })
-	local context = ctx or {}
+	-- A copy, so the purchase id never leaks into the caller's table.
+	local context: GrantContext = {}
+	if type(ctx) == "table" then
+		for k, v in pairs(ctx :: any) do
+			(context :: any)[k] = v
+		end
+	end
 	if type(purchaseId) ~= "string" or purchaseId == "" then
 		return profile, { ok = false, reason = "Bad receipt." }
 	end
@@ -393,6 +400,7 @@ function Shop.grant(profile: { [string]: any }, key: string, purchaseId: string,
 	end
 	local nextProfile = Save.clone(profile)
 	remember(nextProfile, purchaseId)
+	context.purchaseId = purchaseId
 	local detail = applyProduct(nextProfile, entry, context)
 	detail.ok = true
 	detail.duplicate = detail.duplicate == true

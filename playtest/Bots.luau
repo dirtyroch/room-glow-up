@@ -77,6 +77,7 @@ local function send(bot, row, action, a, b, c)
 		row.msg = if type(p) == "table" then p.msg else nil
 		row.status = "done"
 		row.took = took
+		Bots.markLanding(bot, row, action, a)
 	end)
 	return status
 end
@@ -98,11 +99,26 @@ function Bots.flush(bot, now)
 	bot.queue = keep
 end
 
+-- Measurement only: which room's ballot a vote really landed on.
+function Bots.markLanding(bot, row, action, stars)
+	if action ~= "Vote" or not row.ok or type(row.sentOwner) ~= "string" then
+		return
+	end
+	local votes = bot.world.ctx and bot.world.ctx.votes
+	local rooms = votes and votes.ballots and votes.ballots.rooms
+	local room = rooms and rooms[row.sentOwner]
+	row.landedRight = room ~= nil and room.votes[tostring(bot.userId)] == stars
+end
+
 function Bots.call(bot, action, a, b, c)
 	local state = rs(bot.world)
 	local row = { at = bot.world.clock, action = action, ok = false, msg = nil, status = "pending" }
 	row.sentIndex = state and state:GetAttribute("TourIndex") or 0
 	row.sentPhase = state and state:GetAttribute("Phase") or ""
+	local round = bot.world.ctx and bot.world.ctx.round
+	if round and round.phase == "Tour" and type(round.tourStops) == "table" then
+		row.sentOwner = round.tourStops[round.tourIndex]
+	end
 	table.insert(bot.responses, row)
 	local lag = bot.spec.lag
 	if type(lag) == "table" then
@@ -117,6 +133,7 @@ function Bots.call(bot, action, a, b, c)
 		row.msg = if type(p) == "table" then p.msg else nil
 		row.status = "done"
 		row.took = took
+		Bots.markLanding(bot, row, action, a)
 	end)
 	if status == "pending" then
 		return true, "pending", nil

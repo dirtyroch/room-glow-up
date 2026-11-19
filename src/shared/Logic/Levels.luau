@@ -132,22 +132,83 @@ end
 
 build()
 
+-- XP to leave a level. Level 1 is one round. After that a gentle line, then
+-- a curve from XpCurveFrom so level 50 is a long goal (about 11 to 12 hours
+-- of 10-player rounds) while the early unlocks stay quick.
 function Levels.step(level: number): number
+	local p = Config.Progress
 	if level < 1 then
 		level = 1
 	end
-	return Config.Progress.XpBase + (level - 1) * Config.Progress.XpStep
+	if level == 1 then
+		return p.XpFirst
+	end
+	local past = math.max(0, level - p.XpCurveFrom)
+	return math.floor(p.XpBase + p.XpStep * (level - 2) + p.XpCurve * past * past + 1e-6)
 end
+
+local totals: { number } = {}
+local function fill()
+	totals[1] = 0
+	for level = 2, Config.Progress.MaxLevel do
+		totals[level] = totals[level - 1] + Levels.step(level - 1)
+	end
+end
+fill()
 
 -- XP required to arrive at this level. Level 1 is 0.
 function Levels.total(level: number): number
+	if level <= 1 then
+		return 0
+	end
+	local cap = Config.Progress.MaxLevel
+	if level > cap then
+		return totals[cap] + (level - cap) * Levels.step(cap)
+	end
+	return totals[math.floor(level)]
+end
+
+-- The first curve (schema 1 saves): XP to leave level L was 20 + (L - 1) * 6.
+-- Frozen here so old saves can be read, whatever the live curve becomes.
+function Levels.legacyTotal(level: number): number
 	local n = level - 1
 	if n <= 0 then
 		return 0
 	end
-	local base = Config.Progress.XpBase
-	local step = Config.Progress.XpStep
-	return n * base + math.floor(step * (n - 1) * n / 2)
+	return n * 20 + math.floor(6 * (n - 1) * n / 2)
+end
+
+local function legacyLevel(xp: number): number
+	local level = 1
+	while level < Config.Progress.MaxLevel and xp >= Levels.legacyTotal(level + 1) do
+		level += 1
+	end
+	return level
+end
+
+-- Moves XP earned on the old curve onto the live one. The level stays the
+-- same and so does the share of the way to the next level. Never lowers XP.
+function Levels.migrateXp(xp: number): number
+	if type(xp) ~= "number" or xp ~= xp or xp <= 0 then
+		return 0
+	end
+	local cap = Config.Progress.MaxLevel
+	local level = legacyLevel(xp)
+	local moved: number
+	if level >= cap then
+		moved = Levels.total(cap) + (xp - Levels.legacyTotal(cap))
+	else
+		local lo = Levels.legacyTotal(level)
+		local hi = Levels.legacyTotal(level + 1)
+		local share = (xp - lo) / math.max(1, hi - lo)
+		local newLo = Levels.total(level)
+		local newHi = Levels.total(level + 1)
+		moved = newLo + math.floor(share * (newHi - newLo))
+		if moved >= newHi then
+			moved = newHi - 1
+		end
+	end
+	return math.max(math.floor(xp), math.floor(moved))
 end
 
 function Levels.fromXp(xp: number): number

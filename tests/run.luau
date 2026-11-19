@@ -755,15 +755,19 @@ test("a full round works with 1, 3, and 10 players", function()
 			local tourStart = 25 + count
 			eq(state.phase, "Tour")
 			eq(#state.tourStops, count)
-			local per = Config.Phases.TourPerRoom
+			-- Big tours run the later stops shorter (Config.TourShort).
+			local at = tourStart
 			for i = 1, count do
-				local at = tourStart + (i - 1) * per
 				RoundEngine.advance(state, at)
 				eq(state.phase, "Tour")
 				eq(state.tourIndex, i)
 				eq(RoundEngine.snapshot(state, at).tourLabel, string.format("Room %d of %d", i, count))
+				at += RoundEngine.stopSeconds(Config, count, i)
 			end
-			local tourEnd = tourStart + count * per
+			local tourEnd = at
+			if count >= Config.TourShort.MinRooms then
+				eq(tourEnd - tourStart, Config.TourShort.After * Config.Phases.TourPerRoom + (count - Config.TourShort.After) * Config.TourShort.Seconds)
+			end
 			RoundEngine.advance(state, tourEnd)
 			eq(state.phase, "Results")
 			RoundEngine.advance(state, tourEnd + Config.Phases.Results)
@@ -1864,14 +1868,14 @@ local function buildCtx(extra)
 end
 
 print("Saves")
-test("schema 1 round-trips and a second session cannot write", function()
+test("the save schema round-trips and a second session cannot write", function()
 	local store = Save.memory()
 	local key = Save.profileKey("7")
 	local dreamKey = Save.dreamKey("7")
 	truthy(key ~= dreamKey)
 	local opened = Save.open(store, key, "A", 1000, 60)
 	truthy(opened)
-	eq(opened.schema, 1)
+	eq(opened.schema, Save.Schema)
 	local other, err = Save.open(store, key, "B", 1010, 60)
 	eq(other, nil)
 	eq(err, "Busy.")
@@ -1901,7 +1905,7 @@ test("schema 1 round-trips and a second session cannot write", function()
 	eq(waits[2], 1)
 	truthy(saved)
 	eq(saved.luck, nil)
-	eq(saved.schema, 1)
+	eq(saved.schema, Save.Schema)
 	local lock = Save.locker()
 	local nested = nil
 	local wrote = lock.run(function()
@@ -1923,7 +1927,7 @@ test("schema 1 round-trips and a second session cannot write", function()
 	eq(loaded.xp, 46)
 	eq(loaded.stamps[1], "hearth_cocoa")
 	eq(loaded.luck, nil)
-	eq(again.schema, 1)
+	eq(again.schema, Save.Schema)
 	local dream = Save.open(store, dreamKey, "B", 2000, 60)
 	local home = Save.normalizeDream(dream)
 	eq(#home.homes, 1)
@@ -1964,7 +1968,7 @@ test("schema 1 round-trips and a second session cannot write", function()
 	local schemaStore = Save.memory()
 	local schemaKey = Save.profileKey("11")
 	schemaStore.update(schemaKey, function()
-		return { schema = 2, coins = 99 }
+		return { schema = Save.Schema + 1, coins = 99 }
 	end)
 	local refused, why = Save.open(schemaStore, schemaKey, "C", 3000, 60)
 	eq(refused, nil)
@@ -1974,7 +1978,7 @@ test("schema 1 round-trips and a second session cannot write", function()
 		raw = current
 		return nil
 	end)
-	eq(raw.schema, 2)
+	eq(raw.schema, Save.Schema + 1)
 	eq(raw.coins, 99)
 	truthy(string.find(src, "task.spawn", 1, true) ~= nil)
 	truthy(string.find(src, "bag.hold ~= true", 1, true) ~= nil)
@@ -2047,8 +2051,8 @@ test("a round id pays once, from the ballot, with the level curve", function()
 	eq(doubled.luck, true)
 	Monetization.reset()
 	eq(Levels.total(1), 0)
-	eq(Levels.total(2), Config.Progress.XpBase)
-	eq(Levels.total(3), Config.Progress.XpBase + Levels.step(2))
+	eq(Levels.total(2), Config.Progress.XpFirst)
+	eq(Levels.total(3), Config.Progress.XpFirst + Levels.step(2))
 	eq(Levels.fromXp(0), 1)
 	eq(Levels.fromXp(Levels.total(2) - 1), 1)
 	eq(Levels.fromXp(Levels.total(2)), 2)
@@ -2632,9 +2636,9 @@ test("quest and rank days follow Central daylight time", function()
 	eq(Season.centralOffset(Season.unix(2026, 11, 1, 6, 59, 0)), -5)
 	eq(Season.centralOffset(Season.unix(2026, 11, 1, 7, 0, 0)), -6)
 	local old = Save.migrate({ schema = 0, coins = 12, xp = 4 })
-	eq(old.schema, 1)
+	eq(old.schema, Save.Schema)
 	eq(old.coins, 12)
-	local future, err = Save.migrate({ schema = 2, coins = 9 })
+	local future, err = Save.migrate({ schema = Save.Schema + 1, coins = 9 })
 	eq(future, nil)
 	eq(err, "Schema.")
 	local store = Save.memory()
@@ -2643,7 +2647,7 @@ test("quest and rank days follow Central daylight time", function()
 		return { schema = 0, coins = 12 }
 	end)
 	local opened = Save.open(store, key, "A", 10, 60)
-	eq(opened.schema, 1)
+	eq(opened.schema, Save.Schema)
 	eq(opened.coins, 12)
 	local progress = fs.readFile("src/server/Services/ProgressService.luau")
 	truthy(string.find(progress, "centralOffset", 1, true) ~= nil)
@@ -3502,7 +3506,7 @@ test("a bought minute survives the 30-second rush", function()
 	eq(banked.phaseEndsAt, 100 + 30 + Config.Shop.TimeBonus)
 end)
 
-test("a one-piece DONE does not push the rush", function()
+test("a DONE that spent little of the budget does not push the rush", function()
 	local state = fresh()
 	for _, id in ipairs({ "grief1", "grief2", "a", "b" }) do
 		RoundEngine.join(state, id, 0)
@@ -3510,8 +3514,12 @@ test("a one-piece DONE does not push the rush", function()
 	RoundEngine.setHasWork(state, function()
 		return true
 	end)
-	RoundEngine.setRealBuild(state, function(id: string)
-		return string.sub(id, 1, 5) ~= "grief"
+	RoundEngine.setPace(state, function(id: string)
+		-- Griefers spent a sliver of the budget; everyone else most of it.
+		if string.sub(id, 1, 5) == "grief" then
+			return 0.1, 26
+		end
+		return 0.8, 26
 	end)
 	RoundEngine.advance(state, 25)
 	RoundEngine.pressDone(state, "grief1", 26)
@@ -3614,6 +3622,16 @@ test("playtest: a slow vote for the last room does not land on the next one", fu
 			voter = kid
 		end
 	end
+	-- Within TourLateVote of the move, it counts for the room it was sent for.
+	local firstOwner = round.tourStops[round.tourIndex - 1]
+	local landed = world:invoke(voter, "Vote", 2, first)
+	eq(landed.ok, true)
+	eq(world.ctx.votes.ballots.rooms[firstOwner].votes[tostring(voter.UserId)], 2)
+	-- A second late vote cannot change it, and after the window it is refused.
+	local changed = world:invoke(voter, "Vote", 5, first)
+	eq(changed.ok, false)
+	eq(world.ctx.votes.ballots.rooms[firstOwner].votes[tostring(voter.UserId)], 2)
+	stepFor(world, Config.Phases.TourLateVote + 0.2)
 	local payload = world:invoke(voter, "Vote", 1, first)
 	eq(payload.ok, false)
 	eq(payload.msg, "That room already moved on.")
@@ -3624,6 +3642,317 @@ test("playtest: a slow vote for the last room does not land on the next one", fu
 	local report = world:invoke(voter, "Report", first)
 	eq(report.ok, false)
 	noErrors(world)
+end)
+
+print("Fair pace, levels and tour")
+test("early levels stay fast and level 50 is a long climb", function()
+	eq(Config.Easter.PibbleLevel, 5)
+	eq(Config.Easter.UncLevel, 8)
+	-- Even last place with one star reaches level 2 after the first round.
+	local worst = Config.Rewards.PlaceXp[#Config.Rewards.PlaceXp] + math.floor(1 * Config.Rewards.StarXp)
+	truthy(worst >= Levels.total(2), "worst first round reaches level 2")
+	-- About 66 XP a round at about 4 minutes a round.
+	local perRound = 66
+	local minutes = function(level)
+		return Levels.total(level) / perRound * 236 / 60
+	end
+	truthy(minutes(5) >= 12 and minutes(5) <= 18, "Pibble Rug in about 15 minutes")
+	truthy(minutes(8) >= 25 and minutes(8) <= 35, "Unc Armchair in about 30 minutes")
+	truthy(minutes(50) / 60 >= 10.5 and minutes(50) / 60 <= 12.5, "level 50 in about 11 to 12 hours")
+	local last = 0
+	for level = 1, 49 do
+		local step = Levels.step(level)
+		truthy(step >= last, "steps never shrink")
+		last = step
+		truthy(Levels.total(level + 1) >= Levels.legacyTotal(level + 1), "new curve is never shorter")
+	end
+end)
+
+test("old XP moves to the new curve without losing a level", function()
+	local legacyLevel = function(xp)
+		local level = 1
+		while level < 50 and xp >= Levels.legacyTotal(level + 1) do
+			level += 1
+		end
+		return level
+	end
+	for xp = 0, Levels.legacyTotal(50) + 400, 7 do
+		local moved = Levels.migrateXp(xp)
+		truthy(moved >= xp, "never lowers XP at " .. xp)
+		eq(Levels.fromXp(moved), legacyLevel(xp), "keeps the level at " .. xp)
+	end
+	for level = 2, 50 do
+		eq(Levels.fromXp(Levels.migrateXp(Levels.legacyTotal(level))), level)
+		eq(Levels.fromXp(Levels.migrateXp(Levels.legacyTotal(level) - 1)), level - 1)
+	end
+	truthy(Levels.migrateXp(Levels.legacyTotal(50) + 999) >= Levels.total(50))
+	eq(Levels.migrateXp(0), 0)
+end)
+
+test("a schema 1 save converts once and keeps its level", function()
+	local before = Levels.legacyTotal(12) + 5
+	local doc = { schema = 1, coins = 40, xp = before, stamps = {} }
+	local migrated = Save.migrate(Save.clone(doc))
+	eq(migrated.schema, Save.Schema)
+	eq(migrated.coins, 40)
+	eq(Levels.fromXp(migrated.xp), 12)
+	-- Already on schema 2: nothing moves again.
+	local again = Save.migrate(Save.clone(migrated))
+	eq(again.xp, migrated.xp)
+	eq(Save.normalizeProfile(Save.clone(migrated)).xp, migrated.xp)
+	-- normalize on an old doc migrates it too.
+	eq(Levels.fromXp(Save.normalizeProfile(Save.clone(doc)).xp), 12)
+	-- Dream homes pass through.
+	local dream = Save.migrate({ schema = 1, homes = {}, lookbook = {}, xp = 3 })
+	eq(dream.schema, Save.Schema)
+	eq(dream.xp, 3)
+	-- Through the store: open claims and writes the converted doc once.
+	local store = Save.memory()
+	local key = Save.profileKey("77")
+	store.update(key, function()
+		return Save.clone(doc)
+	end)
+	local opened = Save.open(store, key, "A", 1000, 60)
+	truthy(opened)
+	eq(opened.schema, Save.Schema)
+	eq(Levels.fromXp(opened.xp), 12)
+	local saved = nil
+	store.update(key, function(current)
+		saved = current
+		return current
+	end)
+	eq(saved.schema, Save.Schema)
+	eq(saved.xp, opened.xp)
+end)
+
+test("playtest: a kid with an old save joins at the same level", function()
+	local before = Levels.legacyTotal(9) + 3
+	local datastore = {
+		[Config.Progress.ProfileStore] = {
+			[Save.profileKey("5151")] = { schema = 1, coins = 20, xp = before, tutorialDone = true },
+		},
+	}
+	local world = server({ datastore = datastore })
+	local kid = world:addPlayer("old_kid", "Old", 5151)
+	stepFor(world, 10)
+	eq(kid:GetAttribute("Level"), 9)
+	local doc = datastore[Config.Progress.ProfileStore][Save.profileKey("5151")]
+	eq(doc.schema, Save.Schema)
+	eq(Levels.fromXp(doc.xp), 9)
+	truthy(doc.xp >= before)
+	noErrors(world)
+end)
+
+test("a minute bought on the tour or results is held for the next build", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.join(state, "lee", 0)
+	RoundEngine.setHasWork(state, function()
+		return true
+	end)
+	RoundEngine.advance(state, 25)
+	eq(state.phase, "Build")
+	local t = 25
+	while state.phase ~= "Tour" and t < 600 do
+		t += 1
+		RoundEngine.advance(state, t)
+	end
+	eq(state.phase, "Tour")
+	local nextSpeed = not Modifiers.allowsTime(Modifiers.pick(state.roundIndex + 1))
+	if nextSpeed then
+		local ok, why = RoundEngine.extend(state, 60, 2, "tour-speed")
+		eq(ok, false)
+		eq(why, "The next round is a Speed Round.")
+		return
+	end
+	local ok, msg = RoundEngine.extend(state, 60, 2, "tour-1")
+	eq(ok, true)
+	eq(msg, "The next build gets an extra minute.")
+	-- Same receipt again: no second minute.
+	local dup, dupMsg = RoundEngine.extend(state, 60, 2, "tour-1")
+	eq(dup, true)
+	eq(dupMsg, "Already added.")
+	eq(state.heldAdds, 1)
+	while state.phase ~= "Results" and t < 900 do
+		t += 1
+		RoundEngine.advance(state, t)
+	end
+	eq(RoundEngine.extend(state, 60, 2, "results-1"), true)
+	local capped, why = RoundEngine.extend(state, 60, 2, "results-2")
+	eq(capped, false)
+	eq(why, "The next round already has two extra minutes.")
+	eq(state.heldTime, 120)
+	while state.phase ~= "Build" and t < 1200 do
+		t += 1
+		RoundEngine.advance(state, t)
+	end
+	eq(state.phase, "Build")
+	eq(state.phaseEndsAt, state.phaseStartedAt + Config.Phases.Build + 120)
+	eq(state.heldAdds, 0)
+	-- The held minutes count against this round's cap.
+	local full = RoundEngine.extend(state, 60, 2, "build-1")
+	eq(full, false)
+end)
+
+test("a Speed Round next refuses a tour minute so the coins fallback pays", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.join(state, "lee", 0)
+	state.phase = "Results"
+	local speedAt = nil
+	for i = 1, 40 do
+		if not Modifiers.allowsTime(Modifiers.pick(i)) then
+			speedAt = i
+			break
+		end
+	end
+	truthy(speedAt ~= nil, "some round is a Speed Round")
+	state.roundIndex = speedAt - 1
+	local ok, why = RoundEngine.extend(state, 60, 2, "results-speed")
+	eq(ok, false)
+	eq(why, "The next round is a Speed Round.")
+	eq(state.heldAdds or 0, 0)
+	local profile = Save.blankProfile()
+	local coins = profile.coins
+	local paid, result = Shop.grant(profile, "ExtraMinute", "results-speed", {
+		extend = function(seconds, purchaseId)
+			return RoundEngine.extend(state, seconds, 2, purchaseId)
+		end,
+	})
+	truthy(paid)
+	eq(paid.coins, coins + 30)
+	truthy(result)
+end)
+
+test("a build minute retried after a failed save is not added twice", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.advance(state, 25)
+	local ends = state.phaseEndsAt
+	eq(RoundEngine.extend(state, 60, 2, "retry-1"), true)
+	eq(RoundEngine.extend(state, 60, 2, "retry-1"), true)
+	eq(state.phaseEndsAt, ends + 60)
+	eq(state.timeAdds, 1)
+	-- Shop.grant passes the purchase id through, so a retried receipt is a no-op.
+	local profile = Save.blankProfile()
+	local extend = function(seconds, purchaseId)
+		return RoundEngine.extend(state, seconds, 2, purchaseId)
+	end
+	Shop.grant(profile, "ExtraMinute", "retry-2", { extend = extend })
+	Shop.grant(Save.blankProfile(), "ExtraMinute", "retry-2", { extend = extend })
+	eq(state.phaseEndsAt, ends + 120)
+	eq(state.timeAdds, 2)
+	for i = 1, 300 do
+		RoundEngine.extend(state, 60, 2, "spam-" .. i)
+	end
+	truthy(#state.timeReceiptOrder <= 256, "receipt memory is bounded")
+end)
+
+test("slow builders who are still placing hold the rush, but not forever", function()
+	local state = fresh()
+	for _, id in ipairs({ "a", "b", "phone" }) do
+		RoundEngine.join(state, id, 0)
+	end
+	RoundEngine.setHasWork(state, function()
+		return true
+	end)
+	local phoneAt = 25
+	RoundEngine.setPace(state, function(id: string)
+		if id == "phone" then
+			return 0.3, phoneAt
+		end
+		return 0.9, 26
+	end)
+	RoundEngine.advance(state, 25)
+	phoneAt = 99
+	RoundEngine.pressDone(state, "a", 100)
+	RoundEngine.pressDone(state, "b", 100)
+	local t = 100
+	-- The phone kid keeps placing: no rush yet.
+	while t < 25 + Config.BuildRush.MaxHold - 2 do
+		t += 1
+		phoneAt = t
+		RoundEngine.advance(state, t)
+	end
+	eq(state.rush, false)
+	-- Past MaxHold the rush goes anyway.
+	while t < 25 + Config.BuildRush.MaxHold + 2 do
+		t += 1
+		phoneAt = t
+		RoundEngine.advance(state, t)
+	end
+	eq(state.rush, true)
+	-- An idle low spender does not hold the rush at all.
+	local idle = fresh()
+	for _, id in ipairs({ "a", "b", "idle" }) do
+		RoundEngine.join(idle, id, 0)
+	end
+	RoundEngine.setHasWork(idle, function()
+		return true
+	end)
+	RoundEngine.setPace(idle, function(id: string)
+		if id == "idle" then
+			return 0.2, 30
+		end
+		return 0.9, 26
+	end)
+	RoundEngine.advance(idle, 25)
+	RoundEngine.pressDone(idle, "a", 100)
+	RoundEngine.pressDone(idle, "b", 100)
+	RoundEngine.advance(idle, 101)
+	eq(idle.rush, true)
+end)
+
+test("Eye catch-up pays slow voters a little less than voting, never more", function()
+	local function ballotWith(voteMap)
+		local state = Voting.create()
+		local facts = {}
+		local present = {}
+		for owner, votes in pairs(voteMap) do
+			present[owner] = true
+			facts[owner] = lowFacts
+			Voting.ensure(state, owner)
+			for voter, stars in pairs(votes) do
+				eq(Voting.cast(state, voter, owner, stars, openGate(owner), Config), true)
+			end
+		end
+		Voting.finalize(state, facts, present, Config)
+		return state
+	end
+	local owners = { "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10" }
+	-- Everyone votes 1 star, so every vote is an Eye hit (the critic gives 1 too).
+	local function build(skipper, skips)
+		local map = {}
+		for _, owner in ipairs(owners) do
+			map[owner] = {}
+			for _, voter in ipairs(owners) do
+				if voter ~= owner then
+					local skip = voter == skipper and table.find(skips, owner) ~= nil
+					if not skip then
+						map[owner][voter] = 1
+					end
+				end
+			end
+		end
+		return ballotWith(map)
+	end
+	local full = build(nil, {})
+	local everyRoom = full.eyeCoins.r1
+	truthy(everyRoom and everyRoom > 0)
+	local slow = build("r1", { "r9", "r10" })
+	truthy(slow.eyeCoins.r1 < everyRoom, "skipping pays less than voting")
+	truthy(slow.eyeCoins.r1 >= math.floor(everyRoom * 0.95), "but within 5%")
+	-- Too few votes: no catch-up.
+	local lazy = build("r1", { "r2", "r3", "r4", "r5", "r6" })
+	eq(lazy.eyeCoins.r1, 4 * Config.Voting.EyeCoins)
+end)
+
+test("short stops after the sixth room when eight or more rooms are on tour", function()
+	local short = Config.TourShort
+	eq(RoundEngine.stopSeconds(Config, short.MinRooms - 1, short.After + 1), Config.Phases.TourPerRoom)
+	eq(RoundEngine.stopSeconds(Config, short.MinRooms, short.After), Config.Phases.TourPerRoom)
+	eq(RoundEngine.stopSeconds(Config, short.MinRooms, short.After + 1), math.min(Config.Phases.TourPerRoom, short.Seconds))
+	truthy(short.Seconds >= 8, "short stops still leave time to vote")
 end)
 
 print(string.format("\n%d passed, %d failed", passed, failed))
