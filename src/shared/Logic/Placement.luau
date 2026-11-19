@@ -55,6 +55,10 @@ export type Context = {
 	palette: { string },
 	now: number?,
 	undoCap: number?,
+	-- Dream home and duo rooms. Absent means the contest grid, the budget, and every catalog item.
+	gridType: string?,
+	allow: ((string) -> boolean)?,
+	freeSpend: boolean?,
 }
 
 local function copyPiece(piece: Piece): Piece
@@ -189,13 +193,34 @@ local function gate(ctx: Context): (boolean, string?)
 	if ctx.role ~= "active" then
 		return false, "You are not in this round."
 	end
-	if ctx.phase ~= "Build" then
+	if ctx.phase ~= "Build" and ctx.phase ~= "Dream" then
 		return false, "You can place during Build."
 	end
 	if ctx.locked then
 		return false, "Locked in."
 	end
 	return true, nil
+end
+
+local function gridOf(ctx: Context): string
+	if type(ctx.gridType) == "string" and ctx.gridType ~= "" then
+		return ctx.gridType
+	end
+	return ctx.roundType
+end
+
+local function itemAllowed(ctx: Context, itemId: string): boolean
+	if type(ctx.allow) ~= "function" then
+		return true
+	end
+	return ctx.allow(itemId) == true
+end
+
+local function overBudget(ctx: Context, room: Room, cost: number): boolean
+	if ctx.freeSpend == true then
+		return false
+	end
+	return room.spent + cost > ctx.budget
 end
 
 local function paletteHas(ctx: Context, color: string): boolean
@@ -219,7 +244,11 @@ function Placement.place(room: Room, ctx: Context, itemId: string, x: number, z:
 	if type(item) ~= "table" then
 		return false, "Unknown item.", nil
 	end
-	if not Bases.allows(ctx.roundType, item.surface) then
+	if not itemAllowed(ctx, itemId) then
+		return false, "That piece is still locked.", nil
+	end
+	local grid = gridOf(ctx)
+	if not Bases.allows(grid, item.surface) then
 		return false, "That piece does not fit this round.", nil
 	end
 	if #room.pieces >= ctx.maxItems then
@@ -231,10 +260,10 @@ function Placement.place(room: Room, ctx: Context, itemId: string, x: number, z:
 	if item.surface == "hook" and z ~= 0 then
 		return false, "That spot is off the grid.", nil
 	end
-	if not Bases.fits(ctx.roundType, item.surface, x, z, item.w, item.d, 0) then
+	if not Bases.fits(grid, item.surface, x, z, item.w, item.d, 0) then
 		return false, "That spot does not fit.", nil
 	end
-	if room.spent + item.cost > ctx.budget then
+	if overBudget(ctx, room, item.cost) then
 		return false, "Not enough coins.", nil
 	end
 	local layer = layerOf(item)
@@ -277,7 +306,7 @@ function Placement.rotate(room: Room, ctx: Context, pieceId: number): (boolean, 
 		return false, "Unknown item.", nil
 	end
 	local nextRot = (piece.rot + 1) % 4
-	if not Bases.fits(ctx.roundType, piece.surface, piece.x, piece.z, item.w, item.d, nextRot) then
+	if not Bases.fits(gridOf(ctx), piece.surface, piece.x, piece.z, item.w, item.d, nextRot) then
 		return false, "It cannot turn there.", nil
 	end
 	local layer = layerOf(item)
@@ -362,7 +391,7 @@ function Placement.undo(room: Room, ctx: Context): (boolean, string?, any)
 		if #room.pieces >= ctx.maxItems then
 			return false, "This room is full.", nil
 		end
-		if room.spent + piece.cost > ctx.budget then
+		if overBudget(ctx, room, piece.cost) then
 			return false, "Not enough coins.", nil
 		end
 		local layer = layerOf(item)
@@ -389,7 +418,7 @@ function Placement.undo(room: Room, ctx: Context): (boolean, string?, any)
 		if op.kind == "rotate" then
 			local item = ctx.catalog.get(piece.itemId)
 			if item then
-				if not Bases.fits(ctx.roundType, piece.surface, piece.x, piece.z, item.w, item.d, op.rot) then
+				if not Bases.fits(gridOf(ctx), piece.surface, piece.x, piece.z, item.w, item.d, op.rot) then
 					return false, "It cannot turn there.", nil
 				end
 				local layer = layerOf(item)

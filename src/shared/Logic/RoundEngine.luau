@@ -53,6 +53,8 @@ export type State = {
 	-- Returns true when that player has placed at least one prop.
 	-- Wired by the room service. Nil keeps the older DONE-only tour.
 	hasWork: ((string) -> any)?,
+	-- Partner ids in a duo room. They build, but the tour stops once.
+	tourSkip: { [string]: boolean },
 }
 
 local function activeCount(state: State): number
@@ -97,7 +99,7 @@ end
 local function collectStops(state: State): { string }
 	local rows: { { id: string, order: number } } = {}
 	for id, player in pairs(state.players) do
-		if player.role == "active" and player.submitted then
+		if player.role == "active" and player.submitted and state.tourSkip[id] ~= true then
 			table.insert(rows, { id = id, order = player.doneOrder })
 		end
 	end
@@ -235,6 +237,7 @@ local function beginLobby(state: State, now: number)
 	end
 	state.phase = "Lobby"
 	state.phaseStartedAt = now
+	state.tourSkip = {}
 	if activeCount(state) >= 1 then
 		state.phaseEndsAt = now + state.config.Phases.Lobby
 	else
@@ -370,6 +373,7 @@ function RoundEngine.create(options: {
 		season = "",
 		trace = {},
 		hasWork = nil,
+		tourSkip = {},
 	}
 	state.season = Season.resolve(state.config.Season, state.unixNow(), state.config.TimezoneOffsetHours)
 	note(state, "Lobby", 0)

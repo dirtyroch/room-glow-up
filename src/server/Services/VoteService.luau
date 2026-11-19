@@ -30,10 +30,21 @@ local function displayName(key: string): string
 	return name
 end
 
+local function ownerSet(owner: string): { [string]: boolean }
+	local set: { [string]: boolean } = { [owner] = true }
+	if ctx.duo and type(ctx.duo.owners) == "function" then
+		for _, id in ipairs(ctx.duo.owners(owner)) do
+			set[id] = true
+		end
+	end
+	return set
+end
+
 local function voterCount(round: any, owner: string): number
+	local owners = ownerSet(owner)
 	local n = 0
 	for id, player in pairs(round.players) do
-		if id ~= owner and (player.role == "active" or player.role == "spectator") then
+		if owners[id] ~= true and (player.role == "active" or player.role == "spectator") then
 			n += 1
 		end
 	end
@@ -63,6 +74,12 @@ end
 local function gateFor(round: any, owner: string, at: number): any
 	local room = ballots.rooms[owner]
 	local present = round.players[owner] ~= nil and (room == nil or room.removed ~= true)
+	local owners: { string } = { owner }
+	for id in pairs(ownerSet(owner)) do
+		if id ~= owner then
+			table.insert(owners, id)
+		end
+	end
 	return {
 		phase = round.phase,
 		locked = RoundEngine.roomLocked(round, at),
@@ -70,6 +87,7 @@ local function gateFor(round: any, owner: string, at: number): any
 		role = "active",
 		ownerPresent = present,
 		voterCount = voterCount(round, owner),
+		owners = owners,
 	}
 end
 
@@ -188,6 +206,7 @@ function VoteService.init(c: any)
 		sync = sync,
 		onPhase = onPhase,
 		forget = forget,
+		ballots = ballots,
 	}
 
 	ctx.actions.register("Vote", { "number" }, function(key: string, args: { any }): (boolean, string?)

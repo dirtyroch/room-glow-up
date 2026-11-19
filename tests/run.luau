@@ -15,6 +15,15 @@ local Bases = require("../src/shared/Bases")
 local Items = require("../src/shared/Items")
 local Plots = require("../src/shared/Logic/Plots")
 local Placement = require("../src/shared/Logic/Placement")
+local Save = require("../src/shared/Logic/Save")
+local Levels = require("../src/shared/Logic/Levels")
+local Rewards = require("../src/shared/Logic/Rewards")
+local Dream = require("../src/shared/Logic/Dream")
+local Duo = require("../src/shared/Logic/Duo")
+local Quests = require("../src/shared/Logic/Quests")
+local Collections = require("../src/shared/Logic/Collections")
+local Rank = require("../src/shared/Logic/Rank")
+local Monetization = require("../src/shared/Logic/Monetization")
 local Voting = require("../src/shared/Logic/Voting")
 
 local passed, failed = 0, 0
@@ -70,7 +79,7 @@ test("phase timings match the round loop", function()
 	eq(Config.Phases.Build, 240)
 	eq(Config.Phases.TourPerRoom, 10)
 	eq(Config.Phases.TourLockIn, 2)
-	eq(Config.Phases.Results, 25)
+	eq(Config.Phases.Results, 30)
 	truthy(Config.Phases.TourLockIn > 0)
 	truthy(Config.Phases.TourLockIn < Config.Phases.TourPerRoom)
 	eq(#Config.PhaseOrder, 5)
@@ -1472,16 +1481,21 @@ test("Vote and Report share the action remote and will not take a username", fun
 	truthy(string.find(actionSrc, "Vote", 1, true) == nil)
 end)
 
-test("a room is removed at the higher of 3 reports or 40 percent", function()
-	eq(Voting.threshold(10, Config), 4)
+test("a room is removed at the higher of 3 reports or half the voters", function()
+	eq(Config.Voting.ReportFraction, 0.5)
+	eq(Voting.threshold(10, Config), 5)
 	eq(Voting.threshold(8, Config), 4)
+	eq(Voting.threshold(7, Config), 4)
+	eq(Voting.threshold(6, Config), 3)
 	eq(Voting.threshold(5, Config), 3)
+	eq(Voting.threshold(4, Config), 3)
+	eq(Voting.threshold(3, Config), 3)
 	eq(Voting.threshold(2, Config), 3)
-	eq(Voting.threshold(20, Config), 8)
+	eq(Voting.threshold(20, Config), 10)
 	eq(Voting.threshold(0, Config), 3)
 	local state = Voting.create()
 	local gate = openGate("mike", "spectator", 10)
-	for i = 1, 3 do
+	for i = 1, 4 do
 		local ok, _, removed = Voting.report(state, "p" .. tostring(i), "mike", gate, Config)
 		eq(ok, true)
 		eq(removed, false)
@@ -1489,10 +1503,18 @@ test("a room is removed at the higher of 3 reports or 40 percent", function()
 	local again, _, againRemoved = Voting.report(state, "p1", "mike", gate, Config)
 	eq(again, true)
 	eq(againRemoved, false)
-	local ok, _, removed = Voting.report(state, "p4", "mike", gate, Config)
+	local ok, _, removed = Voting.report(state, "p5", "mike", gate, Config)
 	eq(ok, true)
 	eq(removed, true)
 	eq(state.rooms.mike.removed, true)
+	-- Half of 7 voters rounds up to 4, so three reports cannot drop the room.
+	local wide = Voting.create()
+	local crowd = openGate("ada", "active", 7)
+	eq(select(3, Voting.report(wide, "a", "ada", crowd, Config)), false)
+	eq(select(3, Voting.report(wide, "b", "ada", crowd, Config)), false)
+	eq(select(3, Voting.report(wide, "c", "ada", crowd, Config)), false)
+	eq(wide.rooms.ada.removed, false)
+	eq(select(3, Voting.report(wide, "d", "ada", crowd, Config)), true)
 	local own = Voting.report(state, "mike", "mike", openGate("mike", "active", 10), Config)
 	eq(own, false)
 	local small = Voting.create()
@@ -1672,6 +1694,420 @@ test("a reported room leaves the tour and the panels stay off the board", functi
 		truthy(resultsTop >= bands.board.bottom + 4, "results " .. tostring(height))
 		truthy(resultsBottom <= bands.done.top - 4, "results button " .. tostring(height))
 		truthy(tourBottom - tourTop >= 90, "tray " .. tostring(height))
+	end
+end)
+
+local function catalog()
+	return {
+		get = function(id)
+			return Items.get(id)
+		end,
+	}
+end
+
+local function buildCtx(extra)
+	local ctx = {
+		catalog = catalog(),
+		roundType = "room",
+		themeId = "hearth_cocoa",
+		budget = Config.Budget,
+		maxItems = Config.MaxItems,
+		role = "active",
+		phase = "Build",
+		locked = false,
+		matchExact = Config.MatchExact,
+		matchFamily = Config.MatchFamily,
+		matchCap = Config.MatchCap,
+		palette = Config.Palette,
+		now = 0,
+		undoCap = Config.UndoCap,
+	}
+	if extra then
+		for key, value in pairs(extra) do
+			ctx[key] = value
+		end
+	end
+	return ctx
+end
+
+print("Saves")
+test("schema 1 round-trips and a second session cannot write", function()
+	local store = Save.memory()
+	local key = Save.profileKey("7")
+	local dreamKey = Save.dreamKey("7")
+	truthy(key ~= dreamKey)
+	local opened = Save.open(store, key, "A", 1000, 60)
+	truthy(opened)
+	eq(opened.schema, 1)
+	local other, err = Save.open(store, key, "B", 1010, 60)
+	eq(other, nil)
+	eq(err, "Busy.")
+	local profile = Save.normalizeProfile(opened)
+	profile.coins = 15
+	profile.xp = 46
+	profile.stamps = { "hearth_cocoa" }
+	local doc = Save.clone(profile)
+	doc.schema = 1
+	doc.lock = opened.lock
+	local waits = {}
+	local fails = 0
+	local flaky = {
+		update = function(_, transform)
+			fails += 1
+			if fails < 3 then
+				error("not ready")
+			end
+			return transform(opened)
+		end,
+	}
+	local saved, attempts = Save.write(flaky, key, "A", doc, function(seconds)
+		table.insert(waits, seconds)
+	end, 4)
+	eq(attempts, 3)
+	eq(waits[1], 0.5)
+	eq(waits[2], 1)
+	truthy(saved)
+	eq(saved.luck, nil)
+	eq(saved.schema, 1)
+	local lock = Save.locker()
+	local nested = nil
+	local wrote = lock.run(function()
+		nested = lock.run(function()
+			return "inner"
+		end)
+		return Save.write(store, key, "A", doc, function() end, 4)
+	end)
+	eq(nested, nil)
+	truthy(wrote)
+	eq(wrote.coins, 15)
+	local closed = Save.close(store, key, "A")
+	truthy(closed)
+	eq(closed.lock, nil)
+	local again = Save.open(store, key, "B", 2000, 60)
+	truthy(again)
+	local loaded = Save.normalizeProfile(again)
+	eq(loaded.coins, 15)
+	eq(loaded.xp, 46)
+	eq(loaded.stamps[1], "hearth_cocoa")
+	eq(loaded.luck, nil)
+	eq(again.schema, 1)
+	local dream = Save.open(store, dreamKey, "B", 2000, 60)
+	local home = Save.normalizeDream(dream)
+	eq(#home.homes, 1)
+	eq(#home.lookbook, 0)
+	eq(Save.which("Tour", "results"), "skip")
+	eq(Save.which("Tour", "leave"), "settled")
+	eq(Save.which("Tour", "shutdown"), "settled")
+	eq(Save.which("Results", "results"), "live")
+	eq(Save.which("Build", "results"), "skip")
+	eq(Save.which("Lobby", "leave"), "live")
+	local src = fs.readFile("src/server/Services/SaveService.luau")
+	truthy(string.find(src, "BindToClose", 1, true) ~= nil)
+	truthy(string.find(src, "UpdateAsync", 1, true) ~= nil)
+	truthy(string.find(src, "PlayerRemoving", 1, true) ~= nil)
+	truthy(string.find(src, "DreamStore", 1, true) ~= nil)
+	truthy(string.find(src, "ProfileStore", 1, true) ~= nil)
+	eq(Config.Progress.DreamStore ~= Config.Progress.ProfileStore, true)
+end)
+
+print("Rewards and levels")
+test("a round id pays once, from the ballot, with the level curve", function()
+	Monetization.reset()
+	local profile = Save.blankProfile()
+	local eyes = { ada = Config.Voting.EyeCoins }
+	local decoy = { EyeCoins = 999 }
+	local input = {
+		roundId = "server:1",
+		rank = 1,
+		average = 4,
+		podium = 1,
+		eye = Rewards.eyeFromBallot(eyes, "ada"),
+		userId = "ada",
+	}
+	eq(input.eye, Config.Voting.EyeCoins)
+	eq(decoy.EyeCoins, 999)
+	local hooks = {
+		coinMultiplier = function()
+			return Monetization.coinMultiplier("ada")
+		end,
+		luck = function()
+			return Monetization.luck("ada")
+		end,
+	}
+	local first = Rewards.grant(profile, input, Config, hooks)
+	eq(first.duplicate, false)
+	eq(first.luck, false)
+	local place = Config.Rewards.PlaceCoins[1]
+	local stars = math.floor(4 * Config.Rewards.StarCoins)
+	local podium = Config.Rewards.PodiumCoins[1]
+	local expected = place + stars + podium + Config.Voting.EyeCoins * Config.Rewards.EyeRate
+	eq(first.coins, expected)
+	local xp = Config.Rewards.PlaceXp[1] + math.floor(4 * Config.Rewards.StarXp) + Config.Rewards.PodiumXp[1]
+	eq(first.xp, xp)
+	eq(profile.coins, expected)
+	local second = Rewards.grant(profile, input, Config, hooks)
+	eq(second.duplicate, true)
+	eq(second.coins, 0)
+	eq(profile.coins, expected)
+	local boosted = Save.blankProfile()
+	Monetization.setCoinSource(function()
+		return 2
+	end)
+	Monetization.setLuckSource(function()
+		return true
+	end)
+	local doubled = Rewards.grant(boosted, input, Config, {
+		coinMultiplier = function(userId)
+			return Monetization.coinMultiplier(userId)
+		end,
+		luck = function(userId)
+			return Monetization.luck(userId)
+		end,
+	})
+	eq(doubled.coins, expected * 2)
+	eq(doubled.xp, xp)
+	eq(doubled.luck, true)
+	Monetization.reset()
+	eq(Levels.total(1), 0)
+	eq(Levels.total(2), Config.Progress.XpBase)
+	eq(Levels.total(3), Config.Progress.XpBase + Levels.step(2))
+	eq(Levels.fromXp(0), 1)
+	eq(Levels.fromXp(Levels.total(2) - 1), 1)
+	eq(Levels.fromXp(Levels.total(2)), 2)
+	eq(Levels.fromXp(Levels.total(50)), 50)
+	eq(Levels.fromXp(Levels.total(50) + 5000), 50)
+	truthy(Levels.total(50) > Levels.total(25))
+	eq(Levels.ownedCount(1), 40)
+	eq(Levels.owns("butter_bench", 1), true)
+	eq(Levels.owns("carol_piano", 1), false)
+	local gate = Levels.gate("carol_piano", 1)
+	eq(gate.owned, false)
+	truthy(gate.level > 1)
+	eq(Levels.owns("carol_piano", gate.level), true)
+	truthy(string.find(Levels.next(1), "Level 2", 1, true) ~= nil)
+	eq(Levels.next(50), "All the furniture is yours.")
+	for level = 2, Config.Progress.MaxLevel do
+		local row = Levels.setAt(level)
+		truthy(row and #row.items > 0, "level " .. tostring(level))
+	end
+	local room = Placement.empty()
+	local locked = buildCtx({
+		allow = function(id)
+			return Levels.owns(id, 1)
+		end,
+	})
+	local denied = Placement.place(room, locked, "carol_piano", 0, 0)
+	eq(denied, false)
+	eq(#room.pieces, 0)
+	local placed = Placement.place(room, locked, "butter_bench", 0, 0)
+	eq(placed, true)
+	eq(#room.pieces, 1)
+	local progress = fs.readFile("src/server/Services/ProgressService.luau")
+	truthy(string.find(progress, 'GetAttribute("EyeCoins")', 1, true) == nil)
+	truthy(string.find(progress, "eyeFromBallot", 1, true) ~= nil)
+end)
+
+print("Dream home and duo")
+test("the dream home survives a lobby wipe and only spends owned items", function()
+	local contest = Placement.empty()
+	local doc = Save.blankDream()
+	eq(Dream.ensureSlots(doc, 0), 1)
+	eq(Dream.slots(Monetization.extraDreamSlots("1")), 1)
+	Monetization.setSlotSource(function()
+		return 1
+	end)
+	eq(Dream.ensureSlots(doc, Monetization.extraDreamSlots("1")), 2)
+	eq(#doc.homes, 2)
+	Monetization.reset()
+	local home = Dream.roomFrom(doc.homes[1].pieces)
+	local ctx = Dream.context(1, catalog(), 0)
+	eq(ctx.freeSpend, true)
+	eq(ctx.phase, "Dream")
+	eq(ctx.gridType, "studio")
+	eq(Placement.place(home, ctx, "butter_bench", 0, 0), true)
+	eq(Placement.place(home, ctx, "carol_piano", 2, 0), false)
+	eq(Placement.place(contest, buildCtx(), "cocoa_table", 0, 0), true)
+	contest = Placement.empty()
+	eq(#contest.pieces, 0)
+	eq(#home.pieces, 1)
+	eq(#doc.homes, 2)
+	eq(Dream.tier(1), "studio")
+	eq(Dream.tier(Config.Progress.LoftLevel), "loft")
+	eq(Dream.tier(Config.Progress.HouseLevel), "house")
+	local down = Bases.pivot("house", "floor", 0, 0, 0, 1, 1, 1)
+	local up = Bases.pivot("house", "floor", 0, 4, 0, 1, 1, 1)
+	truthy(up.y > down.y)
+	local book = {}
+	eq(Dream.remember(book, { roundId = "r1", average = 3, pieces = {} }, Config.Progress.Lookbook), true)
+	eq(Dream.remember(book, { roundId = "r2", average = 4, pieces = {} }, Config.Progress.Lookbook), true)
+	eq(Dream.remember(book, { roundId = "r3", average = 5, pieces = {} }, Config.Progress.Lookbook), true)
+	eq(Dream.remember(book, { roundId = "weak", average = 2, pieces = {} }, Config.Progress.Lookbook), false)
+	eq(#book, 3)
+	eq(Dream.remember(book, { roundId = "best", average = 5, pieces = {} }, Config.Progress.Lookbook), true)
+	eq(#book, 3)
+	local rooms = fs.readFile("src/server/Services/RoomService.luau")
+	truthy(string.find(rooms, "rooms[key] = Placement.empty()", 1, true) ~= nil)
+	truthy(string.find(rooms, "homes[key] = Placement.empty()", 1, true) == nil)
+end)
+
+test("duo shares 1.5x budget and both owners are excluded from votes", function()
+	local group = Duo.create()
+	eq(Duo.toggle(group, "ada", "Build"), false)
+	eq(Duo.toggle(group, "ada", "Lobby"), true)
+	eq(Duo.toggle(group, "bea", "Lobby"), true)
+	eq(Duo.toggle(group, "cal", "Lobby"), true)
+	Duo.freeze(group, { "cal", "ada", "bea" })
+	eq(Duo.partnerOf(group, "ada"), "bea")
+	eq(Duo.leadOf(group, "bea"), "ada")
+	eq(Duo.paired(group, "cal"), false)
+	local budget = Duo.budget(Config.Budget, true)
+	eq(budget, math.floor(Config.Budget * Config.Progress.DuoScale))
+	truthy(budget > Config.Budget)
+	eq(Duo.itemCap(Config.MaxItems, true), math.floor(Config.MaxItems * 1.5))
+	eq(Duo.gridType("room", true), "duo_room")
+	eq(Bases.fits("room", "floor", 6, 0, 1, 1, 0), false)
+	eq(Bases.fits("duo_room", "floor", 6, 0, 1, 1, 0), true)
+	local room = Placement.empty()
+	local ctx = buildCtx({
+		budget = budget,
+		maxItems = Duo.itemCap(Config.MaxItems, true),
+		gridType = "duo_room",
+	})
+	local spent = 0
+	local x = 0
+	local z = 0
+	while spent + 12 <= Config.Budget do
+		eq(Placement.place(room, ctx, "cocoa_table", x, z), true)
+		spent += 12
+		x += 2
+		if x > 6 then
+			x = 0
+			z += 1
+		end
+	end
+	truthy(room.spent + 12 > Config.Budget)
+	eq(Placement.place(room, ctx, "cocoa_table", x, z), true)
+	truthy(room.spent <= budget)
+	local state = Voting.create()
+	local voters = Duo.eligible(6, 2)
+	eq(voters, 4)
+	local gate = openGate("ada", "active", voters)
+	gate.owners = Duo.owners(group, "ada")
+	eq(Voting.cast(state, "bea", "ada", 5, gate, Config), false)
+	eq(Voting.cast(state, "ada", "ada", 5, gate, Config), false)
+	local reported, _, removed = Voting.report(state, "bea", "ada", gate, Config)
+	eq(reported, false)
+	eq(removed, false)
+	eq(Voting.cast(state, "cal", "ada", 4, gate, Config), true)
+	eq(Voting.threshold(voters, Config), 3)
+end)
+
+print("Quests, stamps, and rank")
+test("daily quests follow the Central date and a few rounds finish them", function()
+	local offset = Config.TimezoneOffsetHours
+	local before = Season.unix(2026, 11, 19, 5, 59, 0)
+	local at = Season.unix(2026, 11, 19, 6, 0, 0)
+	eq(Quests.dayKey(before, offset), "2026-11-18")
+	eq(Quests.dayKey(at, offset), "2026-11-19")
+	local day = Quests.pick("2026-11-19")
+	local again = Quests.pick("2026-11-19")
+	eq(#day, 3)
+	eq(day[1].id, again[1].id)
+	eq(day[2].id, again[2].id)
+	eq(day[3].id, again[3].id)
+	local other = Quests.pick("2026-11-20")
+	local same = day[1].id == other[1].id and day[2].id == other[2].id and day[3].id == other[3].id
+	eq(same, false)
+	local profile = Save.blankProfile()
+	Quests.ensure(profile, "2026-11-19")
+	local stats = { rooms = 1, starRounds = 1, props = 4, meterRounds = 1, recolors = 2, fullRounds = 1 }
+	Quests.apply(profile, stats, 0)
+	local done = 0
+	for _, quest in ipairs(profile.quests) do
+		if quest.progress >= quest.goal then
+			done += 1
+		end
+	end
+	eq(done < 3, true)
+	for _ = 2, 4 do
+		Quests.apply(profile, stats, 0)
+	end
+	for _, quest in ipairs(profile.quests) do
+		truthy(quest.progress >= quest.goal, quest.id)
+	end
+end)
+
+test("stamps start at 4 stars and a finished set pays once", function()
+	local themes = {
+		{ id = "one", name = "One", roundType = "room", season = "holiday" },
+		{ id = "two", name = "Two", roundType = "room", season = "holiday" },
+	}
+	local profile = Save.blankProfile()
+	local low = Collections.consider(profile, "one", 3.9, themes, Config)
+	eq(low.stamped, false)
+	eq(#profile.stamps, 0)
+	local first = Collections.consider(profile, "one", 4, themes, Config)
+	eq(first.stamped, true)
+	eq(first.setComplete, false)
+	local repeatStamp = Collections.consider(profile, "one", 5, themes, Config)
+	eq(repeatStamp.already, true)
+	eq(profile.coins, 0)
+	local done = Collections.consider(profile, "two", 4, themes, Config)
+	eq(done.setComplete, true)
+	eq(profile.coins, Config.Progress.SetBonusCoins)
+	local purse = profile.coins
+	Collections.consider(profile, "two", 5, themes, Config)
+	eq(profile.coins, purse)
+end)
+
+test("designer rank uses the month and does not decay or follow the theme season", function()
+	local offset = Config.TimezoneOffsetHours
+	local nov = Season.unix(2026, 11, 19, 18, 0, 0)
+	local dec = Season.unix(2026, 12, 15, 18, 0, 0)
+	local jan = Season.unix(2027, 1, 15, 18, 0, 0)
+	eq(Season.resolve("auto", nov, offset), "holiday")
+	eq(Season.resolve("auto", dec, offset), "holiday")
+	eq(Season.resolve("auto", jan, offset), "winter")
+	eq(Rank.month(nov, offset), "2026-11")
+	eq(Rank.month(dec, offset), "2026-12")
+	eq(Rank.month(jan, offset), "2027-01")
+	truthy(Rank.month(nov, offset) ~= Season.resolve("auto", nov, offset))
+	truthy(Rank.month(nov, offset) ~= Rank.month(dec, offset))
+	local profile = Save.blankProfile()
+	local first = Rank.award(profile, "2026-11", 100, Config.RankTrack)
+	eq(profile.rankPoints, 100)
+	eq(first.coins, Config.RankTrack[1].coins)
+	eq(profile.coins, Config.RankTrack[1].coins)
+	local held = profile.rankPoints
+	Rank.award(profile, "2026-11", 0, Config.RankTrack)
+	eq(profile.rankPoints, held)
+	Rank.award(profile, "2026-12", 0, Config.RankTrack)
+	eq(profile.rankPoints, 0)
+	eq(profile.rankMonth, "2026-12")
+end)
+
+test("results shows rewards after the podium inside the same bands", function()
+	eq(Config.Phases.Results, 30)
+	eq(Voting.showRewards(30, 30), false)
+	eq(Voting.showRewards(16, 30), false)
+	eq(Voting.showRewards(15, 30), true)
+	eq(Voting.showRewards(1, 30), true)
+	local voteUi = fs.readFile("src/client/Vote.luau")
+	truthy(string.find(voteUi, "showRewards", 1, true) ~= nil)
+	truthy(string.find(voteUi, "AwardCoins", 1, true) ~= nil)
+	truthy(string.find(voteUi, "RewardCard", 1, true) ~= nil)
+	truthy(string.find(voteUi, "LevelUp", 1, true) ~= nil)
+	truthy(string.find(voteUi, "DisplayName", 1, true) == nil)
+	local tray = fs.readFile("src/client/Tray.luau")
+	truthy(string.find(tray, "Lv ", 1, true) ~= nil)
+	truthy(string.find(tray, "Levels.gate", 1, true) ~= nil)
+	for _, height in ipairs({ 420, 800 }) do
+		local bands = UIKit.bands(height)
+		local top = bands.reveal.top
+		local bottom = bands.tray.bottom
+		truthy(top >= bands.board.bottom + 4, "reward " .. tostring(height))
+		truthy(bottom <= bands.done.top - 4, "reward button " .. tostring(height))
+		truthy(bottom - top >= 120, "reward room " .. tostring(height))
 	end
 end)
 

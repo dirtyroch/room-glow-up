@@ -10,6 +10,7 @@ local UI = require(script.Parent.UI)
 local Net = require(script.Parent.Net)
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config") :: ModuleScript) :: any
 local Logic = Shared:WaitForChild("Logic")
 local Voting = require(Logic:WaitForChild("Voting") :: ModuleScript) :: any
 local UIKit = UI.kit
@@ -289,13 +290,119 @@ function Vote.start()
 		layout()
 	end
 
+	local function readText(name: string): string
+		local value = player:GetAttribute(name)
+		if type(value) ~= "string" then
+			return ""
+		end
+		return value
+	end
+
+	local function readNumber(name: string): number
+		local value = player:GetAttribute(name)
+		if type(value) ~= "number" then
+			return 0
+		end
+		return value
+	end
+
+	-- After the podium. Coins, XP, and unlocks get the second half of Results.
+	local function paintRewards()
+		local coins = readNumber("AwardCoins")
+		local xp = readNumber("AwardXp")
+		local level = readNumber("Level")
+		if level < 1 then
+			level = 1
+		end
+		local levelUp = readNumber("LevelUp")
+		local unlockLine = readText("UnlockLine")
+		local nextLine = readText("NextUnlock")
+		local stampLine = readText("StampLine")
+		local questLine = readText("QuestLine")
+		local key = table.concat({
+			"rewards",
+			tostring(coins),
+			tostring(xp),
+			tostring(level),
+			tostring(levelUp),
+			unlockLine,
+			nextLine,
+			stampLine,
+			questLine,
+		}, "\0")
+		if key == painted then
+			layout()
+			return
+		end
+		painted = key
+		clearResults()
+		local frame = Instance.new("Frame")
+		frame.Name = "RewardCard"
+		frame.LayoutOrder = 1
+		frame.Size = UDim2.new(1, 0, 0, math.max(cardHeight, 180))
+		frame.BackgroundColor3 = UI.rgb("cream")
+		frame.BorderSizePixel = 0
+		frame.Parent = results
+		UI.corner(frame, 18)
+		UI.stroke(frame, "ink", 3)
+		local list = Instance.new("UIListLayout")
+		list.FillDirection = Enum.FillDirection.Vertical
+		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		list.Padding = UDim.new(0, 4)
+		list.SortOrder = Enum.SortOrder.LayoutOrder
+		list.Parent = frame
+		UI.pad(frame, 8)
+		local title = if levelUp > 0 then "Level up. Level " .. tostring(levelUp) else "Level " .. tostring(level)
+		local heading = UI.label(frame, title, UIKit.Text.theme, 32)
+		heading.LayoutOrder = 1
+		local purse = UI.label(frame, "+" .. tostring(coins) .. " coins", UIKit.Text.body, 28)
+		purse.Name = "Coins"
+		purse.LayoutOrder = 2
+		local xpLabel = UI.label(frame, "+" .. tostring(xp) .. " XP", UIKit.Text.body, 28)
+		xpLabel.Name = "Xp"
+		xpLabel.LayoutOrder = 3
+		local order = 4
+		if unlockLine ~= "" then
+			local unlocked = UI.label(frame, unlockLine, UIKit.Text.eyebrow, 24)
+			unlocked.LayoutOrder = order
+			order += 1
+		end
+		if nextLine ~= "" then
+			local upcoming = UI.label(frame, nextLine, UIKit.Text.eyebrow, 24)
+			upcoming.LayoutOrder = order
+			order += 1
+		end
+		if stampLine ~= "" then
+			local stamp = UI.label(frame, stampLine, UIKit.Text.eyebrow, 24)
+			stamp.LayoutOrder = order
+			order += 1
+		end
+		if questLine ~= "" then
+			local quest = UI.label(frame, questLine, UIKit.Text.eyebrow, 24)
+			quest.LayoutOrder = order
+		end
+		layout()
+	end
+
 	local refresh: () -> ()
+
+		local function ownPlot(): number?
+		local build = player:GetAttribute("BuildPlot")
+		if type(build) == "number" then
+			return build
+		end
+		local mine = player:GetAttribute("Plot")
+		if type(mine) == "number" then
+			return mine
+		end
+		return nil
+	end
 
 	local function isOwnRoom(): boolean
 		local phase = folder:GetAttribute("Phase")
 		local plot = folder:GetAttribute("TourPlot")
-		local mine = player:GetAttribute("Plot")
-		return phase == "Tour" and type(plot) == "number" and plot > 0 and type(mine) == "number" and mine == plot
+		local mine = ownPlot()
+		return phase == "Tour" and type(plot) == "number" and plot > 0 and mine == plot
 	end
 
 	local function ownOrLocked(): (boolean, boolean)
@@ -408,23 +515,29 @@ function Vote.start()
 		end
 		wasLocked = locked
 		if phase == "Results" then
-			local payload = folder:GetAttribute("Podium")
-			if type(payload) ~= "string" then
-				payload = ""
+			local left = folder:GetAttribute("TimeLeft")
+			local timeLeft = if type(left) == "number" then left else Config.Phases.Results
+			if Voting.showRewards(timeLeft, Config.Phases.Results) then
+				paintRewards()
+			else
+				local payload = folder:GetAttribute("Podium")
+				if type(payload) ~= "string" then
+					payload = ""
+				end
+				local theme = folder:GetAttribute("ThemeName")
+				if type(theme) ~= "string" or theme == "" then
+					theme = "Room Glow Up"
+				end
+				local cardStars = player:GetAttribute("CardStars")
+				local cardLine = player:GetAttribute("CardLine")
+				if type(cardLine) ~= "string" then
+					cardLine = ""
+				end
+				local stars = if type(cardStars) == "number" then cardStars else nil
+				local coinsAttr = player:GetAttribute("EyeCoins")
+				local coins = if type(coinsAttr) == "number" then coinsAttr else 0
+				paint(payload, theme, stars, cardLine, coins)
 			end
-			local theme = folder:GetAttribute("ThemeName")
-			if type(theme) ~= "string" or theme == "" then
-				theme = "Room Glow Up"
-			end
-			local cardStars = player:GetAttribute("CardStars")
-			local cardLine = player:GetAttribute("CardLine")
-			if type(cardLine) ~= "string" then
-				cardLine = ""
-			end
-			local stars = if type(cardStars) == "number" then cardStars else nil
-			local coinsAttr = player:GetAttribute("EyeCoins")
-			local coins = if type(coinsAttr) == "number" then coinsAttr else 0
-			paint(payload, theme, stars, cardLine, coins)
 		end
 		layout()
 	end
@@ -438,10 +551,20 @@ function Vote.start()
 	folder:GetAttributeChangedSignal("TourPlot"):Connect(refresh)
 	folder:GetAttributeChangedSignal("Podium"):Connect(refresh)
 	folder:GetAttributeChangedSignal("ThemeName"):Connect(refresh)
+	folder:GetAttributeChangedSignal("TimeLeft"):Connect(refresh)
 	player:GetAttributeChangedSignal("MyStars"):Connect(refresh)
 	player:GetAttributeChangedSignal("CardStars"):Connect(refresh)
 	player:GetAttributeChangedSignal("CardLine"):Connect(refresh)
 	player:GetAttributeChangedSignal("EyeCoins"):Connect(refresh)
+	player:GetAttributeChangedSignal("AwardCoins"):Connect(refresh)
+	player:GetAttributeChangedSignal("AwardXp"):Connect(refresh)
+	player:GetAttributeChangedSignal("Level"):Connect(refresh)
+	player:GetAttributeChangedSignal("LevelUp"):Connect(refresh)
+	player:GetAttributeChangedSignal("UnlockLine"):Connect(refresh)
+	player:GetAttributeChangedSignal("NextUnlock"):Connect(refresh)
+	player:GetAttributeChangedSignal("StampLine"):Connect(refresh)
+	player:GetAttributeChangedSignal("QuestLine"):Connect(refresh)
+	player:GetAttributeChangedSignal("BuildPlot"):Connect(refresh)
 	local camera = workspace.CurrentCamera
 	if camera then
 		camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()

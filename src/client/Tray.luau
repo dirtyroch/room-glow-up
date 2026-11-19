@@ -10,6 +10,8 @@ local UI = require(script.Parent.UI)
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items") :: ModuleScript) :: any
+local Logic = Shared:WaitForChild("Logic")
+local Levels = require(Logic:WaitForChild("Levels") :: ModuleScript) :: any
 local UIKit = UI.kit
 
 local Tray = {}
@@ -198,7 +200,35 @@ function Tray.start()
 		return "room"
 	end
 
+	local function atHome(): boolean
+		return roundFolder:GetAttribute("Phase") == "Lobby" and player:GetAttribute("AtHome") == true
+	end
+
+	local function playerLevel(): number
+		local level = player:GetAttribute("Level")
+		if type(level) ~= "number" then
+			return 1
+		end
+		return level
+	end
+
+	local function visibleItems(): { any }
+		if atHome() then
+			local list: { any } = {}
+			for _, item in ipairs(Items.list) do
+				if item.surface == "floor" or item.surface == "wall" then
+					table.insert(list, item)
+				end
+			end
+			return list
+		end
+		return Items.forRound(roundType())
+	end
+
 	local function editing(): boolean
+		if atHome() then
+			return true
+		end
 		if roundFolder:GetAttribute("Phase") ~= "Build" then
 			return false
 		end
@@ -212,6 +242,9 @@ function Tray.start()
 	end
 
 	local function showMeter(): boolean
+		if atHome() then
+			return true
+		end
 		local phase = roundFolder:GetAttribute("Phase")
 		if phase == "Tour" then
 			return true
@@ -240,15 +273,33 @@ function Tray.start()
 
 	local function refreshStats()
 		local match, left = readStats()
-		matchLabel.Text = "Theme Match " .. tostring(match)
-		coins.Text = tostring(left) .. " coins"
-		barFill.Size = UDim2.fromScale(math.clamp(match / 100, 0, 1), 1)
-		for _, item in ipairs(Items.forRound(roundType())) do
+		local home = atHome()
+		if home then
+			matchLabel.Text = "Dream Home"
+			coins.Text = "Free"
+			barFill.Size = UDim2.fromScale(1, 1)
+		else
+			matchLabel.Text = "Theme Match " .. tostring(match)
+			coins.Text = tostring(left) .. " coins"
+			barFill.Size = UDim2.fromScale(math.clamp(match / 100, 0, 1), 1)
+		end
+		local level = playerLevel()
+		for _, item in ipairs(visibleItems()) do
 			local button = buttons[item.id]
 			if button then
-				local pricey = item.cost > left
-				button.TextTransparency = if pricey then 0.4 else 0
-				button.BackgroundTransparency = if pricey then 0.2 else 0
+				local gate = Levels.gate(item.id, level)
+				if gate.owned ~= true then
+					button.Text = item.name .. "\nLv " .. tostring(gate.level)
+					button.TextTransparency = 0.45
+					button.BackgroundTransparency = 0.35
+					button.AutoButtonColor = false
+				else
+					local pricey = item.cost > left and not home
+					button.Text = item.name .. "\n" .. tostring(item.cost)
+					button.TextTransparency = if pricey then 0.4 else 0
+					button.BackgroundTransparency = if pricey then 0.2 else 0
+					button.AutoButtonColor = true
+				end
 			end
 		end
 	end
@@ -301,8 +352,18 @@ function Tray.start()
 			end
 		end
 		buttons = {}
-		local kind = roundType()
+		local kind = if atHome() then "room" else roundType()
 		local names = Items.categories(kind)
+		if atHome() then
+			names = {}
+			local seen: { [string]: boolean } = {}
+			for _, item in ipairs(visibleItems()) do
+				if seen[item.category] ~= true then
+					seen[item.category] = true
+					table.insert(names, item.category)
+				end
+			end
+		end
 		local function addChip(label: string, order: number)
 			local chip = Instance.new("TextButton")
 			chip.Name = label
@@ -327,16 +388,21 @@ function Tray.start()
 			addChip(name, index)
 		end
 		local shown = 0
-		for _, item in ipairs(Items.forRound(kind)) do
+		local level = playerLevel()
+		for _, item in ipairs(visibleItems()) do
 			if category == "All" or item.category == category then
 				shown += 1
+				local gate = Levels.gate(item.id, level)
+				local locked = gate.owned ~= true
 				local button = Instance.new("TextButton")
 				button.Name = item.id
-				button.AutoButtonColor = true
+				button.AutoButtonColor = not locked
 				button.Font = UI.face()
-				button.Text = item.name .. "\n" .. tostring(item.cost)
+				button.Text = if locked then item.name .. "\nLv " .. tostring(gate.level) else item.name .. "\n" .. tostring(item.cost)
 				button.TextSize = 14
 				button.TextWrapped = true
+				button.TextTransparency = if locked then 0.45 else 0
+				button.BackgroundTransparency = if locked then 0.35 else 0
 				button.TextColor3 = UI.rgb("ink")
 				button.BackgroundColor3 = UI.rgb(item.color)
 				button.Size = UDim2.fromOffset(112, 64)
@@ -347,9 +413,15 @@ function Tray.start()
 				UI.stroke(button, "ink", 2)
 				buttons[item.id] = button
 				button.Activated:Connect(function()
+					if locked then
+						return
+					end
 					actions.choose(item.id)
 				end)
 				button.InputBegan:Connect(function(input)
+					if locked then
+						return
+					end
 					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 						drag = { id = item.id, input = input, x = input.Position.X, y = input.Position.Y, moved = false }
 					end
@@ -362,7 +434,15 @@ function Tray.start()
 			return
 		end
 		Tray.mark(selectedId)
-		hint.Text = hintFor(kind)
+		if atHome() then
+			local nextUnlock = player:GetAttribute("NextUnlock")
+			if type(nextUnlock) ~= "string" or nextUnlock == "" then
+				nextUnlock = "Your dream home"
+			end
+			hint.Text = nextUnlock
+		else
+			hint.Text = hintFor(kind)
+		end
 		layout()
 		refreshStats()
 	end
@@ -408,6 +488,19 @@ function Tray.start()
 	player:GetAttributeChangedSignal("BuildDone"):Connect(refreshVisibility)
 	player:GetAttributeChangedSignal("CoinsLeft"):Connect(refreshStats)
 	player:GetAttributeChangedSignal("ThemeMatch"):Connect(refreshStats)
+	player:GetAttributeChangedSignal("Level"):Connect(function()
+		rebuild()
+	end)
+	player:GetAttributeChangedSignal("AtHome"):Connect(function()
+		category = "All"
+		rebuild()
+		refreshVisibility()
+	end)
+	player:GetAttributeChangedSignal("NextUnlock"):Connect(function()
+		if atHome() then
+			rebuild()
+		end
+	end)
 	local camera = workspace.CurrentCamera
 	if camera then
 		camera:GetPropertyChangedSignal("ViewportSize"):Connect(layout)

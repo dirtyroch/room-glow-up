@@ -4,7 +4,7 @@ Players decorate a tiny room to a theme against the clock. The server then tours
 
 Auntie Roch, the NPC critic, adds one vote, so a solo round still has a judge. A server holds up to 10 players.
 
-This milestone adds the tour reveal and voting. The shop comes later. The place file is built locally and is not published.
+This milestone adds progression and saves. The shop comes later. The place file is built locally and is not published.
 
 ## Round
 
@@ -14,7 +14,7 @@ This milestone adds the tour reveal and voting. The shop comes later. The place 
 | Theme | 5s | The theme is shown. |
 | Build | 240s | Ends early when every active player has pressed DONE. When the timer ends, every active room that has props is submitted too. |
 | Tour | 10s per submitted room | The camera, spotlight, sting, and crowd emoji follow the server tour index, plot, and label. The last 2s are a lock-in beat: votes freeze, then the camera moves. Rooms from players who left are skipped. A round with nothing to show still passes through Tour. |
-| Results | 25s | Top three on the podium, then back to Lobby. |
+| Results | 30s | The podium first, then coins, XP, level-ups, and unlocks. Then back to Lobby. |
 
 Someone who joins after Lobby spectates until the next Lobby. Phase, time left, theme, and season are replicated with attributes on `ReplicatedStorage.RoundState`. The only client remote is `Remotes.Action`. Requests are type-checked and rate-limited. The client is not trusted.
 
@@ -54,11 +54,31 @@ Props pop in with a short scale tween, a sound, and a few sparkles.
 
 During Tour, everyone except the room's owner can give 1 to 5 stars. Spectators can vote. A vote can change until that room's lock-in beat, and it goes through the same rate-limited Action remote as every other request. With 5 or more votes, the highest and lowest star are dropped before the average.
 
-Auntie Roch adds one vote from Theme Match, item variety, and how full the room is, plus one friendly line from a preset list for that star band. A solo round still has her vote. Players whose stars land within 1 of the final average earn Judge's Eye coins. Those coins sit in a placeholder field until saves arrive.
+Auntie Roch adds one vote from Theme Match, item variety, and how full the room is, plus one friendly line from a preset list for that star band. A solo round still has her vote. Players whose stars land within 1 of the final average earn Judge's Eye coins. At Results the server turns those coins into real coins. It never reads the EyeCoins attribute.
 
-Report targets the room on stage, not a username. The room leaves the round after reports from at least 3 different players, or 40% of the people who can vote, whichever is higher. Votes for a room whose owner left are ignored.
+Report targets the room on stage, not a username. The room leaves the round after reports from at least 3 different players, or half of the people who can vote, whichever is higher. Votes for a room whose owner left are ignored. In a duo room the partner is not an eligible voter and cannot report that room.
 
 Owner names stay off the plot signs, the tour HUD, and the photo card through Tour and Results. The podium is where the names and avatars come back. The polaroid card shows the theme, the stars, and Auntie Roch's line.
+
+## Saves
+
+Profiles are schema version 1, keyed by UserId, with the dream home in its own store (`RoomGlowDream_v1`) so a lobby wipe of the plots cannot erase it. One session holds the lock. Writes retry with backoff. The server saves on leave and on shutdown (`BindToClose`). It does not save during Tour. The profile is written after Results settles.
+
+## Levels and rewards
+
+Coins and XP are granted once per round id, from placement, star average, podium finish, and the Judge's Eye purse. Levels run from 1 to 50. A fresh player owns 40 items, enough to furnish a room. Later levels unlock the rest in a fixed order, and the tray shows locked pieces greyed out with the level they open.
+
+## Dream home
+
+From the lobby a player can visit their dream home. It reuses placement with no budget and only owned items. The shell grows from a studio to a loft at level 15 and a two-storey house at level 30. Up to 3 Lookbook snapshots keep their best contest rooms. A coin multiplier, an extra home slot, and a server luck flag are hooks for the shop. They do not change the game yet.
+
+## Duo
+
+A lobby toggle pairs two opted-in players, such as siblings, into one wider room with a shared budget of 1.5x. Both can place. Neither can vote or report that room, and the partner does not count as an eligible voter.
+
+## Collections, quests, and rank
+
+A theme stamp is earned at 4 stars or better, with a bonus for finishing a season set. Three daily quests are fixed by the Central date and can be finished in about 3 to 4 rounds. Designer Rank is a monthly track. Points do not decay, and the month is not the holiday or winter theme season.
 
 ## Look
 
@@ -95,7 +115,7 @@ That writes `RoomGlowUp.rbxlx` next to the project file. It does not upload the 
 
 ```
 src/shared/     Config, Themes, Items, Bases, UIKit, Logic
-src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, VoteService, RoundService
-src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Juice
-tests/run.luau  Lune tests for rounds, plots, placement, and voting
+src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService
+src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Juice
+tests/run.luau  Lune tests for rounds, plots, placement, voting, saves, and progression
 ```

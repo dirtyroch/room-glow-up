@@ -69,6 +69,9 @@ end
 
 local function onLeave(player: Player)
 	local key = keyOf(player)
+	if ctx.duo and type(ctx.duo.noteLeave) == "function" then
+		ctx.duo.noteLeave(state, key)
+	end
 	RoundEngine.leave(state, key, now())
 	if ctx.rooms then
 		ctx.rooms.forget(key)
@@ -136,11 +139,17 @@ function RoundService.start()
 		RoundEngine.advance(state, at)
 		local nowLocked = RoundEngine.roomLocked(state, at)
 		if state.phase ~= before then
+			if ctx.progress and type(ctx.progress.onPhase) == "function" then
+				ctx.progress.onPhase(state)
+			end
 			if ctx.rooms then
 				ctx.rooms.onPhase(state)
 			end
 			if ctx.votes and type(ctx.votes.onPhase) == "function" then
 				ctx.votes.onPhase(state, at)
+			end
+			if ctx.progress and type(ctx.progress.settle) == "function" then
+				ctx.progress.settle(state)
 			end
 		end
 		acc += dt

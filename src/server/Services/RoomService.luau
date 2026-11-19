@@ -12,6 +12,8 @@ local Config: any = nil
 local Items: any = nil
 local Placement: any = nil
 local RoundEngine: any = nil
+local Levels: any = nil
+local Duo: any = nil
 
 local function catalog(): any
 	return {
@@ -19,6 +21,17 @@ local function catalog(): any
 			return Items.get(id)
 		end,
 	}
+end
+
+local function levelFor(key: string): number
+	if not ctx.saves or not Levels then
+		return 1
+	end
+	local bag = ctx.saves.session(key)
+	if type(bag) ~= "table" or type(bag.profile) ~= "table" then
+		return 1
+	end
+	return Levels.fromXp(bag.profile.xp)
 end
 
 local function contextFor(key: string): any
@@ -35,12 +48,22 @@ local function contextFor(key: string): any
 		roundType = theme.roundType or ""
 		themeId = theme.id or ""
 	end
+	local paired = ctx.duo ~= nil and ctx.duo.paired(key) == true
+	local budget = Config.Budget
+	local maxItems = Config.MaxItems
+	local gridType = roundType
+	if Duo then
+		budget = Duo.budget(Config.Budget, paired)
+		maxItems = Duo.itemCap(Config.MaxItems, paired)
+		gridType = Duo.gridType(roundType, paired)
+	end
+	local level = levelFor(key)
 	return {
 		catalog = catalog(),
 		roundType = roundType,
 		themeId = themeId,
-		budget = Config.Budget,
-		maxItems = Config.MaxItems,
+		budget = budget,
+		maxItems = maxItems,
 		role = role,
 		phase = round.phase,
 		locked = view.done == true,
@@ -50,19 +73,38 @@ local function contextFor(key: string): any
 		palette = Config.Palette,
 		now = Workspace:GetServerTimeNow(),
 		undoCap = Config.UndoCap,
+		gridType = gridType,
+		allow = function(itemId: string): boolean
+			if not Levels then
+				return true
+			end
+			return Levels.owns(itemId, level)
+		end,
 	}
+end
+
+local function plotKey(key: string): string
+	if ctx.dream and ctx.dream.isVisiting(key) then
+		return key
+	end
+	if ctx.duo then
+		return ctx.duo.lead(key)
+	end
+	return key
 end
 
 local function publish(player: Player, key: string, room: any, c: any)
 	local coins = 0
 	local meter = 0
-	if c.role == "active" then
+	if c.freeSpend == true then
+		coins = 999
+	elseif c.role == "active" then
 		coins = Placement.coinsLeft(room, c.budget)
 		meter = Placement.meter(room, c)
 	end
 	player:SetAttribute("CoinsLeft", coins)
 	player:SetAttribute("ThemeMatch", meter)
-	local index = ctx.plots.indexOf(key)
+	local index = ctx.plots.indexOf(plotKey(key))
 	if type(index) == "number" then
 		local model = ctx.plots.model(index)
 		if model then
@@ -73,19 +115,60 @@ local function publish(player: Player, key: string, room: any, c: any)
 end
 
 local function roomFor(key: string): any
-	local room = rooms[key]
+	local lead = key
+	if ctx.duo then
+		lead = ctx.duo.lead(key)
+	end
+	local room = rooms[lead]
+	if not room then
+		room = rooms[key]
+	end
 	if not room then
 		room = Placement.empty()
-		rooms[key] = room
 	end
+	rooms[lead] = room
+	rooms[key] = room
 	return room
+end
+
+-- Contest room, or the dream home when this player is visiting.
+-- The dream table is not `rooms`, so a lobby wipe cannot clear it.
+local function resolve(key: string): (any, any, string, number?)
+	if ctx.dream and ctx.dream.isVisiting(key) then
+		local room, dreamCtx = ctx.dream.editing(key)
+		local index = ctx.plots.indexOf(key)
+		local grid = dreamCtx.gridType
+		if type(grid) ~= "string" then
+			grid = "studio"
+		end
+		return room, dreamCtx, grid, index
+	end
+	local c = contextFor(key)
+	local room = roomFor(key)
+	local lead = key
+	if ctx.duo then
+		lead = ctx.duo.lead(key)
+	end
+	local index = ctx.plots.indexOf(lead)
+	local grid = c.gridType or c.roundType
+	return room, c, grid, index
+end
+
+local function afterEdit(key: string, stat: string?)
+	if ctx.dream and ctx.dream.isVisiting(key) then
+		ctx.dream.sync(key)
+		return
+	end
+	if stat and ctx.progress and type(ctx.progress.bump) == "function" then
+		ctx.progress.bump(key, stat)
+	end
 end
 
 local function apply(key: string, effect: any, roundType: string)
 	if type(effect) ~= "table" or type(effect.piece) ~= "table" then
 		return
 	end
-	local index = ctx.plots.indexOf(key)
+	local index = ctx.plots.indexOf(plotKey(key))
 	if type(index) ~= "number" then
 		return
 	end
@@ -140,13 +223,39 @@ function RoomService.inspect(key: string): any
 		end
 		meter = Placement.meter(room, contextFor(key))
 	end
+	local cap = Config.MaxItems
+	if Duo and ctx.duo and ctx.duo.paired(key) then
+		cap = Duo.itemCap(Config.MaxItems, true)
+	end
 	return {
 		pieces = pieces,
 		unique = unique,
 		spent = spent,
 		meter = meter,
-		maxItems = Config.MaxItems,
+		maxItems = cap,
 	}
+end
+
+function RoomService.copyPieces(key: string): { any }
+	local room = rooms[key]
+	local list: { any } = {}
+	if not room then
+		return list
+	end
+	for _, piece in ipairs(room.pieces) do
+		table.insert(list, {
+			id = piece.id,
+			itemId = piece.itemId,
+			surface = piece.surface,
+			x = piece.x,
+			z = piece.z,
+			rot = piece.rot,
+			color = piece.color,
+			cost = piece.cost,
+			placedAt = piece.placedAt,
+		})
+	end
+	return list
 end
 
 function RoomService.onPhase(round: any)
@@ -171,9 +280,17 @@ function RoomService.onPhase(round: any)
 	if phase == "Build" then
 		ctx.plots.clearItems()
 		ctx.plots.show(roundType)
+		local made: { [string]: any } = {}
 		for _, player in Players:GetPlayers() do
 			local key = tostring(player.UserId)
-			rooms[key] = Placement.empty()
+			local lead = key
+			if ctx.duo then
+				lead = ctx.duo.lead(key)
+			end
+			if not made[lead] then
+				made[lead] = Placement.empty()
+			end
+			rooms[key] = made[lead]
 			local c = contextFor(key)
 			publish(player, key, rooms[key], c)
 		end
@@ -188,11 +305,14 @@ function RoomService.init(c: any)
 	local Logic = Shared:WaitForChild("Logic")
 	Placement = require(Logic:WaitForChild("Placement") :: ModuleScript) :: any
 	RoundEngine = require(Logic:WaitForChild("RoundEngine") :: ModuleScript) :: any
+	Levels = require(Logic:WaitForChild("Levels") :: ModuleScript) :: any
+	Duo = require(Logic:WaitForChild("Duo") :: ModuleScript) :: any
 	ctx.rooms = {
 		welcome = RoomService.welcome,
 		forget = RoomService.forget,
 		onPhase = RoomService.onPhase,
 		inspect = RoomService.inspect,
+		copyPieces = RoomService.copyPieces,
 	}
 
 	ctx.actions.register("Place", { "string", "number", "number" }, function(key: string, args: { any })
@@ -200,16 +320,15 @@ function RoomService.init(c: any)
 		if not player then
 			return false, "You are not in this round."
 		end
-		local index = ctx.plots.indexOf(key)
+		local room, c, grid, index = resolve(key)
 		if type(index) ~= "number" then
 			return false, "No plot yet."
 		end
-		local c = contextFor(key)
-		local room = roomFor(key)
 		local ok, msg, piece = Placement.place(room, c, args[1], args[2], args[3])
 		if ok and piece then
-			ctx.plots.spawnPiece(index, piece, c.roundType, true)
+			ctx.plots.spawnPiece(index, piece, grid, true)
 			publish(player, key, room, c)
+			afterEdit(key, "props")
 			return true, msg, { id = piece.id }
 		end
 		return false, msg
@@ -220,12 +339,12 @@ function RoomService.init(c: any)
 		if not player then
 			return false, "You are not in this round."
 		end
-		local c = contextFor(key)
-		local room = roomFor(key)
+		local room, c, grid = resolve(key)
 		local ok, msg, piece = Placement.rotate(room, c, args[1])
 		if ok and piece then
-			apply(key, { kind = "update", piece = piece }, c.roundType)
+			apply(key, { kind = "update", piece = piece }, grid)
 			publish(player, key, room, c)
+			afterEdit(key, nil)
 			return true, msg, { id = piece.id }
 		end
 		return false, msg
@@ -236,11 +355,9 @@ function RoomService.init(c: any)
 		if not player then
 			return false, "You are not in this round."
 		end
-		local c = contextFor(key)
-		local room = roomFor(key)
+		local room, c, grid, index = resolve(key)
 		local ok, msg, piece = Placement.recolor(room, c, args[1], args[2])
 		if ok and piece then
-			local index = ctx.plots.indexOf(key)
 			if type(index) == "number" then
 				local model = ctx.plots.model(index)
 				local folder = if model then model:FindFirstChild("Items") else nil
@@ -248,10 +365,11 @@ function RoomService.init(c: any)
 				if existing and existing:IsA("Model") then
 					ctx.Props.recolor(existing, piece.color)
 				else
-					apply(key, { kind = "update", piece = piece }, c.roundType)
+					apply(key, { kind = "update", piece = piece }, grid)
 				end
 			end
 			publish(player, key, room, c)
+			afterEdit(key, "recolors")
 			return true, msg, { id = piece.id }
 		end
 		return false, msg
@@ -262,12 +380,12 @@ function RoomService.init(c: any)
 		if not player then
 			return false, "You are not in this round."
 		end
-		local c = contextFor(key)
-		local room = roomFor(key)
+		local room, c, grid = resolve(key)
 		local ok, msg, piece = Placement.delete(room, c, args[1])
 		if ok and piece then
-			apply(key, { kind = "remove", piece = piece }, c.roundType)
+			apply(key, { kind = "remove", piece = piece }, grid)
 			publish(player, key, room, c)
+			afterEdit(key, nil)
 			return true, msg, { id = piece.id }
 		end
 		return false, msg
@@ -278,12 +396,12 @@ function RoomService.init(c: any)
 		if not player then
 			return false, "You are not in this round."
 		end
-		local c = contextFor(key)
-		local room = roomFor(key)
+		local room, c, grid = resolve(key)
 		local ok, msg, effect = Placement.undo(room, c)
 		if ok then
-			apply(key, effect, c.roundType)
+			apply(key, effect, grid)
 			publish(player, key, room, c)
+			afterEdit(key, nil)
 			local id = nil
 			if type(effect) == "table" and type(effect.piece) == "table" then
 				id = effect.piece.id
