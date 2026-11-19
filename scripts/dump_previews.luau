@@ -352,11 +352,29 @@ do
 	local parts = collect(workspace, function(inst)
 		return underPlaza(inst) or string.find(inst:GetFullName(), "Plots", 1, true) ~= nil
 	end)
+	local grade = gradeOf("hearth")
+	-- Spawn-eye view: standing on the spawn plate, looking at the title.
 	scenes.lobby = {
-		camera = { pos = { 6, 12, -8 }, look = { -1, 6.6, -46 } },
+		camera = { pos = { 0, 6.4, 5 }, look = { 0, 11.2, -50 }, lens = 35 },
 		family = "hearth",
-		grade = gradeOf("hearth"),
+		grade = grade,
 		parts = parts,
+	}
+	-- Phone portrait crop, a little closer.
+	scenes.lobby_phone = {
+		camera = { pos = { 0, 6.8, 1 }, look = { 0, 10.6, -50 }, lens = 32 },
+		family = "hearth",
+		grade = grade,
+		parts = parts,
+		size = { 1080, 1920 },
+	}
+	-- Wide elevated view of the whole plaza.
+	scenes.lobby_wide = {
+		camera = { pos = { 2, 16, 24 }, look = { 0, 6, -36 }, lens = 24 },
+		family = "hearth",
+		grade = grade,
+		parts = parts,
+		size = { 2400, 1080 },
 	}
 	print("lobby parts", #parts)
 end
