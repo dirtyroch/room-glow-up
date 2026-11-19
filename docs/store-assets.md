@@ -33,4 +33,6 @@ The shop shows crate odds before you buy. Restricted accounts get a fixed set in
 | Experience icon | 512×512 | PNG |
 | Experience thumbnail | 1920×1080 | PNG |
 
-The icon and thumbnail next to this note are drawn by `scripts/render_scenes.py`, along with the lobby, room, tour, and podium stills in `docs/renders/`. They are approximate offline pictures. Nothing here is uploaded.
+The icon (`store-icon.png`, 512×512) and thumbnail (`store-thumbnail.png`, 1920×1080) are polished from honest 3D previews of the live builder geometry, composited with a 5-star reveal and a blocky kid-friendly look. The thumbnail title is "Room Glow Up". There is no Roblox logo, no fake urgency, and no feature the game does not have.
+
+The stills in `docs/renders/rgu3d-*.png` are Eevee renders of the actual parts (sizes, CFrames, colors, materials) dumped from the modules. Older `after-*.png` diagrams are flat 2D and should not be used as store art. Nothing here is uploaded.
