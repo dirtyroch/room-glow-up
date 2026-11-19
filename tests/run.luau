@@ -1,5 +1,5 @@
 --!nocheck
--- Round loop, themes, and the action handler. Run with: lune run tests/run.luau
+-- Round loop, themes, placement, and voting. Run with: lune run tests/run.luau
 local process = require("@lune/process")
 local fs = require("@lune/fs")
 
@@ -15,6 +15,7 @@ local Bases = require("../src/shared/Bases")
 local Items = require("../src/shared/Items")
 local Plots = require("../src/shared/Logic/Plots")
 local Placement = require("../src/shared/Logic/Placement")
+local Voting = require("../src/shared/Logic/Voting")
 
 local passed, failed = 0, 0
 local current = ""
@@ -67,8 +68,11 @@ test("phase timings match the round loop", function()
 	eq(Config.Phases.Lobby, 20)
 	eq(Config.Phases.ThemeReveal, 5)
 	eq(Config.Phases.Build, 240)
-	eq(Config.Phases.TourPerRoom, 8)
-	eq(Config.Phases.Results, 15)
+	eq(Config.Phases.TourPerRoom, 10)
+	eq(Config.Phases.TourLockIn, 2)
+	eq(Config.Phases.Results, 25)
+	truthy(Config.Phases.TourLockIn > 0)
+	truthy(Config.Phases.TourLockIn < Config.Phases.TourPerRoom)
 	eq(#Config.PhaseOrder, 5)
 	eq(Config.PhaseOrder[1], "Lobby")
 	eq(Config.PhaseOrder[2], "ThemeReveal")
@@ -331,14 +335,16 @@ test("every phase runs, then the next lobby starts", function()
 	eq(msg, "Locked in.")
 	eq(state.phase, "Tour")
 	eq(#state.tourStops, 1)
-	eq(RoundEngine.timeLeft(state, 25), 8)
+	eq(RoundEngine.timeLeft(state, 25), Config.Phases.TourPerRoom)
 	eq(RoundEngine.snapshot(state, 25).tourLabel, "Room 1 of 1")
-	RoundEngine.advance(state, 32)
+	eq(RoundEngine.snapshot(state, 25).tourLocked, false)
+	local tourEnd = 25 + Config.Phases.TourPerRoom
+	RoundEngine.advance(state, tourEnd - 1)
 	eq(state.phase, "Tour")
-	RoundEngine.advance(state, 33)
+	RoundEngine.advance(state, tourEnd)
 	eq(state.phase, "Results")
 	eq(state.history[1], "hearth_cocoa")
-	RoundEngine.advance(state, 48)
+	RoundEngine.advance(state, tourEnd + Config.Phases.Results)
 	eq(state.phase, "Lobby")
 	eq(state.roundIndex, 1)
 	local seen = {}
@@ -362,7 +368,7 @@ test("build uses the full timer when someone has not pressed DONE", function()
 	eq(state.phase, "Tour")
 	eq(#state.tourStops, 1)
 	eq(state.tourStops[1], "mike")
-	eq(RoundEngine.timeLeft(state, 265), 8)
+	eq(RoundEngine.timeLeft(state, 265), Config.Phases.TourPerRoom)
 end)
 
 test("build ends early when every active player has pressed DONE", function()
@@ -374,7 +380,7 @@ test("build ends early when every active player has pressed DONE", function()
 	eq(state.phase, "Build")
 	RoundEngine.pressDone(state, "sam", 40)
 	eq(state.phase, "Tour")
-	eq(state.phaseEndsAt, 56)
+	eq(state.phaseEndsAt, 40 + 2 * Config.Phases.TourPerRoom)
 	eq(state.tourStops[1], "mike")
 	eq(state.tourStops[2], "sam")
 	local again = RoundEngine.pressDone(state, "mike", 41)
@@ -437,15 +443,16 @@ test("joining mid-round spectates, then plays the next lobby", function()
 	eq(state.phase, "Tour")
 	eq(#state.tourStops, 1)
 	eq(state.tourStops[1], "mike")
-	RoundEngine.advance(state, 28 + 8 + 15)
+	local back = 28 + Config.Phases.TourPerRoom + Config.Phases.Results
+	RoundEngine.advance(state, back)
 	eq(state.phase, "Lobby")
 	eq(RoundEngine.playerView(state, "lee").spectating, false)
 	eq(state.players.lee.role, "active")
-	RoundEngine.advance(state, 28 + 8 + 15 + 20)
+	RoundEngine.advance(state, back + 20)
 	eq(state.phase, "ThemeReveal")
-	RoundEngine.advance(state, 28 + 8 + 15 + 20 + 5)
+	RoundEngine.advance(state, back + 25)
 	eq(state.phase, "Build")
-	local played = RoundEngine.pressDone(state, "lee", 76)
+	local played = RoundEngine.pressDone(state, "lee", back + 25)
 	eq(played, true)
 end)
 
@@ -470,13 +477,13 @@ test("leaving during your tour segment skips the rest of it", function()
 	RoundEngine.pressDone(state, "mike", 30)
 	RoundEngine.pressDone(state, "sam", 31)
 	eq(state.phase, "Tour")
-	eq(state.phaseEndsAt, 47)
+	eq(state.phaseEndsAt, 31 + 2 * Config.Phases.TourPerRoom)
 	RoundEngine.leave(state, "mike", 33)
 	eq(state.phase, "Tour")
 	eq(#state.tourStops, 1)
 	eq(state.tourStops[1], "sam")
-	eq(state.phaseEndsAt, 41)
-	RoundEngine.advance(state, 41)
+	eq(state.phaseEndsAt, 33 + Config.Phases.TourPerRoom)
+	RoundEngine.advance(state, 33 + Config.Phases.TourPerRoom)
 	eq(state.phase, "Results")
 end)
 
@@ -491,7 +498,7 @@ test("leaving before your tour stop drops that stop only", function()
 	eq(state.phase, "Tour")
 	eq(#state.tourStops, 1)
 	eq(state.tourStops[1], "mike")
-	eq(state.phaseEndsAt, 39)
+	eq(state.phaseEndsAt, 31 + Config.Phases.TourPerRoom)
 end)
 
 test("the tour moves to the next room every TourPerRoom seconds", function()
@@ -508,25 +515,36 @@ test("the tour moves to the next room every TourPerRoom seconds", function()
 	eq(RoundEngine.snapshot(state, 32).tourLabel, "Room 1 of 3")
 	eq(RoundEngine.snapshot(state, 32).tourIndex, 1)
 	eq(RoundEngine.snapshot(state, 32).tourTarget, "mike")
-	eq(state.phaseEndsAt, 56)
-	RoundEngine.advance(state, 39)
+	local per = Config.Phases.TourPerRoom
+	local lockIn = Config.Phases.TourLockIn
+	eq(state.phaseEndsAt, 32 + 3 * per)
+	RoundEngine.advance(state, 32 + per - lockIn - 0.1)
 	eq(state.phase, "Tour")
 	eq(state.tourIndex, 1)
-	eq(RoundEngine.snapshot(state, 39).tourLabel, "Room 1 of 3")
-	RoundEngine.advance(state, 40)
+	eq(RoundEngine.snapshot(state, 32 + per - lockIn - 0.1).tourLabel, "Room 1 of 3")
+	eq(RoundEngine.snapshot(state, 32 + per - lockIn - 0.1).tourLocked, false)
+	local lockAt = 32 + per - lockIn
+	RoundEngine.advance(state, lockAt)
+	eq(state.tourIndex, 1)
+	eq(state.tourStops[state.tourIndex], "mike")
+	eq(RoundEngine.snapshot(state, lockAt).tourLocked, true)
+	eq(RoundEngine.snapshot(state, lockAt).tourTarget, "mike")
+	truthy(string.find(RoundEngine.snapshot(state, lockAt).tourLabel, "Locked", 1, true) ~= nil)
+	RoundEngine.advance(state, 32 + per)
 	eq(state.phase, "Tour")
 	eq(state.tourIndex, 2)
 	eq(state.tourStops[state.tourIndex], "sam")
-	eq(RoundEngine.snapshot(state, 40).tourLabel, "Room 2 of 3")
-	eq(RoundEngine.snapshot(state, 40).tourIndex, 2)
-	eq(RoundEngine.snapshot(state, 40).tourTarget, "sam")
-	eq(state.phaseEndsAt, 56)
-	RoundEngine.advance(state, 48)
+	eq(RoundEngine.snapshot(state, 32 + per).tourLabel, "Room 2 of 3")
+	eq(RoundEngine.snapshot(state, 32 + per).tourIndex, 2)
+	eq(RoundEngine.snapshot(state, 32 + per).tourTarget, "sam")
+	eq(RoundEngine.snapshot(state, 32 + per).tourLocked, false)
+	eq(state.phaseEndsAt, 32 + 3 * per)
+	RoundEngine.advance(state, 32 + 2 * per)
 	eq(state.tourIndex, 3)
-	eq(RoundEngine.snapshot(state, 48).tourLabel, "Room 3 of 3")
-	RoundEngine.advance(state, 55)
+	eq(RoundEngine.snapshot(state, 32 + 2 * per).tourLabel, "Room 3 of 3")
+	RoundEngine.advance(state, 32 + 3 * per - 1)
 	eq(state.phase, "Tour")
-	RoundEngine.advance(state, 56)
+	RoundEngine.advance(state, 32 + 3 * per)
 	eq(state.phase, "Results")
 end)
 
@@ -540,15 +558,18 @@ test("a late tour tick still lands on the scheduled room", function()
 	RoundEngine.pressDone(state, "sam", 31)
 	RoundEngine.pressDone(state, "lee", 32)
 	-- Jump from the start of the tour to the middle of room 3.
-	RoundEngine.advance(state, 50)
+	local per = Config.Phases.TourPerRoom
+	local at = 32 + 2 * per + 5
+	RoundEngine.advance(state, at)
 	eq(state.phase, "Tour")
 	eq(state.tourIndex, 3)
 	eq(state.tourStops[state.tourIndex], "lee")
-	eq(RoundEngine.snapshot(state, 50).tourLabel, "Room 3 of 3")
-	eq(RoundEngine.timeLeft(state, 50), 6)
-	RoundEngine.advance(state, 56)
+	eq(RoundEngine.snapshot(state, at).tourLabel, "Room 3 of 3")
+	eq(RoundEngine.timeLeft(state, at), per - 5)
+	local resultsAt = 32 + 3 * per
+	RoundEngine.advance(state, resultsAt)
 	eq(state.phase, "Results")
-	eq(state.phaseStartedAt, 56)
+	eq(state.phaseStartedAt, resultsAt)
 end)
 
 test("build ends right away if every active player already left", function()
@@ -597,17 +618,18 @@ test("a full round works with 1, 3, and 10 players", function()
 			local tourStart = 25 + count
 			eq(state.phase, "Tour")
 			eq(#state.tourStops, count)
+			local per = Config.Phases.TourPerRoom
 			for i = 1, count do
-				local at = tourStart + (i - 1) * 8
+				local at = tourStart + (i - 1) * per
 				RoundEngine.advance(state, at)
 				eq(state.phase, "Tour")
 				eq(state.tourIndex, i)
 				eq(RoundEngine.snapshot(state, at).tourLabel, string.format("Room %d of %d", i, count))
 			end
-			local tourEnd = tourStart + count * 8
+			local tourEnd = tourStart + count * per
 			RoundEngine.advance(state, tourEnd)
 			eq(state.phase, "Results")
-			RoundEngine.advance(state, tourEnd + 15)
+			RoundEngine.advance(state, tourEnd + Config.Phases.Results)
 			eq(state.phase, "Lobby")
 			eq(state.roundIndex, 1)
 		else
@@ -617,7 +639,7 @@ test("a full round works with 1, 3, and 10 players", function()
 			RoundEngine.advance(state, 265)
 			eq(state.phase, "Results")
 			eq(#state.tourStops, 0)
-			RoundEngine.advance(state, 280)
+			RoundEngine.advance(state, 265 + Config.Phases.Results)
 			eq(state.phase, "Lobby")
 		end
 		return state
@@ -664,9 +686,10 @@ test("the next holiday round rotates type and keeps the last 10", function()
 	RoundEngine.join(state, "mike", 0)
 	RoundEngine.advance(state, 25)
 	RoundEngine.pressDone(state, "mike", 25)
-	RoundEngine.advance(state, 48)
+	local lobbyAt = 25 + Config.Phases.TourPerRoom + Config.Phases.Results
+	RoundEngine.advance(state, lobbyAt)
 	eq(state.phase, "Lobby")
-	RoundEngine.advance(state, 68)
+	RoundEngine.advance(state, lobbyAt + 20)
 	eq(state.phase, "ThemeReveal")
 	eq(state.theme.roundType, "gingerbread")
 	eq(state.theme.id, "gumdrop_gable")
@@ -688,8 +711,9 @@ test("host theme applies on the next reveal, then rotation resumes", function()
 	eq(during, true)
 	eq(state.theme.id, "paper_star")
 	RoundEngine.pressDone(state, "mike", 25)
-	RoundEngine.advance(state, 48)
-	RoundEngine.advance(state, 68)
+	local lobbyAt = 25 + Config.Phases.TourPerRoom + Config.Phases.Results
+	RoundEngine.advance(state, lobbyAt)
+	RoundEngine.advance(state, lobbyAt + 20)
 	eq(state.theme.id, "bell_branch")
 end)
 
@@ -704,11 +728,12 @@ test("auto season flips to winter after Dec 31", function()
 	eq(state.theme.season, "holiday")
 	RoundEngine.advance(state, 25)
 	RoundEngine.pressDone(state, "mike", 25)
-	RoundEngine.advance(state, 48)
+	local lobbyAt = 25 + Config.Phases.TourPerRoom + Config.Phases.Results
+	RoundEngine.advance(state, lobbyAt)
 	RoundEngine.setUnixNow(state, function()
 		return Season.unix(2027, 1, 1, 6, 0, 0)
 	end)
-	RoundEngine.advance(state, 68)
+	RoundEngine.advance(state, lobbyAt + 20)
 	eq(state.phase, "ThemeReveal")
 	eq(state.theme.season, "winter")
 	eq(state.season, "winter")
@@ -876,8 +901,8 @@ test("ten plots are assigned on join and freed for the next player", function()
 end)
 
 print("Library")
-test("120 props, theme tags, and no banned words", function()
-	eq(#Items.list, 120)
+test("128 props, theme tags, and no banned words", function()
+	eq(#Items.list, 128)
 	eq(Config.ItemScale, 1.2)
 	truthy(math.abs(Bases.worldCell() - Config.Cell * Config.ItemScale) < 1e-6)
 	local ids = {}
@@ -943,7 +968,24 @@ test("120 props, theme tags, and no banned words", function()
 			end
 		end
 	end
-	eq(counts.room + counts.gingerbread + counts.tree, 120)
+	eq(counts.room + counts.gingerbread + counts.tree, 128)
+	local cheap = 0
+	for _, item in ipairs(Items.list) do
+		if item.cost <= 4 and item.w * item.d == 2 then
+			cheap += 1
+		end
+	end
+	truthy(cheap >= 6 and cheap <= 8, "cheap 2-cell pieces " .. tostring(cheap))
+	local rug = Items.get("dot_rug")
+	eq(rug.cost, 4)
+	eq(rug.w, 2)
+	eq(rug.d, 1)
+	truthy(rug.h <= 0.1)
+	eq(rug.surface, "floor")
+	local accent = Items.get("bow_accent")
+	eq(accent.cost, 4)
+	eq(accent.w * accent.d, 2)
+	truthy(accent.h > 0.1)
 	truthy(counts.room >= 40)
 	truthy(counts.gingerbread >= 16)
 	truthy(counts.tree >= 16)
@@ -1155,7 +1197,7 @@ test("a room stops at the item cap", function()
 	end
 	eq(#rooms, 10)
 	eq(Config.MaxItems, 16)
-	eq(Config.Budget, 96)
+	eq(Config.Budget, 128)
 end)
 
 print("Auto submit")
@@ -1292,6 +1334,17 @@ test("placement input and the tour camera follow the server", function()
 	truthy(string.find(tour, "task.wait", 1, true) == nil)
 	truthy(string.find(tour, "task.delay", 1, true) == nil)
 	truthy(string.find(string.lower(tour), "tourperroom", 1, true) == nil)
+	local show = fs.readFile("src/client/Show.luau")
+	truthy(string.find(show, "TourIndex", 1, true) ~= nil)
+	truthy(string.find(show, "TourLabel", 1, true) ~= nil)
+	truthy(string.find(show, "TourPlot", 1, true) ~= nil)
+	truthy(string.find(show, "SpotLight", 1, true) ~= nil)
+	truthy(string.find(show, "Sound", 1, true) ~= nil)
+	truthy(string.find(show, "task.wait", 1, true) == nil)
+	truthy(string.find(show, "task.delay", 1, true) == nil)
+	truthy(string.find(string.lower(show), "tourperroom", 1, true) == nil)
+	truthy(string.find(show, "Voting", 1, true) == nil)
+	truthy(string.find(show, "Net", 1, true) == nil)
 	local juice = fs.readFile("src/client/Juice.luau")
 	truthy(string.find(juice, "TweenService", 1, true) ~= nil)
 	truthy(string.find(juice, "ParticleEmitter", 1, true) ~= nil)
@@ -1309,6 +1362,290 @@ test("placement input and the tour camera follow the server", function()
 		end
 	end
 	walk("src")
+end)
+
+print("Voting")
+local function near(a, b, msg)
+	if type(a) ~= "number" or math.abs(a - b) > 1e-6 then
+		error(string.format("%s: expected %s, got %s", msg or current, tostring(b), tostring(a)), 2)
+	end
+end
+
+local function openGate(owner, role, voters)
+	return {
+		phase = "Tour",
+		locked = false,
+		tourTarget = owner,
+		role = role or "active",
+		ownerPresent = true,
+		voterCount = voters or 6,
+	}
+end
+
+local lowFacts = { meter = 0, unique = 1, pieces = 8, maxItems = 16 }
+local highFacts = { meter = 80, unique = 6, pieces = 8, maxItems = 16 }
+
+test("trimmed average drops the high and low star at 5 votes", function()
+	near(Voting.average({ 1, 2, 3, 4, 5 }, Config.Voting.TrimAt), 3)
+	near(Voting.average({ 5, 5, 5, 1, 1 }, Config.Voting.TrimAt), (5 + 5 + 1) / 3)
+	near(Voting.average({ 1, 2, 3, 4 }, Config.Voting.TrimAt), 2.5)
+	near(Voting.average({ 5 }, Config.Voting.TrimAt), 5)
+	eq(Voting.withinEye(4, 3, Config.Voting.EyeWindow), true)
+	eq(Voting.withinEye(2, 3, Config.Voting.EyeWindow), true)
+	eq(Voting.withinEye(5, 3, Config.Voting.EyeWindow), false)
+	eq(Voting.withinEye(1, 2.5, 1), false)
+	eq(Voting.withinEye(2, 2.5, 1), true)
+end)
+
+test("a player cannot vote on their own room, and a spectator can", function()
+	local state = Voting.create()
+	local denied, why = Voting.cast(state, "mike", "mike", 5, openGate("mike", "active"), Config)
+	eq(denied, false)
+	eq(why, "You cannot vote on your own room.")
+	eq(state.rooms.mike, nil)
+	local watching, watchWhy = Voting.cast(state, "lee", "mike", 4, openGate("mike", "spectator"), Config)
+	eq(watching, true)
+	eq(watchWhy, "Voted.")
+	eq(state.rooms.mike.votes.lee, 4)
+	eq(state.rooms.mike.votes.mike, nil)
+end)
+
+test("a vote can change until lock-in, and a late vote is rejected", function()
+	local state = Voting.create()
+	local open = openGate("mike", "active")
+	eq(Voting.cast(state, "sam", "mike", 2, open, Config), true)
+	eq(Voting.cast(state, "sam", "mike", 5, open, Config), true)
+	eq(state.rooms.mike.votes.sam, 5)
+	local keys = 0
+	for _ in pairs(state.rooms.mike.votes) do
+		keys += 1
+	end
+	eq(keys, 1)
+	local locked = openGate("mike", "active")
+	locked.locked = true
+	local late, lateWhy = Voting.cast(state, "sam", "mike", 1, locked, Config)
+	eq(late, false)
+	eq(lateWhy, "Votes are locked.")
+	eq(state.rooms.mike.votes.sam, 5)
+	local missed = Voting.cast(state, "ada", "mike", 3, locked, Config)
+	eq(missed, false)
+	eq(state.rooms.mike.votes.ada, nil)
+end)
+
+test("Vote and Report share the action remote and will not take a username", function()
+	local state = Voting.create()
+	local gate = openGate("room", "active", 10)
+	local api = Actions.create({
+		globalBurst = Config.RateLimit.globalBurst,
+		globalRefill = Config.RateLimit.globalRefill,
+		actionBurst = Config.RateLimit.actionBurst,
+		actionRefill = Config.RateLimit.actionRefill,
+		nameMax = Config.RateLimit.nameMax,
+	})
+	api.register("Vote", { "number" }, function(key, args)
+		return Voting.cast(state, key, "room", args[1], gate, Config)
+	end)
+	api.register("Report", {}, function(key)
+		local ok, msg = Voting.report(state, key, "room", gate, Config)
+		return ok, msg
+	end)
+	eq(api.handle("p", "Vote", { "sam" }, 0), false)
+	eq(api.handle("p", "Report", { "sam" }, 0), false)
+	for _ = 1, Config.RateLimit.actionBurst do
+		eq(api.handle("p", "Vote", { 4 }, 0), true)
+	end
+	local limited, why = api.handle("p", "Vote", { 1 }, 0)
+	eq(limited, false)
+	eq(why, "Slow down a moment.")
+	eq(state.rooms.room.votes.p, 4)
+	eq(api.handle("p", "Report", {}, 0), true)
+	local voteSrc = fs.readFile("src/server/Services/VoteService.luau")
+	truthy(string.find(voteSrc, 'register("Vote", { "number" }', 1, true) ~= nil)
+	truthy(string.find(voteSrc, 'register("Report", {}', 1, true) ~= nil)
+	truthy(string.find(voteSrc, "tourTarget", 1, true) ~= nil)
+	truthy(string.find(voteSrc, "DataStore", 1, true) == nil)
+	local actionSrc = fs.readFile("src/server/Services/ActionService.luau")
+	truthy(string.find(actionSrc, "Vote", 1, true) == nil)
+end)
+
+test("a room is removed at the higher of 3 reports or 40 percent", function()
+	eq(Voting.threshold(10, Config), 4)
+	eq(Voting.threshold(8, Config), 4)
+	eq(Voting.threshold(5, Config), 3)
+	eq(Voting.threshold(2, Config), 3)
+	eq(Voting.threshold(20, Config), 8)
+	eq(Voting.threshold(0, Config), 3)
+	local state = Voting.create()
+	local gate = openGate("mike", "spectator", 10)
+	for i = 1, 3 do
+		local ok, _, removed = Voting.report(state, "p" .. tostring(i), "mike", gate, Config)
+		eq(ok, true)
+		eq(removed, false)
+	end
+	local again, _, againRemoved = Voting.report(state, "p1", "mike", gate, Config)
+	eq(again, true)
+	eq(againRemoved, false)
+	local ok, _, removed = Voting.report(state, "p4", "mike", gate, Config)
+	eq(ok, true)
+	eq(removed, true)
+	eq(state.rooms.mike.removed, true)
+	local own = Voting.report(state, "mike", "mike", openGate("mike", "active", 10), Config)
+	eq(own, false)
+	local small = Voting.create()
+	local few = openGate("ada", "active", 5)
+	eq(select(3, Voting.report(small, "a", "ada", few, Config)), false)
+	eq(select(3, Voting.report(small, "b", "ada", few, Config)), false)
+	eq(select(3, Voting.report(small, "c", "ada", few, Config)), true)
+end)
+
+test("Auntie Roch's vote and line are deterministic", function()
+	local stars, line = Voting.critic(highFacts, Config)
+	local againStars, againLine = Voting.critic(highFacts, Config)
+	eq(stars, 4)
+	eq(againStars, stars)
+	eq(againLine, line)
+	eq(line, "Lovely variety, and the theme is clear.")
+	local lowStars, lowLine = Voting.critic(lowFacts, Config)
+	local lowAgain, lowLineAgain = Voting.critic(lowFacts, Config)
+	eq(lowStars, 1)
+	eq(lowAgain, lowStars)
+	eq(lowLineAgain, lowLine)
+	eq(lowLine, "I can see the idea. Let's welcome the theme in.")
+	local fullStars = Voting.critic({ meter = 100, unique = 8, pieces = 16, maxItems = 16 }, Config)
+	eq(fullStars, 5)
+	truthy(lowLine ~= line)
+	local solo = Voting.create()
+	Voting.ensure(solo, "mike")
+	local rows = Voting.finalize(solo, { mike = highFacts }, { mike = true }, Config)
+	eq(#rows, 1)
+	eq(rows[1].criticStars, stars)
+	eq(rows[1].average, stars)
+	eq(rows[1].comment, line)
+	eq(solo.eyeCoins.mike, nil)
+end)
+
+test("Judge's Eye pays the placeholder purse for stars near the final average", function()
+	local state = Voting.create()
+	local facts = { ada = lowFacts, bea = lowFacts }
+	for _, pair in ipairs({
+		{ "p1", 1 },
+		{ "p2", 2 },
+		{ "p3", 3 },
+		{ "p4", 4 },
+		{ "p5", 5 },
+	}) do
+		eq(Voting.cast(state, pair[1], "ada", pair[2], openGate("ada"), Config), true)
+	end
+	eq(Voting.cast(state, "p2", "bea", 1, openGate("bea"), Config), true)
+	Voting.ensure(state, "bea")
+	local rows = Voting.finalize(state, facts, { ada = true, bea = true }, Config)
+	eq(#rows, 2)
+	eq(rows[1].owner, "ada")
+	near(rows[1].average, 2.5)
+	eq(rows[1].criticStars, 1)
+	eq(rows[2].owner, "bea")
+	near(rows[2].average, 1)
+	eq(state.eyeCoins.p1, nil)
+	eq(state.eyeCoins.p2, Config.Voting.EyeCoins * 2)
+	eq(state.eyeCoins.p3, Config.Voting.EyeCoins)
+	eq(state.eyeCoins.p4, nil)
+	eq(state.eyeCoins.p5, nil)
+	eq(state.eyeCoins[Config.Critic.id], nil)
+end)
+
+test("votes for a room whose owner left are ignored", function()
+	local state = Voting.create()
+	eq(Voting.cast(state, "sam", "mike", 1, openGate("mike"), Config), true)
+	eq(Voting.cast(state, "sam", "lee", 2, openGate("lee"), Config), true)
+	local rows = Voting.finalize(state, { mike = lowFacts, lee = lowFacts }, { lee = true, sam = true }, Config)
+	eq(#rows, 1)
+	eq(rows[1].owner, "lee")
+	near(rows[1].average, 1.5)
+	eq(state.eyeCoins.sam, Config.Voting.EyeCoins)
+	local gone = Voting.cast(state, "sam", "mike", 5, {
+		phase = "Tour",
+		locked = false,
+		tourTarget = "mike",
+		role = "active",
+		ownerPresent = false,
+		voterCount = 4,
+	}, Config)
+	eq(gone, false)
+end)
+
+test("names stay hidden until the podium", function()
+	eq(Voting.signLabel("Tour", 4, "Mike"), "Room 4")
+	eq(Voting.signLabel("Results", 4, "Mike"), "Room 4")
+	eq(Voting.signLabel("Build", 4, "Mike"), "Mike")
+	eq(Voting.signLabel("Lobby", 4, ""), "Plot 4")
+	local card = Voting.photoCard({
+		theme = "Cocoa Hearth",
+		stars = 4.5,
+		line = "Oh, this glows. The theme is right at home.",
+		name = "Mike",
+	})
+	eq(card.theme, "Cocoa Hearth")
+	near(card.stars, 4.5)
+	eq(card.line, "Oh, this glows. The theme is right at home.")
+	eq(card.name, nil)
+	eq(card.owner, nil)
+	local rows = {
+		{ owner = "1", average = 5, comment = "A full glow-up. The theme is everywhere it should be.", criticStars = 5 },
+		{ owner = "2", average = 4, comment = "Oh, this glows. The theme is right at home.", criticStars = 4 },
+		{ owner = "3", average = 3, comment = "A happy room. The theme feels welcome.", criticStars = 3 },
+		{ owner = "4", average = 2, comment = "Getting there. The theme is peeking through.", criticStars = 2 },
+	}
+	local payload = Voting.encodeBoard(rows, { ["1"] = "Ada", ["2"] = "Bea", ["3"] = "Cal", ["4"] = "Dee" }, Config.Voting.Podium)
+	local decoded = Voting.decodeBoard(payload)
+	eq(decoded[1].name, "Ada")
+	eq(decoded[1].userId, "1")
+	eq(decoded[3].name, "Cal")
+	eq(decoded[4].name, "")
+	eq(decoded[4].userId, "")
+	near(decoded[4].average, 2)
+	eq(decoded[4].comment, "Getting there. The theme is peeking through.")
+	local plots = fs.readFile("src/server/Services/PlotService.luau")
+	truthy(string.find(plots, "signLabel", 1, true) ~= nil)
+	truthy(string.find(plots, "label.Text = display", 1, true) == nil)
+	local hud = fs.readFile("src/client/Hud.luau")
+	truthy(string.find(hud, "DisplayName", 1, true) == nil)
+	local voteUi = fs.readFile("src/client/Vote.luau")
+	truthy(string.find(voteUi, "DisplayName", 1, true) == nil)
+	truthy(string.find(voteUi, "photoCard", 1, true) ~= nil)
+	truthy(string.find(voteUi, "UIKit.bands", 1, true) ~= nil)
+	truthy(string.find(voteUi, "bands.tray", 1, true) ~= nil)
+	truthy(string.find(voteUi, "bands.reveal", 1, true) ~= nil)
+	truthy(string.find(voteUi, 'Net.act("Report")', 1, true) ~= nil)
+	truthy(string.find(voteUi, 'Net.act("Vote"', 1, true) ~= nil)
+end)
+
+test("a reported room leaves the tour and the panels stay off the board", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.join(state, "sam", 0)
+	RoundEngine.join(state, "lee", 0)
+	RoundEngine.advance(state, 25)
+	RoundEngine.pressDone(state, "mike", 30)
+	RoundEngine.pressDone(state, "sam", 31)
+	RoundEngine.pressDone(state, "lee", 32)
+	eq(state.tourStops[1], "mike")
+	RoundEngine.removeStop(state, "mike", 33)
+	eq(state.phase, "Tour")
+	eq(#state.tourStops, 2)
+	eq(state.tourStops[1], "sam")
+	eq(state.tourIndex, 1)
+	for _, height in ipairs({ 420, 480, 520, 700, 800 }) do
+		local bands = UIKit.bands(height)
+		local tourTop = bands.tray.top
+		local tourBottom = bands.tray.bottom
+		local resultsTop = bands.reveal.top
+		local resultsBottom = bands.tray.bottom
+		truthy(tourTop >= bands.board.bottom + 4, "tour " .. tostring(height))
+		truthy(tourBottom <= bands.done.top - 4, "tour button " .. tostring(height))
+		truthy(resultsTop >= bands.board.bottom + 4, "results " .. tostring(height))
+		truthy(resultsBottom <= bands.done.top - 4, "results button " .. tostring(height))
+		truthy(tourBottom - tourTop >= 90, "tray " .. tostring(height))
+	end
 end)
 
 print(string.format("\n%d passed, %d failed", passed, failed))

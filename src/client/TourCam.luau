@@ -1,6 +1,7 @@
 --!strict
 -- Moves the camera when the server changes tour index, tour plot, or tour label.
--- It does not advance rooms on a client timer.
+-- It does not advance rooms on a client timer. A lock-in mark in the label keeps
+-- the same plot, so the camera stays until the server moves the index.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

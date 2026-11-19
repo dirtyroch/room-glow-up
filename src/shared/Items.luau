@@ -57,6 +57,14 @@ ribbon_rug|Ribbon Rug|Rugs|8|floor|2|1|0.08|slab|lavender|room ribbon_window qui
 flannel_mat|Flannel Mat|Rugs|8|floor|2|2|0.08|slab|butter|room flannel_corner blanket_fort
 birch_mat|Birch Mat|Rugs|8|floor|2|1|0.08|slab|mint|room birch_den lantern_mudroom
 star_mat|Star Mat|Rugs|6|floor|1|1|0.08|slab|butter|room starlight_nook snowfall_sunroom
+dot_rug|Dot Rug|Rugs|4|floor|2|1|0.08|slab|coral|room hearth_cocoa stocking_mantel
+stripe_rug|Stripe Rug|Rugs|4|floor|2|1|0.08|slab|mint|room ribbon_window quilted_window
+checker_rug|Checker Rug|Rugs|4|floor|2|1|0.08|slab|butter|room starlight_nook snowfall_sunroom
+plaid_rug|Plaid Rug|Rugs|4|floor|2|1|0.08|slab|lavender|room flannel_corner blanket_fort
+pebble_rug|Pebble Rug|Rugs|4|floor|2|1|0.08|slab|cream|room birch_den lantern_mudroom
+bow_accent|Bow Accent|Accents|4|floor|2|1|0.22|slab|coral|room sleigh_entry carol_piano
+sprig_accent|Sprig Accent|Accents|4|floor|2|1|0.22|slab|mint|room pinecone_shelf frosted_window
+spark_accent|Spark Accent|Accents|4|floor|2|1|0.22|slab|butter|room nutcracker_nook snow_globe_parlor
 mini_pine|Mini Pine|Plants|8|floor|1|1|1.4|plant|mint|room sleigh_entry birch_den
 potted_spruce|Potted Spruce|Plants|8|floor|1|1|1.35|plant|mint|room frosted_window snowfall_sunroom
 berry_pot|Berry Pot|Plants|6|floor|1|1|0.8|plant|coral|room stocking_mantel quilted_window
