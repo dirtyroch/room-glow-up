@@ -88,6 +88,31 @@ function Duo.freeze(group: Group, ids: { string })
 	end
 end
 
+-- Mirror Duo pairs whoever is playing. Opt-in is not required.
+-- This does not record a display name.
+function Duo.pairAll(group: Group, ids: { string })
+	local wanting: { string } = {}
+	for _, id in ipairs(ids) do
+		table.insert(wanting, id)
+	end
+	table.sort(wanting)
+	group.partner = {}
+	group.lead = {}
+	group.scale = {}
+	local index = 1
+	while index + 1 <= #wanting do
+		local a = wanting[index]
+		local b = wanting[index + 1]
+		group.partner[a] = b
+		group.partner[b] = a
+		group.lead[a] = a
+		group.lead[b] = a
+		group.scale[a] = true
+		group.scale[b] = true
+		index += 2
+	end
+end
+
 function Duo.clearRound(group: Group)
 	group.partner = {}
 	group.lead = {}

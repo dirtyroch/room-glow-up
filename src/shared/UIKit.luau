@@ -246,4 +246,74 @@ function UIKit.shop(viewportHeight: number): ShopFit
 	}
 end
 
+export type TutorialFit = {
+	hint: number,
+	hintText: number,
+	hintTop: number,
+	skip: number,
+	reactionTop: number,
+	reactionBottom: number,
+	coversHint: boolean,
+}
+
+-- One big place button on a 420px phone. The reaction card sits above it.
+function UIKit.tutorial(viewportHeight: number): TutorialFit
+	local height = math.floor(viewportHeight)
+	if height < 1 then
+		height = 1
+	end
+	local hint = 96
+	if height < 420 then
+		hint = 88
+	end
+	local skip = 56
+	local text = 32
+	local bottom = 18
+	local hintTop = height - bottom - hint
+	local reactionTop = 72
+	local reactionHeight = 96
+	return {
+		hint = hint,
+		hintText = text,
+		hintTop = hintTop,
+		skip = skip,
+		reactionTop = reactionTop,
+		reactionBottom = reactionTop + reactionHeight,
+		coversHint = (reactionTop + reactionHeight) > hintTop,
+	}
+end
+
+export type SpotFit = {
+	top: number,
+	height: number,
+	skip: number,
+	podium: number,
+	coversNames: boolean,
+}
+
+-- Sits under the podium reserve so names stay visible.
+function UIKit.spot(viewportHeight: number): SpotFit
+	local height = math.floor(viewportHeight)
+	if height < 1 then
+		height = 1
+	end
+	local podium = 168
+	local panel = 112
+	local top = height - 18 - panel
+	if top < podium then
+		top = podium
+	end
+	local skip = 48
+	if skip > panel - 8 then
+		skip = math.max(36, panel - 8)
+	end
+	return {
+		top = top,
+		height = panel,
+		skip = skip,
+		podium = podium,
+		coversNames = top < podium,
+	}
+end
+
 return UIKit

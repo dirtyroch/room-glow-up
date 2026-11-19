@@ -157,6 +157,7 @@ local function publishDuo(round: any)
 		local key = tostring(player.UserId)
 		local paired = Duo.paired(group, key)
 		player:SetAttribute("DuoOn", group.opted[key] == true)
+		player:SetAttribute("PartnerName", nil)
 		if paired and ctx.plots then
 			local lead = Duo.leadOf(group, key)
 			local index = ctx.plots.indexOf(lead)
@@ -421,7 +422,11 @@ function ProgressService.init(c: any)
 			end
 			if round.phase == "ThemeReveal" then
 				endVisits()
-				Duo.freeze(group, activeIds(round))
+				if round.modifier == "mirror" then
+					Duo.pairAll(group, activeIds(round))
+				else
+					Duo.freeze(group, activeIds(round))
+				end
 				applySkip(round)
 				publishDuo(round)
 				return

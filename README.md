@@ -48,7 +48,7 @@ Props pop in with a short scale tween, a sound, and a few sparkles.
 
 ## Props
 
-128 original chunky props, built a little larger than life (1.2x) so they read on a phone. Eight of them are cheap 2-cell rugs and accents so a room can look full. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
+130 original chunky props, built a little larger than life (1.2x) so they read on a phone. Eight of them are cheap 2-cell rugs and accents so a room can look full. Two of them are free jokes: a pit-bull rug and a recliner with a remote and reading glasses. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
 
 ## Voting
 
@@ -105,7 +105,7 @@ One catalog in `Config.Shop`. Every pass and product id starts at 0, and an id o
 | Dream Nook | Product | 99 |
 | Dream Wing | Product | 179 |
 
-VIP draws a butter frame in the lobby only. It is hidden during Tour, and it does not put a name on the plot. Designer Tools recolor the floor, wall, roof, and hooks, and set a material. Style packs and single pieces are shown in full before the buy button. +60 seconds is for the whole server, twice per round. 2x Coins uses the coin multiplier and does not stack. The Design Pass is a 30-day track beside the level unlocks. Dream Nook and Dream Wing add homes through `extraDreamSlots` and leave the 36-piece cap alone.
+VIP draws a butter frame in the lobby only. It is hidden during Tour, and it does not put a name on the plot. Designer Tools recolor the floor, wall, roof, and hooks, and set a material. Style packs and single pieces are shown in full before the buy button. +60 seconds is for the whole server, twice per round. During a Speed Round that purchase is refused and pays coins instead, so it does not stretch the shorter clock. 2x Coins uses the coin multiplier and does not stack. The Design Pass is a 30-day track beside the level unlocks. Dream Nook adds one home. Dream Wing adds two. Both go through `extraDreamSlots` and leave the 36-piece cap alone.
 
 Decor Crate odds are on the card before purchase. The server rolls after the receipt. A duplicate becomes coins, once per receipt. `PolicyService:ArePaidRandomItemsRestricted` is checked per player. Restricted players get a fixed set, and a failed policy check does not open a prompt. Decor Rain is a server luck event. It changes crate odds and the coin bonus. The buyer's name is announced in the lobby only.
 
@@ -122,6 +122,30 @@ The shop has Boosts, Decor, and Passes. It is open in the lobby, including crate
 ## Family Night
 
 Private servers are free. The owner picks the next theme from `Config.Shop.HostThemes` and can turn Duo on for everyone in the lobby. A public server and anyone who is not the owner are refused. A theme that exists but is not on the list is refused.
+
+## First minute
+
+A first visit gets a 30-second Mini Room. One big button places a rug, and Skip is always there. By 25 seconds Auntie Roch shows a warm 4-star practice line. That line is not a ballot, a payout, or a stat. A player who already finished or skipped it goes straight into the lobby.
+
+## Round modifiers
+
+About one round in three, the server picks Speed Round, Tiny Budget, Mystery Item, or Mirror Duo and announces it at Theme Reveal. Speed Round shortens Build. Tiny Budget stays high enough for a new player to place a starter piece. Mystery Item is one free piece from a fixed list, not a paid roll. Mirror Duo pairs the room and keeps names off the tour.
+
+## Spot the Theme
+
+During the Results wait, after the podium is up, a skippable three-choice guess pays a few coins. It does not sell extra time, and it does not cover the podium names.
+
+## Juice and low-end
+
+Placing a prop, the star reveal, the podium, and a level-up each play a sound or a world particle. A mute button and a volume attribute scale them. Nothing in that set is parented to the HUD. Low-end can turn on from a quiet quality setting or from the toggle. It cuts particles and uses a lighter tour for a full server of 10 rooms. The 16-item contest cap and the 36-piece dream cap stay where they are.
+
+## Easter eggs
+
+The Pibble Rug and the Unc Armchair are original props. Place enough rugs or seats, or reach the unlock level, and they are yours. They are not crate-only. Each one has its own Auntie Roch line when it is in the room. Her stars do not change.
+
+## Store page
+
+`docs/store-assets.md` has the icon concept, three thumbnail concepts, Party & Casual description copy, and the image sizes the experience page asks for.
 
 ## Look
 
@@ -158,8 +182,9 @@ That writes `RoomGlowUp.rbxlx` next to the project file. It does not upload the 
 
 ```
 src/shared/     Config, Themes, Items, Bases, UIKit, Logic
-src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService
-src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Shop, Juice
+src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService, FunnelService
+src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Shop, Juice, Settings, Tutorial, SpotGame, Listen
 scripts/        build.sh, create-shop.luau
-tests/run.luau  Lune tests for rounds, plots, placement, voting, saves, progression, and the shop
+docs/           store-assets.md
+tests/run.luau  Lune tests for rounds, plots, placement, voting, saves, progression, the shop, and the polish pass
 ```

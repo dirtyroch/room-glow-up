@@ -8,6 +8,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
+local Listen = require(script.Parent.Listen)
+
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Bases = require(Shared:WaitForChild("Bases") :: ModuleScript) :: any
 
@@ -43,6 +45,10 @@ function TourCam.start()
 		local px, py, pz, lx, ly, lz = Bases.camera(roundType, plotIndex)
 		camera.CameraType = Enum.CameraType.Scriptable
 		local goal = CFrame.lookAt(Vector3.new(px, py, pz), Vector3.new(lx, ly, lz))
+		if Listen.lowEnd() then
+			camera.CFrame = goal
+			return
+		end
 		TweenService:Create(camera, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = goal }):Play()
 	end
 

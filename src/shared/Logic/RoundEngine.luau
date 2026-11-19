@@ -17,6 +17,7 @@ end
 
 local Season = sibling("Season")
 local ThemePicker = sibling("ThemePicker")
+local Modifiers = sibling("Modifiers")
 
 local RoundEngine = {}
 
@@ -58,6 +59,8 @@ export type State = {
 	-- Extra minutes bought for this round. Reset when the next lobby starts.
 	timeAdds: number,
 	bankedTime: number,
+	-- Server-picked twist for this round. Nil on the rounds in between.
+	modifier: string?,
 }
 
 local function activeCount(state: State): number
@@ -164,6 +167,9 @@ local function beginTheme(state: State, now: number)
 		rng = state.rng,
 	})
 	state.hostThemeId = nil
+	if type(state.modifier) ~= "string" then
+		state.modifier = Modifiers.pick(state.roundIndex)
+	end
 	state.phase = "ThemeReveal"
 	state.phaseStartedAt = now
 	state.phaseEndsAt = now + state.config.Phases.ThemeReveal
@@ -177,12 +183,17 @@ local function beginBuild(state: State, now: number)
 	if type(extra) ~= "number" or extra ~= extra or extra < 0 then
 		extra = 0
 	end
+	local span = Modifiers.buildSeconds(state.config.Phases.Build, state.modifier)
+	-- A minute bought ahead of a Speed Round does not stretch the clock.
+	if state.modifier == "speed" then
+		extra = 0
+	end
 	state.bankedTime = 0
 	if activeCount(state) < 1 then
 		-- Nobody left to decorate; skip the 240s wait and go to Tour.
 		state.phaseEndsAt = now
 	else
-		state.phaseEndsAt = now + state.config.Phases.Build + extra
+		state.phaseEndsAt = now + span + extra
 	end
 	note(state, "Build", now)
 end
@@ -248,6 +259,7 @@ local function beginLobby(state: State, now: number)
 	state.tourSkip = {}
 	state.timeAdds = 0
 	state.bankedTime = 0
+	state.modifier = Modifiers.pick(state.roundIndex)
 	if activeCount(state) >= 1 then
 		state.phaseEndsAt = now + state.config.Phases.Lobby
 	else
@@ -386,6 +398,7 @@ function RoundEngine.create(options: {
 		tourSkip = {},
 		timeAdds = 0,
 		bankedTime = 0,
+		modifier = Modifiers.pick(0),
 	}
 	state.season = Season.resolve(state.config.Season, state.unixNow(), state.config.TimezoneOffsetHours)
 	note(state, "Lobby", 0)
@@ -422,6 +435,9 @@ end
 function RoundEngine.extend(state: State, seconds: number, cap: number): (boolean, string?)
 	if type(state.timeAdds) ~= "number" then
 		state.timeAdds = 0
+	end
+	if not Modifiers.allowsTime(state.modifier) then
+		return false, "Speed Round keeps its clock."
 	end
 	if type(seconds) ~= "number" or seconds ~= seconds or seconds <= 0 then
 		return false, "Bad request."
@@ -560,12 +576,16 @@ function RoundEngine.snapshot(state: State, now: number): { [string]: any }
 		local shown = math.clamp(state.tourIndex, 1, #state.tourStops)
 		tourIndex = shown
 		tourTarget = state.tourStops[shown]
-		tourLabel = string.format("Room %d of %d", shown, #state.tourStops)
+		tourLabel = Modifiers.tourLine(shown, #state.tourStops, {})
 		if RoundEngine.roomLocked(state, now) then
 			tourLabel = tourLabel .. " · Locked"
 		end
 	end
 	local waiting = state.phase == "Lobby" and state.phaseEndsAt == nil
+	local mysteryItem = ""
+	if state.modifier == "mystery" and state.phase ~= "Lobby" then
+		mysteryItem = Modifiers.mystery(roundType, state.roundIndex)
+	end
 	return {
 		phase = state.phase,
 		timeLeft = RoundEngine.timeLeft(state, now),
@@ -574,6 +594,9 @@ function RoundEngine.snapshot(state: State, now: number): { [string]: any }
 		themeName = themeName,
 		themeId = themeId,
 		roundType = roundType,
+		modifier = state.modifier or "",
+		modifierLabel = Modifiers.announce(state.modifier, state.phase),
+		mysteryItem = mysteryItem,
 		season = state.season,
 		tourLabel = tourLabel,
 		tourIndex = tourIndex,

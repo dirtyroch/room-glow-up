@@ -177,6 +177,64 @@ local Config = {
 	-- Recolor uses these names only. They match the UI kit palette.
 	Palette = { "cream", "coral", "mint", "butter", "lavender" },
 	UndoCap = 24,
+	-- First-minute Mini Room. The 4-star line is a practice reaction.
+	-- It is never written into a ballot, a payout, or a stat.
+	Tutorial = {
+		Duration = 30,
+		PlaceBy = 15,
+		ReactionAt = 20,
+		Stars = 4,
+		ItemId = "dot_rug",
+		PhoneHeight = 420,
+		HintMin = 88,
+		HintText = 32,
+		Line = "Oh, this little rug already glows. Four warm stars, just for practice.",
+	},
+	-- About one round in three. The server picks. Theme Reveal is the announcement.
+	Modifiers = {
+		Every = 3,
+		Order = { "speed", "tiny", "mystery", "mirror" },
+		Labels = {
+			speed = "Speed Round",
+			tiny = "Tiny Budget",
+			mystery = "Mystery Item",
+			mirror = "Mirror Duo",
+		},
+		SpeedBuild = 90,
+		TinyBudget = 16,
+		-- Mystery Item is a free twist. It is not a paid roll.
+		Paid = false,
+		Mystery = {
+			room = { "cocoa_mug", "star_pillow", "dot_rug" },
+			gingerbread = { "gumdrop", "peppermint_disc", "icing_drip" },
+			tree = { "paper_star", "bell_drop", "wool_pom" },
+		},
+	},
+	-- Skippable results minigame. A few coins. No extra time is sold for it.
+	Spot = {
+		Coins = 6,
+		Choices = 3,
+		SellsTime = false,
+	},
+	Audio = {
+		Place = "rbxasset://sounds/electronicpingshort.wav",
+		Sting = "rbxasset://sounds/electronicpingshort.wav",
+		Level = "rbxasset://sounds/electronicpingshort.wav",
+		Music = "rbxasset://sounds/bass.mp3",
+		PlaceVolume = 0.45,
+		StingVolume = 0.55,
+		LevelVolume = 0.4,
+		MusicVolume = 0.18,
+		Confetti = 18,
+		ConfettiLow = 4,
+	},
+	-- Free unlocks. Quests or a level, never a crate-only path.
+	Easter = {
+		PibbleLevel = 5,
+		PibbleRugs = 4,
+		UncLevel = 8,
+		UncSeats = 4,
+	},
 	-- One catalog. Placeholder ids stay 0 until create-shop fills them in.
 	-- An id of 0 never opens a purchase window.
 	Shop = {
@@ -367,9 +425,9 @@ local Config = {
 				id = 0,
 				name = "Dream Wing",
 				price = 179,
-				desc = "One extra Dream Home. The house still holds 36 pieces.",
+				desc = "Two extra Dream Homes. The house still holds 36 pieces.",
 				tab = "Passes",
-				slots = 1,
+				slots = 2,
 			},
 		},
 	},

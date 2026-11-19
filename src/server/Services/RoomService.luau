@@ -16,6 +16,8 @@ local Levels: any = nil
 local Duo: any = nil
 local Owned: any = nil
 local Shop: any = nil
+local Modifiers: any = nil
+local Easter: any = nil
 
 local function catalog(): any
 	return {
@@ -67,6 +69,14 @@ local function contextFor(key: string): any
 		maxItems = Duo.itemCap(Config.MaxItems, paired)
 		gridType = Duo.gridType(roundType, paired)
 	end
+	local freeItem: string? = nil
+	if Modifiers and type(round) == "table" then
+		if round.modifier == "tiny" then
+			budget = Modifiers.budget(budget, "tiny", 4)
+		elseif round.modifier == "mystery" then
+			freeItem = Modifiers.mystery(roundType, round.roundIndex)
+		end
+	end
 	local level = levelFor(key)
 	local bag = bagOf(key)
 	local profile = if bag then bag.profile else nil
@@ -89,6 +99,7 @@ local function contextFor(key: string): any
 		gridType = gridType,
 		tools = tools,
 		materials = Config.Shop.Materials,
+		freeItem = freeItem,
 		allow = function(itemId: string): boolean
 			if profile and Owned then
 				return Owned.has(profile, itemId, level)
@@ -229,11 +240,13 @@ function RoomService.inspect(key: string): any
 	local unique = 0
 	local spent = 0
 	local meter = 0
+	local itemIds: { string } = {}
 	if room then
 		local seen: { [string]: boolean } = {}
 		pieces = #room.pieces
 		spent = room.spent
 		for _, piece in ipairs(room.pieces) do
+			table.insert(itemIds, piece.itemId)
 			if seen[piece.itemId] ~= true then
 				seen[piece.itemId] = true
 				unique += 1
@@ -251,6 +264,7 @@ function RoomService.inspect(key: string): any
 		spent = spent,
 		meter = meter,
 		maxItems = cap,
+		itemIds = itemIds,
 	}
 end
 
@@ -327,6 +341,8 @@ function RoomService.init(c: any)
 	Duo = require(Logic:WaitForChild("Duo") :: ModuleScript) :: any
 	Owned = require(Logic:WaitForChild("Owned") :: ModuleScript) :: any
 	Shop = require(Logic:WaitForChild("Shop") :: ModuleScript) :: any
+	Modifiers = require(Logic:WaitForChild("Modifiers") :: ModuleScript) :: any
+	Easter = require(Logic:WaitForChild("Easter") :: ModuleScript) :: any
 	local Props = require(script.Parent.Parent:WaitForChild("Props") :: ModuleScript) :: any
 	ctx.rooms = {
 		welcome = RoomService.welcome,
@@ -350,6 +366,16 @@ function RoomService.init(c: any)
 			ctx.plots.spawnPiece(index, piece, grid, true)
 			publish(player, key, room, c)
 			afterEdit(key, "props")
+			local visiting = ctx.dream and ctx.dream.isVisiting(key) == true
+			if not visiting then
+				local bag = bagOf(key)
+				if bag and Easter then
+					Easter.note(bag.profile, Items.get(args[1]), levelFor(key))
+				end
+				if ctx.funnel and type(ctx.funnel.onPlace) == "function" then
+					pcall(ctx.funnel.onPlace, key)
+				end
+			end
 			return true, msg, { id = piece.id }
 		end
 		return false, msg

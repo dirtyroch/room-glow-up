@@ -131,6 +131,9 @@ local function remember(player: Player)
 	if ctx.progress and type(ctx.progress.present) == "function" then
 		ctx.progress.present(player)
 	end
+	if ctx.funnel and type(ctx.funnel.present) == "function" then
+		ctx.funnel.present(player)
+	end
 end
 
 local function commit(key: string, reason: string)

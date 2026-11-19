@@ -349,6 +349,7 @@ function Shop.start()
 		panel.Visible = true
 		rebuild()
 		layout()
+		Net.act("ShopOpen")
 	end)
 	close.Activated:Connect(function()
 		panel.Visible = false

@@ -308,9 +308,14 @@ function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string)
 			add(model, cf, "Arm", "Block", Vector3.new(sx * 0.14, sy * 0.38, sz * 0.78), Vector3.new(-sx * 0.4, 0, 0), trim, false)
 			add(model, cf, "Arm", "Block", Vector3.new(sx * 0.14, sy * 0.38, sz * 0.78), Vector3.new(sx * 0.4, 0, 0), trim, false)
 		end
-	elseif shape == "chair" then
+	elseif shape == "chair" or shape == "recliner" then
 		add(model, cf, "Seat", "Block", Vector3.new(sx * 0.82, sy * 0.28, sz * 0.72), Vector3.new(0, -sy * 0.12, 0), main, true)
 		add(model, cf, "Back", "Block", Vector3.new(sx * 0.82, sy * 0.62, sz * 0.16), Vector3.new(0, sy * 0.16, -sz * 0.28), main, true)
+		if shape == "recliner" then
+			add(model, cf, "Foot", "Block", Vector3.new(sx * 0.7, sy * 0.12, sz * 0.42), Vector3.new(0, -sy * 0.28, sz * 0.46), main, true)
+			add(model, cf, "Remote", "Block", Vector3.new(sx * 0.18, sy * 0.08, sz * 0.28), Vector3.new(sx * 0.28, sy * 0.08, sz * 0.05), trim, false)
+			add(model, cf, "Glasses", "Block", Vector3.new(sx * 0.42, sy * 0.06, sz * 0.1), Vector3.new(0, sy * 0.42, sz * 0.05), cream, false)
+		end
 	elseif shape == "table" then
 		add(model, cf, "Top", "Block", Vector3.new(sx * 0.92, math.max(0.35, sy * 0.22), sz * 0.92), Vector3.new(0, sy * 0.28, 0), main, true)
 		add(model, cf, "Leg", "Block", Vector3.new(sx * 0.22, sy * 0.7, sz * 0.22), Vector3.new(0, -sy * 0.1, 0), trim, false)

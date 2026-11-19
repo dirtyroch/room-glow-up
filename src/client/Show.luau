@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
+local Listen = require(script.Parent.Listen)
 local UI = require(script.Parent.UI)
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -70,10 +71,17 @@ function Show.start()
 	local seenLocked = false
 
 	local function playSting(speed: number, volume: number)
+		local heard = Listen.volume(volume)
+		if Listen.lowEnd() then
+			heard *= 0.4
+		end
+		if heard <= 0 then
+			return
+		end
 		local sound = Instance.new("Sound")
 		sound.SoundId = Config.Show.Sting
 		sound.PlaybackSpeed = speed
-		sound.Volume = volume
+		sound.Volume = heard
 		sound.RollOffMaxDistance = 80
 		sound.Parent = host
 		sound:Play()
@@ -98,6 +106,7 @@ function Show.start()
 		host.CFrame = CFrame.lookAt(Vector3.new(px, py, pz), Vector3.new(lx, ly, lz))
 		local motion = UIKit.Motion.spotlight
 		local goal = if locked then UIKit.Motion.lock.to else motion.to
+		goal *= if Listen.lowEnd() then 0.4 else 1
 		tweenLight(motion, goal)
 		playSting(1.25, 0.55)
 		local marks = Config.Show.Crowd
