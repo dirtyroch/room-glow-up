@@ -49,6 +49,13 @@ local function publish(at: number)
 	folder:SetAttribute("Critic", snap.critic)
 	folder:SetAttribute("Modifier", snap.modifierLabel or "")
 	folder:SetAttribute("MysteryItem", snap.mysteryItem or "")
+	folder:SetAttribute("Banner", snap.banner or "")
+	folder:SetAttribute("VotesOpen", snap.votesOpen == true)
+	local nextRound = snap.nextRound
+	if type(nextRound) ~= "number" then
+		nextRound = 0
+	end
+	folder:SetAttribute("NextRound", math.max(0, math.ceil(nextRound - 1e-6)))
 	if ctx.plots and type(ctx.plots.veil) == "function" then
 		ctx.plots.veil(snap.phase)
 	end
@@ -71,6 +78,12 @@ local function onJoin(player: Player)
 		ctx.rooms.welcome(player)
 	end
 	publish(now())
+	if ctx.funnel and type(ctx.funnel.present) == "function" then
+		ctx.funnel.present(player)
+	end
+	if ctx.progress and type(ctx.progress.welcome) == "function" then
+		ctx.progress.welcome(player)
+	end
 end
 
 local function onLeave(player: Player)
@@ -158,9 +171,17 @@ function RoundService.start()
 		local at = now()
 		local before = seenPhase
 		local beforeTour = state.tourIndex
+		local beforeStop = ""
+		if state.phase == "Tour" and beforeTour >= 1 and beforeTour <= #state.tourStops then
+			beforeStop = state.tourStops[beforeTour]
+		end
 		local wasLocked = RoundEngine.roomLocked(state, at)
 		RoundEngine.advance(state, at)
 		local nowLocked = RoundEngine.roomLocked(state, at)
+		local stopChanged = state.tourIndex ~= beforeTour or state.phase ~= "Tour"
+		if beforeStop ~= "" and stopChanged and ctx.votes and type(ctx.votes.scoreRoom) == "function" then
+			ctx.votes.scoreRoom(beforeStop)
+		end
 		local changed = state.phase ~= before or state.roundIndex ~= seenRound
 		seenPhase = state.phase
 		seenRound = state.roundIndex

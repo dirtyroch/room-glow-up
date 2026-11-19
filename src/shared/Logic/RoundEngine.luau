@@ -61,6 +61,10 @@ export type State = {
 	bankedTime: number,
 	-- Server-picked twist for this round. Nil on the rounds in between.
 	modifier: string?,
+	-- The 30-second build rush. `rush` means it already fired this build.
+	-- `showBanner` is the "30 seconds left!" call, cleared if time is added back.
+	rush: boolean,
+	showBanner: boolean,
 }
 
 local function activeCount(state: State): number
@@ -84,6 +88,84 @@ local function allActiveDone(state: State): boolean
 		end
 	end
 	return anyActive
+end
+
+-- Done builders count. Someone still placing counts. An idle or empty
+-- builder does not, so they cannot hold the round open by themselves.
+local function countsForRush(state: State, id: string, player: PlayerState): boolean
+	if player.role ~= "active" then
+		return false
+	end
+	if player.done then
+		return true
+	end
+	local fn = state.hasWork
+	if type(fn) ~= "function" then
+		return true
+	end
+	local ok, value = pcall(fn, id)
+	return ok and value == true
+end
+
+local function rushKnobs(state: State): (number, number, string)
+	local spec = state.config.BuildRush
+	local fraction = 0.6
+	local seconds = 30
+	local banner = "30 seconds left!"
+	if type(spec) == "table" then
+		if type(spec.Fraction) == "number" and spec.Fraction > 0 and spec.Fraction <= 1 then
+			fraction = spec.Fraction
+		end
+		if type(spec.FinalSeconds) == "number" and spec.FinalSeconds > 0 then
+			seconds = spec.FinalSeconds
+		end
+		if type(spec.Banner) == "string" and spec.Banner ~= "" then
+			banner = spec.Banner
+		end
+	end
+	return fraction, seconds, banner
+end
+
+local function rushReady(state: State): boolean
+	local eligible = 0
+	local done = 0
+	for id, player in pairs(state.players) do
+		if countsForRush(state, id, player) then
+			eligible += 1
+			if player.done then
+				done += 1
+			end
+		end
+	end
+	if done < 1 or eligible < 1 then
+		return false
+	end
+	local fraction = rushKnobs(state)
+	local remaining = eligible - done
+	if eligible >= 2 and remaining <= 1 then
+		return true
+	end
+	return done / eligible >= fraction - 1e-9
+end
+
+local function maybeRush(state: State, now: number)
+	if state.phase ~= "Build" or state.rush then
+		return
+	end
+	if not rushReady(state) then
+		return
+	end
+	local _, seconds = rushKnobs(state)
+	local ends = state.phaseEndsAt
+	if type(ends) ~= "number" then
+		return
+	end
+	state.rush = true
+	if ends - now <= seconds then
+		return
+	end
+	state.phaseEndsAt = now + seconds
+	state.showBanner = true
 end
 
 local function note(state: State, phase: string, now: number)
@@ -118,6 +200,29 @@ local function collectStops(state: State): { string }
 	local ids: { string } = {}
 	for _, row in ipairs(rows) do
 		table.insert(ids, row.id)
+	end
+	-- Done-order put the fastest builder first, and that room scored lower.
+	-- Shuffle with the round rng so the tour is not that sequence.
+	local rng = state.rng
+	if type(rng) == "function" then
+		for i = #ids, 2, -1 do
+			local roll = rng()
+			if type(roll) ~= "number" or roll ~= roll then
+				roll = 0
+			end
+			if roll < 0 then
+				roll = 0
+			elseif roll > 1 then
+				roll = 1
+			end
+			local j = math.floor(roll * i) + 1
+			if j < 1 then
+				j = 1
+			elseif j > i then
+				j = i
+			end
+			ids[i], ids[j] = ids[j], ids[i]
+		end
 	end
 	return ids
 end
@@ -189,6 +294,8 @@ local function beginBuild(state: State, now: number)
 		extra = 0
 	end
 	state.bankedTime = 0
+	state.rush = false
+	state.showBanner = false
 	if activeCount(state) < 1 then
 		-- Nobody left to decorate; skip the 240s wait and go to Tour.
 		state.phaseEndsAt = now
@@ -294,14 +401,12 @@ local function enterNext(state: State, now: number)
 	end
 end
 
-function RoundEngine.roomLocked(state: State, now: number): boolean
-	if state.phase ~= "Tour" or #state.tourStops == 0 then
-		return false
-	end
+local function tourBeat(state: State): (number, number, number)
 	local per = state.config.Phases.TourPerRoom
 	local beat = state.config.Phases.TourLockIn or 0
+	local grace = state.config.Phases.TourVoteGrace or 0
 	if type(per) ~= "number" or per <= 0 then
-		return true
+		return 0, 0, 0
 	end
 	if type(beat) ~= "number" or beat < 0 then
 		beat = 0
@@ -309,7 +414,62 @@ function RoundEngine.roomLocked(state: State, now: number): boolean
 	if beat > per then
 		beat = per
 	end
+	if type(grace) ~= "number" or grace < 0 then
+		grace = 0
+	end
+	return per, beat, grace
+end
+
+function RoundEngine.roomLocked(state: State, now: number): boolean
+	if state.phase ~= "Tour" or #state.tourStops == 0 then
+		return false
+	end
+	local per, beat = tourBeat(state)
+	if per <= 0 then
+		return true
+	end
 	return (now - state.tourSegmentStartedAt) >= (per - beat)
+end
+
+-- Votes stay open through the visual lock, for TourVoteGrace seconds.
+function RoundEngine.votesClosed(state: State, now: number): boolean
+	if state.phase ~= "Tour" or #state.tourStops == 0 then
+		return true
+	end
+	local per, beat, grace = tourBeat(state)
+	if per <= 0 then
+		return true
+	end
+	local closeAt = per - beat + grace
+	if closeAt > per then
+		closeAt = per
+	end
+	return (now - state.tourSegmentStartedAt) >= closeAt
+end
+
+-- Everyone who can vote has voted. End this room after a short beat.
+function RoundEngine.hurryTour(state: State, now: number)
+	if state.phase ~= "Tour" or #state.tourStops == 0 then
+		return
+	end
+	if state.tourIndex < 1 or state.tourIndex > #state.tourStops then
+		return
+	end
+	local per = tourBeat(state)
+	if per <= 0 then
+		return
+	end
+	local beat = state.config.Phases.TourSkipBeat
+	if type(beat) ~= "number" or beat < 0 then
+		beat = 1
+	end
+	local roomEnd = state.tourSegmentStartedAt + per
+	local soon = now + beat
+	if soon >= roomEnd - 1e-6 then
+		return
+	end
+	state.tourSegmentStartedAt = soon - per
+	retimeTour(state, now, false)
 end
 
 -- Move the tour pointer using scheduled room start times so a late tick still
@@ -399,6 +559,8 @@ function RoundEngine.create(options: {
 		timeAdds = 0,
 		bankedTime = 0,
 		modifier = Modifiers.pick(0),
+		rush = false,
+		showBanner = false,
 	}
 	state.season = Season.resolve(state.config.Season, state.unixNow(), state.config.TimezoneOffsetHours)
 	note(state, "Lobby", 0)
@@ -452,6 +614,8 @@ function RoundEngine.extend(state: State, seconds: number, cap: number): (boolea
 	if state.phase == "Build" and type(state.phaseEndsAt) == "number" then
 		state.timeAdds += 1
 		state.phaseEndsAt += add
+		-- Paid time is not the rush banner. The rush does not fire again.
+		state.showBanner = false
 		return true, "Added a minute for everyone."
 	end
 	if state.phase == "Lobby" or state.phase == "ThemeReveal" then
@@ -466,7 +630,23 @@ function RoundEngine.join(state: State, id: string, now: number)
 	if state.players[id] then
 		return
 	end
-	local role: Role = if state.phase == "Lobby" then "active" else "spectator"
+	local role: Role = "spectator"
+	if state.phase == "Lobby" then
+		role = "active"
+	elseif state.phase == "Build" then
+		local minSeconds = 60
+		local late = state.config.LateJoin
+		if type(late) == "table" and type(late.MinBuild) == "number" then
+			minSeconds = late.MinBuild
+		end
+		local cap = state.config.MaxPlayers
+		if type(cap) ~= "number" or cap < 1 then
+			cap = 10
+		end
+		if RoundEngine.timeLeft(state, now) >= minSeconds and activeCount(state) < cap then
+			role = "active"
+		end
+	end
 	state.players[id] = {
 		role = role,
 		done = false,
@@ -493,6 +673,8 @@ function RoundEngine.leave(state: State, id: string, now: number)
 	elseif state.phase == "Build" then
 		if activeCount(state) < 1 or allActiveDone(state) then
 			finishBuild(state, now)
+		else
+			maybeRush(state, now)
 		end
 	elseif state.phase == "Tour" then
 		settle(state, now)
@@ -519,6 +701,8 @@ function RoundEngine.pressDone(state: State, id: string, now: number): (boolean,
 	state.nextDoneOrder += 1
 	if allActiveDone(state) then
 		finishBuild(state, now)
+	else
+		maybeRush(state, now)
 	end
 	return true, "Locked in."
 end
@@ -547,6 +731,41 @@ function RoundEngine.removeStop(state: State, id: string, now: number)
 	if state.phase == "Tour" then
 		settle(state, now)
 	end
+end
+
+function RoundEngine.untilNextRound(state: State, now: number): number
+	if state.phase == "Lobby" then
+		return 0
+	end
+	local left = RoundEngine.timeLeft(state, now)
+	local phases = state.config.Phases
+	if state.phase == "Results" then
+		return left
+	end
+	if state.phase == "Tour" then
+		return left + phases.Results
+	end
+	local build = phases.Build
+	if state.modifier == "speed" and type(state.config.Modifiers) == "table" then
+		local speed = state.config.Modifiers.SpeedBuild
+		if type(speed) == "number" then
+			build = speed
+		end
+	end
+	local rooms = 0
+	for _, player in pairs(state.players) do
+		if player.role == "active" then
+			rooms += 1
+		end
+	end
+	if rooms < 1 then
+		rooms = 1
+	end
+	local tour = phases.TourPerRoom * rooms
+	if state.phase == "ThemeReveal" then
+		return left + build + tour + phases.Results
+	end
+	return left + tour + phases.Results
 end
 
 function RoundEngine.timeLeft(state: State, now: number): number
@@ -602,6 +821,9 @@ function RoundEngine.snapshot(state: State, now: number): { [string]: any }
 		tourIndex = tourIndex,
 		tourTarget = tourTarget,
 		tourLocked = if state.phase == "Tour" then RoundEngine.roomLocked(state, now) else false,
+		votesOpen = state.phase == "Tour" and not RoundEngine.votesClosed(state, now),
+		banner = if state.phase == "Build" and state.showBanner then (select(3, rushKnobs(state))) else "",
+		nextRound = RoundEngine.untilNextRound(state, now),
 		critic = state.config.Critic.name,
 		roundIndex = state.roundIndex,
 	}

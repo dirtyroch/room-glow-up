@@ -53,7 +53,7 @@ function SpotGame.start()
 	skip.Size = UDim2.fromOffset(108, 36)
 	skip.BackgroundColor3 = UI.rgb("lavender")
 	skip.Font = UI.face()
-	skip.TextSize = 18
+	skip.TextSize = 20
 	skip.TextColor3 = UI.rgb("ink")
 	skip.Text = "Skip"
 	skip.Parent = panel
@@ -92,7 +92,7 @@ function SpotGame.start()
 			button.Size = UDim2.fromOffset(132, 44)
 			button.BackgroundColor3 = UI.rgb("cream")
 			button.Font = UI.face()
-			button.TextSize = 18
+			button.TextSize = 20
 			button.TextColor3 = UI.rgb("ink")
 			button.Text = option.name
 			button.TextWrapped = true

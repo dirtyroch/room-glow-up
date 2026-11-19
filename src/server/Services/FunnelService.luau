@@ -96,6 +96,10 @@ local function inLobby(): boolean
 	return phase == "Lobby" or phase == ""
 end
 
+local function spectating(player: Player): boolean
+	return player:GetAttribute("Spectating") == true
+end
+
 local function leftover(): number?
 	local round = ctx.round
 	if type(round) ~= "table" or type(round.phaseEndsAt) ~= "number" then
@@ -123,19 +127,6 @@ local function keepLobby(untilAt: number)
 	end
 end
 
-local function closeTutorials()
-	local keys: { string } = {}
-	for key in pairs(sessions) do
-		table.insert(keys, key)
-	end
-	for _, key in ipairs(keys) do
-		local state = sessions[key]
-		if state then
-			finishTutorial(key, state)
-		end
-	end
-end
-
 local function present(player: Player)
 	local key = keyOf(player)
 	local bag = ctx.saves.session(key)
@@ -147,8 +138,10 @@ local function present(player: Player)
 		player:SetAttribute("TutorialActive", false)
 		return
 	end
-	-- The Mini Room stays in the lobby so it never covers Theme Reveal, the tour, or a ballot.
-	if not inLobby() then
+	local waiting = spectating(player) and not inLobby()
+	-- Active players only see the Mini Room in the lobby, so it never covers
+	-- Theme Reveal or a ballot. A spectator can start it while they wait.
+	if not inLobby() and not waiting then
 		player:SetAttribute("TutorialActive", false)
 		return
 	end
@@ -158,24 +151,67 @@ local function present(player: Player)
 	end
 	local pace = Tutorial.pace()
 	local left = leftover()
-	if type(left) == "number" and left < pace.placeBy then
+	if not waiting and type(left) == "number" and left < pace.placeBy then
 		player:SetAttribute("TutorialActive", false)
 		return
 	end
 	local now = workspace:GetServerTimeNow()
 	local state = Tutorial.start(now)
 	sessions[key] = state
-	local lobbySpan = 20
-	if type(ctx.round) == "table" and type(ctx.round.config) == "table" then
-		local phases = ctx.round.config.Phases
-		if type(phases) == "table" and type(phases.Lobby) == "number" then
-			lobbySpan = phases.Lobby
+	if not waiting then
+		local lobbySpan = 20
+		if type(ctx.round) == "table" and type(ctx.round.config) == "table" then
+			local phases = ctx.round.config.Phases
+			if type(phases) == "table" and type(phases.Lobby) == "number" then
+				lobbySpan = phases.Lobby
+			end
+		end
+		if type(left) ~= "number" or left >= lobbySpan - 2 then
+			keepLobby(now + pace.duration)
 		end
 	end
-	if type(left) ~= "number" or left >= lobbySpan - 2 then
-		keepLobby(now + pace.duration)
-	end
 	publishTutorial(player, state)
+end
+
+local function publishSpot()
+	local round = ctx.round
+	local folder = ctx.RoundState
+	if not folder or type(round) ~= "table" then
+		return
+	end
+	if round.phase ~= "Results" then
+		return
+	end
+	local existing = folder:GetAttribute("SpotChoices")
+	if type(existing) == "string" and existing ~= "" then
+		return
+	end
+	local span = 30
+	local at = 10
+	if type(round.config) == "table" and type(round.config.Phases) == "table" then
+		local phases = round.config.Phases
+		if type(phases.Results) == "number" then
+			span = phases.Results
+		end
+		if type(phases.ResultsRewardsAt) == "number" then
+			at = phases.ResultsRewardsAt
+		end
+	end
+	local started = if type(round.phaseStartedAt) == "number" then round.phaseStartedAt else 0
+	local elapsed = workspace:GetServerTimeNow() - started
+	if not Spot.open(elapsed, at) then
+		return
+	end
+	if elapsed > span then
+		return
+	end
+	local themeId = ""
+	local theme = round.theme
+	if type(theme) == "table" and type(theme.id) == "string" then
+		themeId = theme.id
+	end
+	local options = Spot.deal(themeId, Themes, round.roundIndex)
+	folder:SetAttribute("SpotChoices", Spot.encode(options))
 end
 
 local function themeIdOf(round: any): string
@@ -196,7 +232,22 @@ local function onPhase(round: any)
 			present(player)
 		end
 	else
-		closeTutorials()
+		local keys: { string } = {}
+		for key in pairs(sessions) do
+			table.insert(keys, key)
+		end
+		for _, key in ipairs(keys) do
+			local state = sessions[key]
+			local player = playerFrom(key)
+			if state and (not player or not spectating(player)) then
+				finishTutorial(key, state)
+			end
+		end
+		for _, player in Players:GetPlayers() do
+			if spectating(player) then
+				present(player)
+			end
+		end
 	end
 	local folder = ctx.RoundState
 	if type(round) ~= "table" or round.phase ~= "Results" then
@@ -204,10 +255,6 @@ local function onPhase(round: any)
 			folder:SetAttribute("SpotChoices", "")
 		end
 		return
-	end
-	local options = Spot.deal(themeIdOf(round), Themes, round.roundIndex)
-	if folder then
-		folder:SetAttribute("SpotChoices", Spot.encode(options))
 	end
 	local eventName: string? = nil
 	if round.roundIndex == 0 then
@@ -329,21 +376,52 @@ function FunnelService.start()
 		present(player)
 	end
 	RunService.Heartbeat:Connect(function()
-		if not inLobby() then
-			closeTutorials()
-			return
-		end
 		local now = workspace:GetServerTimeNow()
-		for key, state in pairs(sessions) do
-			Tutorial.tick(state, now)
-			local player = playerFrom(key)
-			if player then
-				publishTutorial(player, state)
+		if inLobby() then
+			for key, state in pairs(sessions) do
+				Tutorial.tick(state, now)
+				local player = playerFrom(key)
+				if player then
+					publishTutorial(player, state)
+				end
+				if state.finished then
+					finishTutorial(key, state)
+				end
 			end
-			if state.finished then
-				finishTutorial(key, state)
+		else
+			local keys: { string } = {}
+			for key in pairs(sessions) do
+				table.insert(keys, key)
+			end
+			for _, key in ipairs(keys) do
+				local state = sessions[key]
+				local player = playerFrom(key)
+				if state and player and spectating(player) then
+					Tutorial.tick(state, now)
+					publishTutorial(player, state)
+					if state.finished then
+						finishTutorial(key, state)
+						if ctx.progress and type(ctx.progress.welcome) == "function" then
+							ctx.progress.welcome(player)
+						end
+					end
+				elseif state then
+					finishTutorial(key, state)
+				end
+			end
+			for _, player in Players:GetPlayers() do
+				local key = keyOf(player)
+				if spectating(player) and sessions[key] == nil and player:GetAttribute("TutorialActive") ~= true then
+					local bag = ctx.saves.session(key)
+					if bag.hold == true and Tutorial.needed(bag.profile) then
+						present(player)
+					elseif ctx.progress and type(ctx.progress.welcome) == "function" then
+						ctx.progress.welcome(player)
+					end
+				end
 			end
 		end
+		publishSpot()
 	end)
 end
 

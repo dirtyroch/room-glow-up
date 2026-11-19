@@ -123,6 +123,12 @@ function Tutorial.start()
 		if not active then
 			return
 		end
+		local roundFolder = game:GetService("ReplicatedStorage"):FindFirstChild("RoundState")
+		local phase = if roundFolder then roundFolder:GetAttribute("Phase") else ""
+		local onTour = phase == "Tour"
+		-- During the tour the card stays clear of the star buttons and the names.
+		dim.Visible = not onTour
+		dim.Active = false
 		local line = player:GetAttribute("TutorialLine")
 		local stars = player:GetAttribute("TutorialStars")
 		local placed = player:GetAttribute("TutorialPlaced") == true
@@ -142,6 +148,17 @@ function Tutorial.start()
 			hint.Text = text
 		end
 		layout()
+		if onTour then
+			place.AnchorPoint = Vector2.new(0.5, 0.5)
+			place.Position = UDim2.new(0.5, 0, 0.42, 0)
+			hint.AnchorPoint = Vector2.new(0.5, 0)
+			hint.Position = UDim2.new(0.5, 0, 0.42, 56)
+			reaction.Position = UDim2.new(0.5, 0, 0.42, -110)
+		else
+			place.AnchorPoint = Vector2.new(0.5, 1)
+			place.Position = UDim2.new(0.5, 0, 1, -18)
+			hint.AnchorPoint = Vector2.new(0.5, 1)
+		end
 	end
 
 	player:GetAttributeChangedSignal("TutorialActive"):Connect(refresh)

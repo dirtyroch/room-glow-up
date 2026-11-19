@@ -7,12 +7,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local UI = require(script.Parent.UI)
+local Listen = require(script.Parent.Listen)
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items") :: ModuleScript) :: any
 local Logic = Shared:WaitForChild("Logic")
 local Levels = require(Logic:WaitForChild("Levels") :: ModuleScript) :: any
 local Hints = require(Logic:WaitForChild("Hints") :: ModuleScript) :: any
+local Preview = require(Logic:WaitForChild("Preview") :: ModuleScript) :: any
 local UIKit = UI.kit
 
 local Tray = {}
@@ -119,7 +121,7 @@ function Tray.start()
 	UI.stroke(tray, "ink", UIKit.Shape.stroke)
 	UI.pad(tray, 6)
 
-	local hint = UI.label(tray, hintFor("room"), 18, 26)
+	local hint = UI.label(tray, hintFor("room"), UIKit.Text.body, 28)
 	hint.Name = "Hint"
 	hint.TextXAlignment = Enum.TextXAlignment.Left
 	hint.TextWrapped = true
@@ -298,15 +300,26 @@ function Tray.start()
 			if button then
 				local gate = Levels.gate(item.id, level)
 				local owned = gate.owned == true or shopOwns(item.id)
+				local name = button:FindFirstChild("ItemName")
+				local price = button:FindFirstChild("Price")
+				button.Text = ""
 				if owned ~= true then
-					button.Text = item.name .. "\nLv " .. tostring(gate.level)
-					button.TextTransparency = 0.45
+					if name and name:IsA("TextLabel") then
+						name.Text = item.name .. "  Lv " .. tostring(gate.level)
+					end
+					if price and price:IsA("TextLabel") then
+						price.Text = "Lv"
+					end
 					button.BackgroundTransparency = 0.35
 					button.AutoButtonColor = false
 				else
 					local pricey = item.cost > left and not home
-					button.Text = item.name .. "\n" .. tostring(item.cost)
-					button.TextTransparency = if pricey then 0.4 else 0
+					if name and name:IsA("TextLabel") then
+						name.Text = item.name
+					end
+					if price and price:IsA("TextLabel") then
+						price.Text = tostring(item.cost)
+					end
 					button.BackgroundTransparency = if pricey then 0.2 else 0
 					button.AutoButtonColor = true
 				end
@@ -327,11 +340,17 @@ function Tray.start()
 		tray.Position = UDim2.new(0.5, 0, 0, bands.tray.top)
 		tray.Size = UDim2.new(1, -side * 2, 0, bands.tray.bottom - bands.tray.top)
 		local inner = bands.tray.bottom - bands.tray.top - 12
-		local showHint = inner >= 148
-		local showChips = inner >= 128
-		local hintH = if showHint then 26 else 0
-		local chipH = if showChips then 36 else 0
-		local toolH = 42
+		local chipH = UIKit.Layout.chip
+		local toolH = 40
+		local hintH = 28
+		if inner < hintH + chipH + toolH + 56 then
+			hintH = 0
+		end
+		if inner < chipH + toolH + 48 then
+			chipH = 0
+		end
+		local showHint = hintH > 0
+		local showChips = chipH > 0
 		hint.Visible = showHint
 		hint.Position = UDim2.new(0, 0, 0, 0)
 		hint.Size = UDim2.new(1, 0, 0, hintH)
@@ -344,9 +363,13 @@ function Tray.start()
 		scroller.Size = UDim2.new(1, 0, 0, itemsH)
 		tools.Position = UDim2.new(0, 0, 1, -toolH)
 		tools.Size = UDim2.new(1, 0, 0, toolH)
-		local buttonH = math.max(36, itemsH - 6)
+		local buttonH = math.max(56, itemsH - 6)
 		for _, button in pairs(buttons) do
-			button.Size = UDim2.fromOffset(128, buttonH)
+			button.Size = UDim2.fromOffset(112, buttonH)
+			local preview = button:FindFirstChild("Preview")
+			if preview and preview:IsA("GuiObject") then
+				preview.Size = UDim2.new(1, -8, 1, -(UIKit.Text.item + 10))
+			end
 		end
 	end
 
@@ -383,11 +406,15 @@ function Tray.start()
 			chip.TextSize = UIKit.Text.min
 			chip.TextColor3 = UI.rgb("ink")
 			chip.BackgroundColor3 = if label == category then UI.rgb("butter") else UI.rgb("lavender")
-			chip.Size = UDim2.fromOffset(math.max(84, #label * 11 + 28), 32)
+			chip.Size = UDim2.fromOffset(math.max(UIKit.Layout.chip, #label * 12 + 28), UIKit.Layout.chip)
 			chip.LayoutOrder = order
 			chip.Selectable = false
 			chip.Parent = chips
 			UI.corner(chip, 18)
+			local cap = Instance.new("UITextSizeConstraint")
+			cap.MinTextSize = UIKit.Text.min
+			cap.MaxTextSize = UIKit.Text.min
+			cap.Parent = chip
 			chip.Activated:Connect(function()
 				category = label
 				rebuild()
@@ -408,19 +435,109 @@ function Tray.start()
 				button.Name = item.id
 				button.AutoButtonColor = not locked
 				button.Font = UI.face()
-				button.Text = if locked then item.name .. "\nLv " .. tostring(gate.level) else item.name .. "\n" .. tostring(item.cost)
-				button.TextSize = UIKit.Text.min
-				button.TextWrapped = true
-				button.TextTransparency = if locked then 0.45 else 0
+				button.Text = ""
+				button.TextSize = UIKit.Text.item
 				button.BackgroundTransparency = if locked then 0.35 else 0
 				button.TextColor3 = UI.rgb("ink")
-				button.BackgroundColor3 = UI.rgb(item.color)
-				button.Size = UDim2.fromOffset(128, 72)
+				button.BackgroundColor3 = UI.rgb("cream")
+				button.Size = UDim2.fromOffset(112, 96)
 				button.LayoutOrder = shown
 				button.Selectable = false
 				button.Parent = scroller
 				UI.corner(button, 22)
 				UI.stroke(button, "ink", 2)
+				local themeId = roundFolder:GetAttribute("ThemeId")
+				local themeKey = if type(themeId) == "string" then themeId else ""
+				local fits = Preview.fits(item, themeKey)
+				local previews = ReplicatedStorage:FindFirstChild("PropPreviews")
+				local template = if previews then previews:FindFirstChild(item.id) else nil
+				local hasModel = template ~= nil and template:IsA("Model")
+				local useViewport = Preview.mode(Listen.lowEnd(), hasModel) == "viewport"
+				local picture = Instance.new("Frame")
+				picture.Name = "Preview"
+				picture.BackgroundColor3 = UI.rgb(item.color)
+				picture.BackgroundTransparency = if locked then 0.4 else 0.05
+				picture.BorderSizePixel = 0
+				picture.Position = UDim2.fromOffset(4, 4)
+				picture.Size = UDim2.new(1, -8, 1, -(UIKit.Text.item + 10))
+				picture.ClipsDescendants = true
+				picture.Parent = button
+				UI.corner(picture, 16)
+				if useViewport and template and template:IsA("Model") then
+					local source = template
+					task.defer(function()
+						if not button.Parent then
+							return
+						end
+						local view = Instance.new("ViewportFrame")
+						view.Name = "Model"
+						view.BackgroundTransparency = 1
+						view.Size = UDim2.fromScale(1, 1)
+						view.Ambient = Color3.fromRGB(220, 210, 200)
+						view.LightColor = Color3.fromRGB(255, 244, 230)
+						view.Parent = picture
+						local world = Instance.new("WorldModel")
+						world.Parent = view
+						local clone = source:Clone()
+						clone.Parent = world
+						local camera = Instance.new("Camera")
+						camera.CFrame = CFrame.new(Vector3.new(7, 5.5, 8), Vector3.new(0, 1.2, 0))
+						camera.Parent = view
+						view.CurrentCamera = camera
+					end)
+				else
+					local blob = Instance.new("Frame")
+					blob.Name = "Silhouette"
+					blob.AnchorPoint = Vector2.new(0.5, 0.5)
+					blob.Position = UDim2.fromScale(0.5, 0.48)
+					blob.Size = UDim2.fromOffset(36, 28)
+					blob.BackgroundColor3 = UI.rgb(item.color)
+					blob.BorderSizePixel = 0
+					blob.Parent = picture
+					UI.corner(blob, 10)
+				end
+				local name = Instance.new("TextLabel")
+				name.Name = "ItemName"
+				name.BackgroundTransparency = 1
+				name.AnchorPoint = Vector2.new(0, 1)
+				name.Position = UDim2.new(0, 4, 1, -2)
+				name.Size = UDim2.new(1, -8, 0, UIKit.Text.item + 2)
+				name.Font = UI.face()
+				name.TextSize = UIKit.Text.item
+				name.TextColor3 = UI.rgb("ink")
+				name.TextXAlignment = Enum.TextXAlignment.Left
+				name.TextTruncate = Enum.TextTruncate.AtEnd
+				name.Text = if locked then item.name .. "  Lv " .. tostring(gate.level) else item.name
+				name.Parent = button
+				local nameCap = Instance.new("UITextSizeConstraint")
+				nameCap.MinTextSize = UIKit.Text.item
+				nameCap.MaxTextSize = UIKit.Text.item
+				nameCap.Parent = name
+				local price = Instance.new("TextLabel")
+				price.Name = "Price"
+				price.AnchorPoint = Vector2.new(1, 0)
+				price.Position = UDim2.new(1, -6, 0, 6)
+				price.Size = UDim2.fromOffset(40, 22)
+				price.BackgroundColor3 = UI.rgb("butter")
+				price.Font = UI.face()
+				price.TextSize = UIKit.Text.min
+				price.TextColor3 = UI.rgb("ink")
+				price.Text = if locked then "Lv" else tostring(item.cost)
+				price.Parent = button
+				UI.corner(price, 8)
+				if fits and not locked then
+					local star = Instance.new("TextLabel")
+					star.Name = "StarFit"
+					star.Position = UDim2.fromOffset(6, 6)
+					star.Size = UDim2.fromOffset(22, 18)
+					star.BackgroundColor3 = UI.rgb("mint")
+					star.Font = UI.face()
+					star.TextSize = UIKit.Text.min
+					star.TextColor3 = UI.rgb("ink")
+					star.Text = UIKit.Icons.star
+					star.Parent = button
+					UI.corner(star, 8)
+				end
 				buttons[item.id] = button
 				button.Activated:Connect(function()
 					if locked then

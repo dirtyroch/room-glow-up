@@ -175,6 +175,21 @@ function Bots.think(bot, now)
 		return
 	end
 	local phase = state:GetAttribute("Phase")
+	if bot.player:GetAttribute("TutorialActive") == true then
+		if not bot.tutorial then
+			bot.tutorial = { seenAt = now, lobbyLeft = state:GetAttribute("TimeLeft") }
+			bot.tutorial.tapAt = now + (bot.spec.tutorialReact or bot.rng:NextNumber(3, 9))
+		end
+		if not bot.tutorial.placedAt and now >= bot.tutorial.tapAt then
+			local ok, msg = Bots.call(bot, "TutorialPlace")
+			if ok then
+				bot.tutorial.placedAt = now
+			else
+				bot.tutorial.failed = msg
+			end
+		end
+	end
+
 	if phase ~= bot.lastPhase then
 		bot.lastPhase = phase
 		bot.phaseSince = now
@@ -222,21 +237,6 @@ function Bots.think(bot, now)
 	bot.nextThink = now + 0.5
 
 	if phase == "Lobby" then
-		if bot.player:GetAttribute("TutorialActive") == true then
-			if not bot.tutorial then
-				bot.tutorial = { seenAt = now, lobbyLeft = state:GetAttribute("TimeLeft") }
-				-- A first-time kid reads the hint, then taps the big rug.
-				bot.tutorial.tapAt = now + (bot.spec.tutorialReact or bot.rng:NextNumber(3, 9))
-			end
-			if not bot.tutorial.placedAt and now >= bot.tutorial.tapAt then
-				local ok, msg = Bots.call(bot, "TutorialPlace")
-				if ok then
-					bot.tutorial.placedAt = now
-				else
-					bot.tutorial.failed = msg
-				end
-			end
-		end
 		if bot.kind == "duo" and not bot.duoAsked then
 			bot.duoAsked = true
 			if bot.player:GetAttribute("DuoOn") ~= true then
@@ -285,6 +285,9 @@ function Bots.think(bot, now)
 			bot.lastStop = stop
 			bot.voteAt = now + bot.rng:NextNumber(1.0, 7.5)
 			bot.voteTarget = plot
+			if bot.kind ~= "novote" and bot.rng:NextNumber() < 0.7 then
+				Bots.call(bot, "React", bot.rng:NextInteger(1, #Config.Show.Crowd))
+			end
 		end
 		if bot.kind == "novote" then
 			return

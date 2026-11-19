@@ -40,6 +40,7 @@ function ActionService.init(c: any)
 		nameMax = limits.nameMax,
 		overrides = {
 			Place = { burst = limits.placeBurst, refill = limits.placeRefill },
+			React = { burst = limits.reactBurst, refill = limits.reactRefill },
 		},
 	})
 end

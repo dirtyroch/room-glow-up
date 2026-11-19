@@ -204,7 +204,12 @@ local function assign(player: Player): number?
 	end
 	player:SetAttribute("Plot", index)
 	local model = models[index]
-	model:SetAttribute("OwnerKey", key)
+	local phase = phaseNow()
+	if phase == "Tour" or phase == "Results" then
+		model:SetAttribute("OwnerKey", nil)
+	else
+		model:SetAttribute("OwnerKey", key)
+	end
 	local display = player.DisplayName
 	if display == "" then
 		display = player.Name

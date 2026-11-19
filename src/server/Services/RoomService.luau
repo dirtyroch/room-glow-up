@@ -501,6 +501,17 @@ function RoomService.start()
 	RoundEngine.setHasWork(ctx.round, function(id: string): boolean
 		return Placement.hasPieces(rooms[id])
 	end)
+	local Props = require(script.Parent.Parent:WaitForChild("Props") :: ModuleScript) :: any
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local folder = ReplicatedStorage:FindFirstChild("PropPreviews")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "PropPreviews"
+		folder.Parent = ReplicatedStorage
+	end
+	if folder:IsA("Folder") then
+		Props.previews(folder, Items.list)
+	end
 end
 
 return RoomService
