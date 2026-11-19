@@ -421,7 +421,6 @@ function Save.close(store: Store, key: string, sessionId: string): (any?, string
 	return released, nil
 end
 
--- One in-flight write per session. A nested call is refused.
 -- One writer per player. With a wait function, a second caller from another
 -- thread waits for the first instead of being dropped, so a leave right after
 -- a save still writes and still releases the lock. A nested call from the same
