@@ -1,0 +1,55 @@
+{
+  "name": "RoomGlowUp",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CharacterWalkSpeed": 16,
+        "CharacterJumpPower": 50
+      },
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 17.25,
+        "Brightness": 2.1,
+        "GlobalShadows": true,
+        "Ambient": [0.45, 0.5, 0.58],
+        "OutdoorAmbient": [0.55, 0.6, 0.68],
+        "ColorShift_Top": [0.86, 0.9, 1.0],
+        "EnvironmentDiffuseScale": 0.35,
+        "EnvironmentSpecularScale": 0.3
+      },
+      "EveningGrade": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": {
+          "TintColor": [1.0, 0.96, 0.92],
+          "Saturation": 0.08,
+          "Contrast": 0.04,
+          "Brightness": 0.02
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "Gravity": 196.2
+      }
+    },
+    "SoundService": {},
+    "StarterGui": {}
+  }
+}
