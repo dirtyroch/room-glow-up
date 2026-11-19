@@ -1,0 +1,6 @@
+std = "roblox"
+
+[lints]
+shadowing = "allow"
+# UDim2.new(1, 0, 0, 64) is the usual phone-layout form.
+roblox_manual_fromscale_or_fromoffset = "allow"
