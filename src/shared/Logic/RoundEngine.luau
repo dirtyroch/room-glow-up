@@ -470,6 +470,20 @@ function RoundEngine.advance(state: State, now: number)
 	settle(state, now)
 end
 
+-- Hand a duo stop to the remaining partner so the room stays on the tour.
+function RoundEngine.reassignStop(state: State, fromId: string, toId: string)
+	if type(fromId) ~= "string" or type(toId) ~= "string" or fromId == toId or toId == "" then
+		return
+	end
+	if table.find(state.tourStops, toId) then
+		return
+	end
+	local idx = table.find(state.tourStops, fromId)
+	if idx then
+		state.tourStops[idx] = toId
+	end
+end
+
 -- Pull a reported room off the tour. The same skip used when its owner leaves.
 function RoundEngine.removeStop(state: State, id: string, now: number)
 	dropStop(state, id, now)

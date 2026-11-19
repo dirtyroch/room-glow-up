@@ -71,10 +71,30 @@ function Dream.ensureSlots(doc: { [string]: any }, extra: number): number
 	return want
 end
 
-function Dream.roomFrom(pieces: { any }): any
+function Dream.clip(pieces: { any }, cap: number): { any }
+	local limit = cap
+	if type(limit) ~= "number" or limit ~= limit or limit < 0 then
+		limit = 0
+	end
+	limit = math.floor(limit)
+	if #pieces <= limit then
+		return pieces
+	end
+	local out: { any } = {}
+	for index = 1, limit do
+		table.insert(out, pieces[index])
+	end
+	return out
+end
+
+function Dream.roomFrom(pieces: { any }, cap: number?): any
 	local room = Placement.empty()
 	local nextId = 1
-	for _, piece in ipairs(pieces) do
+	local source = pieces
+	if type(cap) == "number" then
+		source = Dream.clip(pieces, cap)
+	end
+	for _, piece in ipairs(source) do
 		local copy = {
 			id = piece.id,
 			itemId = piece.itemId,

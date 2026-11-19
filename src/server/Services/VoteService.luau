@@ -206,6 +206,9 @@ function VoteService.init(c: any)
 		sync = sync,
 		onPhase = onPhase,
 		forget = forget,
+		reassign = function(fromId: string, toId: string)
+			Voting.reassign(ballots, fromId, toId)
+		end,
 		ballots = ballots,
 	}
 

@@ -52,7 +52,15 @@ end
 
 local function writeDoc(store: any, key: string, bag: any, doc: any): boolean
 	local result = bag.lock.run(function()
-		local saved = Save.write(store, key, ctx.sessionId, doc, pause, #Config.Progress.RetrySeconds)
+		local saved = Save.write(
+			store,
+			key,
+			ctx.sessionId,
+			doc,
+			pause,
+			#Config.Progress.RetrySeconds,
+			os.time()
+		)
 		return saved
 	end)
 	return result ~= nil
@@ -208,11 +216,25 @@ end
 
 function SaveService.start()
 	game:BindToClose(function()
-		if ctx.saves then
-			ctx.saves.commitAll("shutdown")
-			for key in pairs(sessions) do
+		if not ctx.saves then
+			return
+		end
+		-- Flush every player at once so 10 profiles fit in the shutdown window.
+		local keys: { string } = {}
+		for key in pairs(sessions) do
+			table.insert(keys, key)
+		end
+		local left = #keys
+		for _, key in ipairs(keys) do
+			task.spawn(function()
+				commit(key, "shutdown")
 				release(key)
-			end
+				left -= 1
+			end)
+		end
+		local started = os.clock()
+		while left > 0 and os.clock() - started < 25 do
+			task.wait(0.1)
 		end
 	end)
 end

@@ -52,6 +52,11 @@ end
 local function present(player: Player)
 	local key = tostring(player.UserId)
 	local bag = bagOf(key)
+	player:SetAttribute("SaveOk", bag.hold == true)
+	if bag.hold ~= true then
+		player:SetAttribute("DuoOn", group.opted[key] == true)
+		return
+	end
 	local level = levelOf(bag.profile)
 	Dream.ensureSlots(bag.dream, Monetization.extraDreamSlots(key))
 	player:SetAttribute("Level", level)
@@ -84,7 +89,7 @@ local function homeRoom(key: string): (any, any)
 	local level = levelOf(bag.profile)
 	Dream.ensureSlots(bag.dream, Monetization.extraDreamSlots(key))
 	if not homes[key] then
-		homes[key] = Dream.roomFrom(bag.dream.homes[1].pieces)
+		homes[key] = Dream.roomFrom(bag.dream.homes[1].pieces, Dream.cap(level))
 	end
 	return homes[key], Dream.context(level, catalog(), workspace:GetServerTimeNow())
 end
@@ -213,6 +218,12 @@ local function settle(round: any)
 	for _, player in Players:GetPlayers() do
 		local key = tostring(player.UserId)
 		local bag = bagOf(key)
+		-- A failed load uses a blank in-memory bag with hold = false.
+		-- Do not pay or save it, or a later write could hide the real profile.
+		if bag.hold ~= true then
+			player:SetAttribute("SaveOk", false)
+			continue
+		end
 		local profile = bag.profile
 		local before = levelOf(profile)
 		local rank, row = rowFor(rows, key)
@@ -251,11 +262,18 @@ local function settle(round: any)
 			recolors = hand.recolors,
 			fullRounds = if rank > 0 and pieces >= 8 then 1 else 0,
 		}
-		local questDone, questCoins = Quests.apply(profile, questStats, Config.Progress.QuestCoins)
+		local questDone, questCoins = 0, 0
 		if not payout.duplicate then
+			questDone, questCoins = Quests.apply(profile, questStats, Config.Progress.QuestCoins)
 			profile.coins += questCoins
 		else
-			questCoins = 0
+			for _, quest in ipairs(profile.quests) do
+				if type(quest) == "table" and type(quest.progress) == "number" and type(quest.goal) == "number" then
+					if quest.progress >= quest.goal then
+						questDone += 1
+					end
+				end
+			end
 		end
 		local rankXp = if payout.duplicate then 0 else payout.xp
 		local ranked = Rank.award(profile, monthId, rankXp, Config.RankTrack)
@@ -289,6 +307,7 @@ local function settle(round: any)
 		player:SetAttribute("StampLine", stampLine)
 		player:SetAttribute("QuestLine", "Quests " .. tostring(questDone) .. "/3")
 		player:SetAttribute("Purse", profile.coins)
+		player:SetAttribute("SaveOk", true)
 		if ctx.saves then
 			ctx.saves.commit(key, "results")
 		end
@@ -400,6 +419,10 @@ function ProgressService.init(c: any)
 		local round = ctx.round
 		if type(round) ~= "table" or round.phase ~= "Lobby" then
 			return false, "The dream home is open in the lobby."
+		end
+		local bag = bagOf(key)
+		if bag.hold ~= true then
+			return false, "Your home is still loading."
 		end
 		local player = playerFrom(key)
 		if not player then

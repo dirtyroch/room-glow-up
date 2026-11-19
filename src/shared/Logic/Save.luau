@@ -6,6 +6,8 @@
 local Save = {}
 
 Save.Schema = 1
+-- Hard cap per dream home and lookbook page. Matches a maxed two-storey house.
+Save.MaxDreamPieces = 36
 
 export type Lock = { session: string, at: number }
 
@@ -142,6 +144,13 @@ local function pieceList(value: any): { any }
 				placedAt = asNumber(entry.placedAt, 0),
 			})
 		end
+	end
+	if #out > Save.MaxDreamPieces then
+		local clipped: { any } = {}
+		for index = 1, Save.MaxDreamPieces do
+			table.insert(clipped, out[index])
+		end
+		return clipped
 	end
 	return out
 end
@@ -284,7 +293,15 @@ function Save.open(store: Store, key: string, sessionId: string, now: number, tt
 	return held, nil
 end
 
-function Save.write(store: Store, key: string, sessionId: string, doc: any, waitFn: ((number) -> ())?, maxAttempts: number?): (any?, number)
+function Save.write(
+	store: Store,
+	key: string,
+	sessionId: string,
+	doc: any,
+	waitFn: ((number) -> ())?,
+	maxAttempts: number?,
+	now: number?
+): (any?, number)
 	local attempt = 0
 	local limit = maxAttempts or 4
 	local pause = waitFn or function(_seconds: number) end
@@ -301,9 +318,13 @@ function Save.write(store: Store, key: string, sessionId: string, doc: any, wait
 				nextDoc.schema = 1
 				nextDoc.luck = nil
 				if type(current) == "table" and type(current.lock) == "table" then
+					local at = current.lock.at
+					if type(now) == "number" and now == now then
+						at = now
+					end
 					nextDoc.lock = {
 						session = current.lock.session,
-						at = current.lock.at,
+						at = at,
 					}
 				end
 				return nextDoc

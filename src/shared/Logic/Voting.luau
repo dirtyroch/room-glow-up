@@ -302,6 +302,21 @@ function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, pr
 	return rows
 end
 
+-- Move a ballot to the remaining duo partner when the lead leaves.
+function Voting.reassign(state: State, fromId: string, toId: string)
+	if type(fromId) ~= "string" or type(toId) ~= "string" or fromId == toId or toId == "" then
+		return
+	end
+	local room = state.rooms[fromId]
+	if not room then
+		return
+	end
+	if state.rooms[toId] == nil then
+		state.rooms[toId] = room
+	end
+	state.rooms[fromId] = nil
+end
+
 -- Read the board after finalize. Does not grant coins or change ballots.
 function Voting.standings(state: State): { ScoreRow }
 	local rows: { ScoreRow } = {}

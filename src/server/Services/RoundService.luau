@@ -69,14 +69,29 @@ end
 
 local function onLeave(player: Player)
 	local key = keyOf(player)
+	local partner: string? = nil
+	local wasLead = false
 	if ctx.duo and type(ctx.duo.noteLeave) == "function" then
-		ctx.duo.noteLeave(state, key)
+		partner, wasLead = ctx.duo.noteLeave(state, key)
+	end
+	local inherited = false
+	if wasLead and type(partner) == "string" and state.players[partner] ~= nil then
+		inherited = true
+		if type(RoundEngine.reassignStop) == "function" then
+			RoundEngine.reassignStop(state, key, partner)
+		end
+		if ctx.votes and type(ctx.votes.reassign) == "function" then
+			ctx.votes.reassign(key, partner)
+		end
+		if ctx.plots and type(ctx.plots.handOff) == "function" then
+			ctx.plots.handOff(player, partner)
+		end
 	end
 	RoundEngine.leave(state, key, now())
 	if ctx.rooms then
 		ctx.rooms.forget(key)
 	end
-	if ctx.plots then
+	if not inherited and ctx.plots then
 		ctx.plots.release(player)
 	end
 	if ctx.actions then

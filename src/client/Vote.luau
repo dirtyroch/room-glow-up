@@ -339,7 +339,8 @@ function Vote.start()
 		local frame = Instance.new("Frame")
 		frame.Name = "RewardCard"
 		frame.LayoutOrder = 1
-		frame.Size = UDim2.new(1, 0, 0, math.max(cardHeight, 180))
+		frame.AutomaticSize = Enum.AutomaticSize.Y
+		frame.Size = UDim2.new(1, 0, 0, 0)
 		frame.BackgroundColor3 = UI.rgb("cream")
 		frame.BorderSizePixel = 0
 		frame.Parent = results

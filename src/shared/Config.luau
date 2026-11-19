@@ -100,8 +100,9 @@ local Config = {
 		Schema = 1,
 		ProfileStore = "RoomGlowProfile_v1",
 		DreamStore = "RoomGlowDream_v1",
+		-- Long enough to cover a full 10-player round plus a long lobby sit.
 		-- A second server cannot take the lock until this many seconds pass.
-		LockSeconds = 120,
+		LockSeconds = 1800,
 		PaidCap = 48,
 		Lookbook = 3,
 		StampStars = 4,
@@ -123,7 +124,7 @@ local Config = {
 	-- Granted once per round id. Placement, stars, and the podium each add some.
 	Rewards = {
 		PlaceCoins = { 36, 24, 18, 12, 8 },
-		PlaceXp = { 40, 30, 24, 18, 12 },
+		PlaceXp = { 40, 30, 24, 18, 14 },
 		StarCoins = 4,
 		StarXp = 6,
 		PodiumCoins = { 20, 14, 8 },
