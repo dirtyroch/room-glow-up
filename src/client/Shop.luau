@@ -55,7 +55,7 @@ function Shop.start()
 	banner.BackgroundColor3 = UI.rgb("mint")
 	banner.BackgroundTransparency = 0
 	banner.Visible = false
-	UI.corner(banner, 16)
+	UI.corner(banner, 22)
 	UI.stroke(banner, "ink", 3)
 
 	local open = Instance.new("TextButton")
@@ -123,7 +123,7 @@ function Shop.start()
 	codeBox.BackgroundColor3 = UI.rgb("lavender")
 	codeBox.Size = UDim2.new(0.62, -8, 1, 0)
 	codeBox.Parent = codeRow
-	UI.corner(codeBox, 16)
+	UI.corner(codeBox, 22)
 	UI.stroke(codeBox, "ink", 3)
 	local codeButton = Instance.new("TextButton")
 	codeButton.Name = "Redeem"
@@ -136,7 +136,7 @@ function Shop.start()
 	codeButton.TextSize = 22
 	codeButton.TextColor3 = UI.rgb("ink")
 	codeButton.Parent = codeRow
-	UI.corner(codeButton, 16)
+	UI.corner(codeButton, 22)
 	UI.stroke(codeButton, "ink", 3)
 
 	local close = Instance.new("TextButton")
@@ -183,7 +183,7 @@ function Shop.start()
 		card.AutomaticSize = Enum.AutomaticSize.Y
 		card.LayoutOrder = order
 		card.Parent = scroller
-		UI.corner(card, 16)
+		UI.corner(card, 22)
 		UI.stroke(card, "ink", 2)
 		local pad = UI.pad(card, 10)
 		pad.Name = "Pad"
@@ -211,7 +211,7 @@ function Shop.start()
 			button.Size = UDim2.new(1, 0, 0, 48)
 			button.LayoutOrder = 3
 			button.Parent = card
-			UI.corner(button, 16)
+			UI.corner(button, 22)
 			UI.stroke(button, "ink", 3)
 			button.Activated:Connect(function()
 				if roundFolder:GetAttribute("Phase") ~= "Lobby" then
@@ -309,7 +309,7 @@ function Shop.start()
 		button.TextColor3 = UI.rgb("ink")
 		button.LayoutOrder = index
 		button.Parent = tabRow
-		UI.corner(button, 14)
+		UI.corner(button, 20)
 		UI.stroke(button, "ink", 2)
 		tabButtons[name] = button
 		button.Activated:Connect(function()

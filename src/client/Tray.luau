@@ -77,7 +77,7 @@ function Tray.start()
 	UI.corner(meter, 18)
 	UI.stroke(meter, "ink", 3)
 
-	local matchLabel = UI.label(meter, "Theme Match 0", 16, 22)
+	local matchLabel = UI.label(meter, "Theme Match 0", 18, 22)
 	matchLabel.Name = "Match"
 	matchLabel.AnchorPoint = Vector2.new(0, 0.5)
 	matchLabel.Position = UDim2.new(0, 10, 0.5, 0)
@@ -88,7 +88,7 @@ function Tray.start()
 	barBack.Name = "Bar"
 	barBack.AnchorPoint = Vector2.new(0, 0.5)
 	barBack.Position = UDim2.new(0.44, 0, 0.5, 0)
-	barBack.Size = UDim2.new(0.3, 0, 0, 16)
+	barBack.Size = UDim2.new(0.3, 0, 0, 18)
 	barBack.BackgroundColor3 = UI.rgb("cream")
 	barBack.BorderSizePixel = 0
 	barBack.Parent = meter
@@ -101,7 +101,7 @@ function Tray.start()
 	barFill.Parent = barBack
 	UI.corner(barFill, 8)
 
-	local coins = UI.label(meter, "0 coins", 16, 22)
+	local coins = UI.label(meter, "0 coins", 18, 22)
 	coins.Name = "Coins"
 	coins.AnchorPoint = Vector2.new(1, 0.5)
 	coins.Position = UDim2.new(1, -10, 0.5, 0)
@@ -119,7 +119,7 @@ function Tray.start()
 	UI.stroke(tray, "ink", UIKit.Shape.stroke)
 	UI.pad(tray, 6)
 
-	local hint = UI.label(tray, hintFor("room"), 15, 24)
+	local hint = UI.label(tray, hintFor("room"), 18, 26)
 	hint.Name = "Hint"
 	hint.TextXAlignment = Enum.TextXAlignment.Left
 	hint.TextWrapped = true
@@ -173,7 +173,7 @@ function Tray.start()
 		wrap.LayoutOrder = order
 		wrap.Parent = tools
 		local button = UI.button(wrap, text, "quiet", fn)
-		button.TextSize = 16
+		button.TextSize = UIKit.Text.min
 		button.Selectable = false
 	end
 
@@ -330,8 +330,8 @@ function Tray.start()
 		local showHint = inner >= 148
 		local showChips = inner >= 128
 		local hintH = if showHint then 26 else 0
-		local chipH = if showChips then 30 else 0
-		local toolH = 34
+		local chipH = if showChips then 36 else 0
+		local toolH = 42
 		hint.Visible = showHint
 		hint.Position = UDim2.new(0, 0, 0, 0)
 		hint.Size = UDim2.new(1, 0, 0, hintH)
@@ -346,7 +346,7 @@ function Tray.start()
 		tools.Size = UDim2.new(1, 0, 0, toolH)
 		local buttonH = math.max(36, itemsH - 6)
 		for _, button in pairs(buttons) do
-			button.Size = UDim2.fromOffset(112, buttonH)
+			button.Size = UDim2.fromOffset(128, buttonH)
 		end
 	end
 
@@ -380,14 +380,14 @@ function Tray.start()
 			chip.AutoButtonColor = true
 			chip.Text = label
 			chip.Font = UI.face()
-			chip.TextSize = 14
+			chip.TextSize = UIKit.Text.min
 			chip.TextColor3 = UI.rgb("ink")
 			chip.BackgroundColor3 = if label == category then UI.rgb("butter") else UI.rgb("lavender")
-			chip.Size = UDim2.fromOffset(math.max(72, #label * 8 + 18), 26)
+			chip.Size = UDim2.fromOffset(math.max(84, #label * 11 + 28), 32)
 			chip.LayoutOrder = order
 			chip.Selectable = false
 			chip.Parent = chips
-			UI.corner(chip, 12)
+			UI.corner(chip, 18)
 			chip.Activated:Connect(function()
 				category = label
 				rebuild()
@@ -409,17 +409,17 @@ function Tray.start()
 				button.AutoButtonColor = not locked
 				button.Font = UI.face()
 				button.Text = if locked then item.name .. "\nLv " .. tostring(gate.level) else item.name .. "\n" .. tostring(item.cost)
-				button.TextSize = 14
+				button.TextSize = UIKit.Text.min
 				button.TextWrapped = true
 				button.TextTransparency = if locked then 0.45 else 0
 				button.BackgroundTransparency = if locked then 0.35 else 0
 				button.TextColor3 = UI.rgb("ink")
 				button.BackgroundColor3 = UI.rgb(item.color)
-				button.Size = UDim2.fromOffset(112, 64)
+				button.Size = UDim2.fromOffset(128, 72)
 				button.LayoutOrder = shown
 				button.Selectable = false
 				button.Parent = scroller
-				UI.corner(button, 16)
+				UI.corner(button, 22)
 				UI.stroke(button, "ink", 2)
 				buttons[item.id] = button
 				button.Activated:Connect(function()

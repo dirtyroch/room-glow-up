@@ -12,6 +12,7 @@ local Listen = require(script.Parent.Listen)
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config") :: ModuleScript) :: any
+local Look = require(Shared:WaitForChild("Look") :: ModuleScript) :: any
 local UIKit = require(Shared:WaitForChild("UIKit") :: ModuleScript) :: any
 
 local Juice = {}
@@ -65,7 +66,24 @@ local function burst(part: BasePart, count: number, lifetime: number)
 		NumberSequenceKeypoint.new(1, 0),
 	})
 	emitter.LightEmission = if Listen.lowEnd() then 0.15 else 0.4
-	emitter.Color = ColorSequence.new(Color3.fromRGB(255, 226, 156), Color3.fromRGB(255, 186, 173))
+	local folder = ReplicatedStorage:FindFirstChild("RoundState")
+	local themeId = ""
+	if folder then
+		local value = folder:GetAttribute("ThemeId")
+		if type(value) == "string" then
+			themeId = value
+		end
+	end
+	local swatch = Look.swatch(themeId)
+	local function tone(index: number): Color3
+		local channels = swatch[index]
+		return Color3.fromRGB(channels[1], channels[2], channels[3])
+	end
+	emitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, tone(1)),
+		ColorSequenceKeypoint.new(0.5, tone(2)),
+		ColorSequenceKeypoint.new(1, tone(3)),
+	})
 	emitter.Parent = part
 	emitter:Emit(amount)
 	Debris:AddItem(emitter, 1.2)
@@ -131,6 +149,17 @@ function Juice.start()
 	end
 	plots.ChildAdded:Connect(watchPlot)
 
+	local function confettiHost(): BasePart
+		local plaza = Workspace:FindFirstChild("Plaza")
+		if plaza then
+			local spot = plaza:FindFirstChild("Confetti", true)
+			if spot and spot:IsA("BasePart") then
+				return spot
+			end
+		end
+		return anchor()
+	end
+
 	local host = anchor()
 	local music = Instance.new("Sound")
 	music.Name = "GlowMusic"
@@ -152,7 +181,7 @@ function Juice.start()
 	folder:GetAttributeChangedSignal("Phase"):Connect(function()
 		if folder:GetAttribute("Phase") == "Results" then
 			local count = if Listen.lowEnd() then Config.Audio.ConfettiLow else Config.Audio.Confetti
-			burst(host, count, 0.8)
+			burst(confettiHost(), count, 0.8)
 		end
 	end)
 
