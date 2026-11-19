@@ -182,8 +182,8 @@ local function dressRoom(shellModel: Model, pivot: CFrame, width: number, depth:
 	decor(shellModel, "Sill", "Block", Vector3.new(winW + 1.1, 0.28, 0.7), pivot * CFrame.new(0, winY - winH / 2 - 0.1, winZ + 0.2), shell("trim"), "Wood", nil)
 	decor(shellModel, "Mullion", "Block", Vector3.new(0.18, winH, 0.16), pivot * CFrame.new(0, winY, winZ + 0.2), shell("trim"), "Wood", nil)
 	decor(shellModel, "Rail", "Block", Vector3.new(winW, 0.18, 0.16), pivot * CFrame.new(0, winY, winZ + 0.2), shell("trim"), "Wood", nil)
-	wash(glass, Color3.fromRGB(255, 200, 150), 0.35, 10)
-	keyLight(glass, Color3.fromRGB(255, 186, 120), 1.35, 22, Enum.NormalId.Back)
+	wash(glass, Color3.fromRGB(255, 236, 210), 0.25, 10)
+	keyLight(glass, Color3.fromRGB(255, 232, 200), 1.1, 20, Enum.NormalId.Back)
 end
 
 local function dressGinger(shellModel: Model, pivot: CFrame, width: number, depth: number, height: number)
@@ -209,8 +209,8 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 		"SmoothPlastic",
 		nil
 	)
-	wash(glass, Color3.fromRGB(255, 200, 140), 0.3, 10)
-	keyLight(glass, Color3.fromRGB(255, 176, 110), 1.2, 20, Enum.NormalId.Right)
+	wash(glass, Color3.fromRGB(255, 236, 210), 0.22, 10)
+	keyLight(glass, Color3.fromRGB(255, 228, 190), 1.05, 18, Enum.NormalId.Right)
 	decor(shellModel, "Door", "Block", Vector3.new(3.4, 6.2, 0.35), pivot * CFrame.new(-width * 0.22, 4.2, planeZ + 0.48), shell("gingerB"), "Wood", nil)
 	decor(shellModel, "Knob", "Ball", Vector3.new(0.45, 0.45, 0.45), pivot * CFrame.new(-width * 0.22 + 1.1, 4.1, planeZ + 0.75), shell("hook"), "Metal", nil)
 	local caneH = math.clamp(height * 0.45, 6, 10)
@@ -233,7 +233,7 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 			"Cylinder",
 			Vector3.new(caneH * 0.55, 0.78, 0.78),
 			pivot * CFrame.new(x, 1 + caneH * 0.35, caneZ) * CFrame.Angles(0, 0, math.rad(90)),
-			Color3.fromRGB(220, 50, 70),
+			Color3.fromRGB(230, 40, 70),
 			"SmoothPlastic",
 			nil
 		)

@@ -244,6 +244,24 @@ local WINTER = {
 }
 
 
+
+local GLOW = {
+	{ "ribbon_rug", 2, 2 },
+	{ "lavender_settee", 2, 4 },
+	{ "quilt_table", 2, 3 },
+	{ "star_lamp", 0, 0 },
+	{ "globe_light", 5, 5 },
+	{ "string_lights", 0, 5 },
+	{ "reader_chair", 5, 2 },
+	{ "star_pillow", 4, 4 },
+	{ "spark_accent", 1, 3 },
+	{ "ribbon_sash", 0, 2 },
+	{ "gift_stack", 5, 0 },
+	{ "holly_pot", 0, 3 },
+	{ "star_mat", 1, 1 },
+	{ "book_ledge", 3, 0 },
+}
+
 local function gradeOf(family)
 	local preset = Look.preset(family)
 	local function rgb01(channels)
@@ -403,6 +421,22 @@ do
 		parts = parts,
 	}
 	print("winter parts", #parts)
+end
+
+-- Glow / neon-ish room on plot 3
+decorate(3, "room", GLOW, "glow")
+partCounts.glow = warnParts()
+do
+	local parts = collect(workspace, function(inst)
+		return underPlot(inst, 3)
+	end)
+	scenes.glow = {
+		family = "glow",
+		grade = gradeOf("glow"),
+		camera = { pos = { 11, 11, 82 }, look = { 0, 4, 38 } },
+		parts = parts,
+	}
+	print("glow parts", #parts)
 end
 
 -- Podium: just the plaza stage (the actual in-game results platform).

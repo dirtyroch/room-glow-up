@@ -63,6 +63,10 @@ function Stage.start()
 		pcall(function()
 			(Lighting :: any).ExposureCompensation = grade.exposure
 		end)
+		pcall(function()
+			(Lighting :: any).EnvironmentDiffuseScale = 0.55
+			(Lighting :: any).EnvironmentSpecularScale = 0.35
+		end)
 
 		local air = ensure("Atmosphere", "SoftAir")
 		air.Density = if fx.atmosphere then grade.density else 0

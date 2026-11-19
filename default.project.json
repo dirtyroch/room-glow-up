@@ -19,48 +19,76 @@
         }
       }
     },
-      "Lighting": {
+    "Lighting": {
       "$properties": {
         "Technology": "Future",
-        "ClockTime": 17.4,
-        "Brightness": 1.2,
+        "ClockTime": 15.2,
+        "Brightness": 2.2,
         "GlobalShadows": true,
-        "Ambient": [0.306, 0.22, 0.188],
-        "OutdoorAmbient": [0.549, 0.424, 0.353],
-        "ColorShift_Top": [1.0, 0.769, 0.588],
-        "EnvironmentDiffuseScale": 0.22,
-        "EnvironmentSpecularScale": 0.28,
-        "ExposureCompensation": -0.4
+        "Ambient": [
+          0.706,
+          0.675,
+          0.643
+        ],
+        "OutdoorAmbient": [
+          0.627,
+          0.698,
+          0.784
+        ],
+        "ColorShift_Top": [
+          1.0,
+          0.925,
+          0.839
+        ],
+        "EnvironmentDiffuseScale": 0.55,
+        "EnvironmentSpecularScale": 0.35,
+        "ExposureCompensation": 0
       },
       "Bloom": {
         "$className": "BloomEffect",
         "$properties": {
           "Enabled": true,
-          "Intensity": 0.16,
-          "Size": 14,
-          "Threshold": 0.96
+          "Intensity": 0.1,
+          "Size": 12,
+          "Threshold": 0.98
         }
       },
       "Grade": {
         "$className": "ColorCorrectionEffect",
         "$properties": {
           "Enabled": true,
-          "Brightness": -0.04,
-          "Contrast": 0.26,
-          "Saturation": 0.3,
-          "TintColor": [1.0, 0.957, 0.91]
+          "Brightness": 0.02,
+          "Contrast": 0.08,
+          "Saturation": 0.14,
+          "TintColor": [
+            1.0,
+            1.0,
+            1.0
+          ]
         }
       },
       "SoftAir": {
         "$className": "Atmosphere",
         "$properties": {
-          "Density": 0.1,
-          "Offset": 0.06,
-          "Color": [1.0, 0.824, 0.745],
-          "Decay": [0.588, 0.392, 0.314],
-          "Glare": 0.06,
-          "Haze": 0.28
+          "Density": 0.04,
+          "Offset": 0.08,
+          "Color": [
+            0.863,
+            0.902,
+            0.961
+          ],
+          "Decay": [
+            0.706,
+            0.784,
+            0.902
+          ],
+          "Glare": 0.02,
+          "Haze": 0.06
         }
+      },
+      "Sky": {
+        "$className": "Sky",
+        "$properties": {}
       }
     },
     "Workspace": {
@@ -71,9 +99,21 @@
         "$className": "Part",
         "$properties": {
           "Anchored": true,
-          "Size": [512, 1, 512],
-          "Position": [0, -0.5, 0],
-          "Color": [0.55, 0.62, 0.58],
+          "Size": [
+            512,
+            1,
+            512
+          ],
+          "Position": [
+            0,
+            -0.5,
+            0
+          ],
+          "Color": [
+            0.961,
+            0.98,
+            1.0
+          ],
           "Material": "SmoothPlastic",
           "TopSurface": "Smooth",
           "BottomSurface": "Smooth"
@@ -85,9 +125,21 @@
           "Anchored": true,
           "Neutral": true,
           "Duration": 0,
-          "Size": [8, 1, 8],
-          "Position": [0, 0.5, 0],
-          "Color": [1.0, 0.73, 0.68],
+          "Size": [
+            8,
+            1,
+            8
+          ],
+          "Position": [
+            0,
+            0.5,
+            0
+          ],
+          "Color": [
+            1.0,
+            0.73,
+            0.68
+          ],
           "Material": "SmoothPlastic",
           "TopSurface": "Smooth",
           "BottomSurface": "Smooth"

@@ -185,7 +185,7 @@ function Plaza.build()
 	local lavender = rgb("lavender")
 	local ink = rgb("ink")
 
-	bit(folder, "Disc", "Cylinder", Vector3.new(0.7, 56, 56), stand(CFrame.new(0, 0.4, cz)), Color3.fromRGB(232, 244, 236), Enum.Material.Fabric, true, nil)
+	bit(folder, "Disc", "Cylinder", Vector3.new(0.7, 56, 56), stand(CFrame.new(0, 0.4, cz)), Color3.fromRGB(245, 250, 255), Enum.Material.Fabric, true, nil)
 
 	for index = 0, 5 do
 		local z = -6 - index * 3.2
@@ -323,7 +323,7 @@ function Plaza.build()
 			local tx, tz = x * 1.08, cz + (z - cz) * 1.08
 			-- Leave a gap for the display room on the east-ish side of the ring.
 			if not (tx > -30 and tz > cz + 8) then
-				pine(folder, Vector3.new(tx, 0, tz), 1.28, cream, Color3.fromRGB(46, 110, 78), snow)
+				pine(folder, Vector3.new(tx, 0, tz), 1.28, cream, Color3.fromRGB(56, 176, 108), snow)
 			end
 		end
 	end
