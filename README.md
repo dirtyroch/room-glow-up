@@ -4,7 +4,7 @@ Players decorate a tiny room to a theme against the clock. The server then tours
 
 Auntie Roch, the NPC critic, adds one vote, so a solo round still has a judge. A server holds up to 10 players.
 
-This milestone adds the plots and phone-first placement. Voting and the shop come later. The place file is built locally and is not published.
+This milestone adds the tour reveal and voting. The shop comes later. The place file is built locally and is not published.
 
 ## Round
 
@@ -13,8 +13,8 @@ This milestone adds the plots and phone-first placement. Voting and the shop com
 | Lobby | 20s | Waits until at least 1 player is here. The timer starts when someone arrives and resets if the lobby empties. |
 | Theme | 5s | The theme is shown. |
 | Build | 240s | Ends early when every active player has pressed DONE. When the timer ends, every active room that has props is submitted too. |
-| Tour | 8s per submitted room | The camera moves from the server tour index and label. Rooms from players who left are skipped. A round with nothing to show still passes through Tour. |
-| Results | 15s | Then back to Lobby. |
+| Tour | 10s per submitted room | The camera, spotlight, sting, and crowd emoji follow the server tour index, plot, and label. The last 2s are a lock-in beat: votes freeze, then the camera moves. Rooms from players who left are skipped. A round with nothing to show still passes through Tour. |
+| Results | 25s | Top three on the podium, then back to Lobby. |
 
 Someone who joins after Lobby spectates until the next Lobby. Phase, time left, theme, and season are replicated with attributes on `ReplicatedStorage.RoundState`. The only client remote is `Remotes.Action`. Requests are type-checked and rate-limited. The client is not trusted.
 
@@ -42,13 +42,23 @@ Ten plots stand in two rows. A player gets one on join and gives it back on leav
 
 During Build, an active player taps a prop in the bottom tray, then taps or drags it onto the grid. Rotate, a palette recolor, delete, and undo sit on that same tray. Mouse, keyboard, and gamepad drive the same cursor. Spectators cannot place, spend, or change the meter.
 
-Gingerbread uses the candy and icing pieces only. There is no freehand draw. Tree ornaments snap to hooks. The server checks the cell, the turn, the item cap (16), and the coin budget (96). Place has its own rate bucket, wider than the other actions.
+Gingerbread uses the candy and icing pieces only. There is no freehand draw. Tree ornaments snap to hooks. The server checks the cell, the turn, the item cap (16), and the coin budget (128). Place has its own rate bucket, wider than the other actions.
 
 Props pop in with a short scale tween, a sound, and a few sparkles.
 
 ## Props
 
-120 original chunky props, built a little larger than life (1.2x) so they read on a phone. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
+128 original chunky props, built a little larger than life (1.2x) so they read on a phone. Eight of them are cheap 2-cell rugs and accents so a room can look full. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
+
+## Voting
+
+During Tour, everyone except the room's owner can give 1 to 5 stars. Spectators can vote. A vote can change until that room's lock-in beat, and it goes through the same rate-limited Action remote as every other request. With 5 or more votes, the highest and lowest star are dropped before the average.
+
+Auntie Roch adds one vote from Theme Match, item variety, and how full the room is, plus one friendly line from a preset list for that star band. A solo round still has her vote. Players whose stars land within 1 of the final average earn Judge's Eye coins. Those coins sit in a placeholder field until saves arrive.
+
+Report targets the room on stage, not a username. The room leaves the round after reports from at least 3 different players, or 40% of the people who can vote, whichever is higher. Votes for a room whose owner left are ignored.
+
+Owner names stay off the plot signs, the tour HUD, and the photo card through Tour and Results. The podium is where the names and avatars come back. The polaroid card shows the theme, the stars, and Auntie Roch's line.
 
 ## Look
 
@@ -85,7 +95,7 @@ That writes `RoomGlowUp.rbxlx` next to the project file. It does not upload the 
 
 ```
 src/shared/     Config, Themes, Items, Bases, UIKit, Logic
-src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, RoundService
-src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Juice
-tests/run.luau  Lune tests for rounds, plots, and placement
+src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, VoteService, RoundService
+src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Juice
+tests/run.luau  Lune tests for rounds, plots, placement, and voting
 ```

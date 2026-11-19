@@ -86,6 +86,10 @@ local UIKit = {
 		reveal = { from = 0.86, to = 1, time = 0.28, style = "Back" },
 		-- Props pop in from a small scale. The client tween reads these numbers.
 		place = { from = 0.25, to = 1, time = 0.22, style = "Back" },
+		-- Tour spotlight brightens when a room is revealed, then eases for lock-in.
+		spotlight = { from = 0, to = 6, time = 0.45, style = "Quad" },
+		lock = { from = 6, to = 2.2, time = 0.3, style = "Quad" },
+		crowd = { from = 0.4, to = 1, time = 0.28, style = "Back" },
 	},
 	Typeface = "FredokaOne",
 }

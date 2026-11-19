@@ -269,6 +269,24 @@ local function enterNext(state: State, now: number)
 	end
 end
 
+function RoundEngine.roomLocked(state: State, now: number): boolean
+	if state.phase ~= "Tour" or #state.tourStops == 0 then
+		return false
+	end
+	local per = state.config.Phases.TourPerRoom
+	local beat = state.config.Phases.TourLockIn or 0
+	if type(per) ~= "number" or per <= 0 then
+		return true
+	end
+	if type(beat) ~= "number" or beat < 0 then
+		beat = 0
+	end
+	if beat > per then
+		beat = per
+	end
+	return (now - state.tourSegmentStartedAt) >= (per - beat)
+end
+
 -- Move the tour pointer using scheduled room start times so a late tick still
 -- lands on the room that should be showing, instead of jumping to Results.
 local function advanceTour(state: State, now: number)
@@ -448,6 +466,14 @@ function RoundEngine.advance(state: State, now: number)
 	settle(state, now)
 end
 
+-- Pull a reported room off the tour. The same skip used when its owner leaves.
+function RoundEngine.removeStop(state: State, id: string, now: number)
+	dropStop(state, id, now)
+	if state.phase == "Tour" then
+		settle(state, now)
+	end
+end
+
 function RoundEngine.timeLeft(state: State, now: number): number
 	if state.phaseEndsAt == nil then
 		if state.phase == "Lobby" then
@@ -476,6 +502,9 @@ function RoundEngine.snapshot(state: State, now: number): { [string]: any }
 		tourIndex = shown
 		tourTarget = state.tourStops[shown]
 		tourLabel = string.format("Room %d of %d", shown, #state.tourStops)
+		if RoundEngine.roomLocked(state, now) then
+			tourLabel = tourLabel .. " · Locked"
+		end
 	end
 	local waiting = state.phase == "Lobby" and state.phaseEndsAt == nil
 	return {
@@ -490,6 +519,7 @@ function RoundEngine.snapshot(state: State, now: number): { [string]: any }
 		tourLabel = tourLabel,
 		tourIndex = tourIndex,
 		tourTarget = tourTarget,
+		tourLocked = if state.phase == "Tour" then RoundEngine.roomLocked(state, now) else false,
 		critic = state.config.Critic.name,
 		roundIndex = state.roundIndex,
 	}

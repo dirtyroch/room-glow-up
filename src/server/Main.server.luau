@@ -24,8 +24,9 @@ local ctx = {
 	Actions = require(Services:WaitForChild("ActionService")),
 	Plots = require(Services:WaitForChild("PlotService")),
 	Rooms = require(Services:WaitForChild("RoomService")),
+	Votes = require(Services:WaitForChild("VoteService")),
 	Round = require(Services:WaitForChild("RoundService")),
 }
 
-Boot.run(ctx, { "Actions", "Plots", "Rooms", "Round" }, { "Actions", "Rooms", "Round" })
+Boot.run(ctx, { "Actions", "Plots", "Rooms", "Votes", "Round" }, { "Actions", "Rooms", "Round" })
 print("[Room Glow Up] server ready")

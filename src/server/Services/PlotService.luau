@@ -8,6 +8,8 @@ local PlotService = {}
 local ctx: any = nil
 local state: any = nil
 local models: { Model } = {}
+local displayNames: { [number]: string } = {}
+local Voting: any = nil
 
 local function face(): Enum.Font
 	local kit = ctx.UIKit
@@ -158,6 +160,40 @@ local function buildPlot(index: number, folder: Folder)
 	models[index] = model
 end
 
+local function phaseNow(): string
+	local round = ctx.round
+	if type(round) == "table" and type(round.phase) == "string" then
+		return round.phase
+	end
+	return "Lobby"
+end
+
+local function writeSign(index: number, phase: string)
+	local model = models[index]
+	if not model then
+		return
+	end
+	local label = model:FindFirstChild("SignLabel", true)
+	if label and label:IsA("TextLabel") then
+		label.Text = Voting.signLabel(phase, index, displayNames[index])
+	end
+end
+
+local function veil(phase: string)
+	local hideOwner = phase == "Tour" or phase == "Results"
+	for index = 1, #models do
+		writeSign(index, phase)
+		local model = models[index]
+		if model then
+			if hideOwner then
+				model:SetAttribute("OwnerKey", nil)
+			else
+				model:SetAttribute("OwnerKey", ctx.Plots.owner(state, index))
+			end
+		end
+	end
+end
+
 local function assign(player: Player): number?
 	local key = tostring(player.UserId)
 	local index = ctx.Plots.assign(state, key)
@@ -168,14 +204,12 @@ local function assign(player: Player): number?
 	player:SetAttribute("Plot", index)
 	local model = models[index]
 	model:SetAttribute("OwnerKey", key)
-	local label = model:FindFirstChild("SignLabel", true)
-	if label and label:IsA("TextLabel") then
-		local display = player.DisplayName
-		if display == "" then
-			display = player.Name
-		end
-		label.Text = display
+	local display = player.DisplayName
+	if display == "" then
+		display = player.Name
 	end
+	displayNames[index] = display
+	writeSign(index, phaseNow())
 	return index
 end
 
@@ -194,10 +228,8 @@ local function release(player: Player)
 	model:SetAttribute("OwnerKey", nil)
 	model:SetAttribute("ThemeMatch", 0)
 	model:SetAttribute("CoinsLeft", 0)
-	local label = model:FindFirstChild("SignLabel", true)
-	if label and label:IsA("TextLabel") then
-		label.Text = "Plot " .. tostring(index)
-	end
+	displayNames[index] = nil
+	writeSign(index, phaseNow())
 end
 
 function PlotService.init(c: any)
@@ -207,6 +239,7 @@ function PlotService.init(c: any)
 	ctx.Bases = require(Shared:WaitForChild("Bases") :: ModuleScript) :: any
 	local Logic = Shared:WaitForChild("Logic")
 	ctx.Plots = require(Logic:WaitForChild("Plots") :: ModuleScript) :: any
+	Voting = require(Logic:WaitForChild("Voting") :: ModuleScript) :: any
 	ctx.Props = require(script.Parent.Parent:WaitForChild("Props") :: ModuleScript) :: any
 	local Config = require(Shared:WaitForChild("Config") :: ModuleScript) :: any
 	state = ctx.Plots.create(Config.Plots)
@@ -220,6 +253,7 @@ function PlotService.init(c: any)
 	ctx.plots = {
 		assign = assign,
 		release = release,
+		veil = veil,
 		indexOf = function(key: string): number?
 			return ctx.Plots.plotOf(state, key)
 		end,

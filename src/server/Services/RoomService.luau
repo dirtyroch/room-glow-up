@@ -122,6 +122,33 @@ function RoomService.forget(key: string)
 	rooms[key] = nil
 end
 
+function RoomService.inspect(key: string): any
+	local room = rooms[key]
+	local pieces = 0
+	local unique = 0
+	local spent = 0
+	local meter = 0
+	if room then
+		local seen: { [string]: boolean } = {}
+		pieces = #room.pieces
+		spent = room.spent
+		for _, piece in ipairs(room.pieces) do
+			if seen[piece.itemId] ~= true then
+				seen[piece.itemId] = true
+				unique += 1
+			end
+		end
+		meter = Placement.meter(room, contextFor(key))
+	end
+	return {
+		pieces = pieces,
+		unique = unique,
+		spent = spent,
+		meter = meter,
+		maxItems = Config.MaxItems,
+	}
+end
+
 function RoomService.onPhase(round: any)
 	local phase = round.phase
 	local theme = round.theme
@@ -161,6 +188,12 @@ function RoomService.init(c: any)
 	local Logic = Shared:WaitForChild("Logic")
 	Placement = require(Logic:WaitForChild("Placement") :: ModuleScript) :: any
 	RoundEngine = require(Logic:WaitForChild("RoundEngine") :: ModuleScript) :: any
+	ctx.rooms = {
+		welcome = RoomService.welcome,
+		forget = RoomService.forget,
+		onPhase = RoomService.onPhase,
+		inspect = RoomService.inspect,
+	}
 
 	ctx.actions.register("Place", { "string", "number", "number" }, function(key: string, args: { any })
 		local player = playerFromKey(key)

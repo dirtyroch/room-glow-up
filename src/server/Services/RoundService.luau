@@ -32,7 +32,8 @@ local function publish(at: number)
 	folder:SetAttribute("Season", snap.season)
 	folder:SetAttribute("TourLabel", snap.tourLabel)
 	folder:SetAttribute("TourIndex", snap.tourIndex or 0)
-	folder:SetAttribute("TourTarget", snap.tourTarget or "")
+	-- Never replicate the owner's user id. The camera and vote UI use TourPlot.
+	folder:SetAttribute("TourTarget", "")
 	local tourPlot = 0
 	if snap.tourTarget ~= "" and ctx.plots then
 		local index = ctx.plots.indexOf(snap.tourTarget)
@@ -42,6 +43,12 @@ local function publish(at: number)
 	end
 	folder:SetAttribute("TourPlot", tourPlot)
 	folder:SetAttribute("Critic", snap.critic)
+	if ctx.plots and type(ctx.plots.veil) == "function" then
+		ctx.plots.veil(snap.phase)
+	end
+	if ctx.votes and type(ctx.votes.sync) == "function" then
+		ctx.votes.sync(state)
+	end
 	for _, player in Players:GetPlayers() do
 		local view = RoundEngine.playerView(state, keyOf(player))
 		player:SetAttribute("Spectating", view.spectating)
@@ -71,6 +78,9 @@ local function onLeave(player: Player)
 	end
 	if ctx.actions then
 		ctx.actions.forget(key)
+	end
+	if ctx.votes and type(ctx.votes.forget) == "function" then
+		ctx.votes.forget(key)
 	end
 	publish(now())
 end
@@ -102,6 +112,9 @@ function RoundService.init(c: any)
 		onJoin(player)
 	end
 	publish(now())
+	ctx.republish = function()
+		publish(now())
+	end
 end
 
 -- Server-only hook for a future private-server host control. Not a client remote.
@@ -119,12 +132,19 @@ function RoundService.start()
 		local at = now()
 		local before = state.phase
 		local beforeTour = state.tourIndex
+		local wasLocked = RoundEngine.roomLocked(state, at)
 		RoundEngine.advance(state, at)
-		if ctx.rooms and state.phase ~= before then
-			ctx.rooms.onPhase(state)
+		local nowLocked = RoundEngine.roomLocked(state, at)
+		if state.phase ~= before then
+			if ctx.rooms then
+				ctx.rooms.onPhase(state)
+			end
+			if ctx.votes and type(ctx.votes.onPhase) == "function" then
+				ctx.votes.onPhase(state, at)
+			end
 		end
 		acc += dt
-		if state.phase ~= before or state.tourIndex ~= beforeTour or acc >= 0.25 then
+		if state.phase ~= before or state.tourIndex ~= beforeTour or wasLocked ~= nowLocked or acc >= 0.25 then
 			acc = 0
 			publish(at)
 		end

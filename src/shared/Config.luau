@@ -1,6 +1,6 @@
 --!strict
--- Shared knobs for the round loop. Later PRs (rooms, voting, the shop) read these
--- instead of hard-coding timings.
+-- Shared knobs for the round loop. Timings, the coin budget, votes, and the
+-- critic live here so the tour show does not hard-code them.
 
 local Config = {
 	Title = "Room Glow Up",
@@ -18,8 +18,11 @@ local Config = {
 		Lobby = 20,
 		ThemeReveal = 5,
 		Build = 240,
-		TourPerRoom = 8,
-		Results = 15,
+		-- Each tour stop is this long. The last TourLockIn seconds are the
+		-- lock-in beat: votes freeze, then the camera moves with the next index.
+		TourPerRoom = 10,
+		TourLockIn = 2,
+		Results = 25,
 	},
 	PhaseOrder = { "Lobby", "ThemeReveal", "Build", "Tour", "Results" },
 	PhaseLabels = {
@@ -44,6 +47,57 @@ local Config = {
 		id = "auntie-roch",
 		name = "Auntie Roch",
 		line = "Auntie Roch adds one vote.",
+		-- Theme Match, item variety, and how full the room is. Weights sum to 1.
+		weights = { match = 0.5, variety = 0.25, fill = 0.25 },
+		-- One line per star, picked from that band. Same room, same line.
+		lines = {
+			{
+				"A gentle start. A few more theme pieces would sing.",
+				"I can see the idea. Let's welcome the theme in.",
+				"Sweet bones. The theme still wants a seat.",
+			},
+			{
+				"Getting there. The theme is peeking through.",
+				"A kind little room. One more theme piece would help.",
+				"Nice start. Fill a corner and it will glow.",
+			},
+			{
+				"A happy room. The theme feels welcome.",
+				"This one smiles. I would linger a minute.",
+				"Balanced and bright. I like the middle.",
+			},
+			{
+				"Oh, this glows. The theme is right at home.",
+				"Lovely variety, and the theme is clear.",
+				"I would show this one to the neighbors.",
+			},
+			{
+				"A full glow-up. The theme is everywhere it should be.",
+				"This room is ready for the season. Beautiful.",
+				"Starlight and care. I am clapping.",
+			},
+		},
+	},
+	Voting = {
+		MinStars = 1,
+		MaxStars = 5,
+		-- Drop the highest and lowest star once this many votes are in.
+		TrimAt = 5,
+		-- Judge's Eye: within this many stars of the final average.
+		EyeWindow = 1,
+		-- Placeholder purse until saves land. Not written to a store.
+		EyeCoins = 8,
+		-- A room drops after this many different players report it, or this
+		-- share of the people who can vote, whichever is higher.
+		ReportMin = 3,
+		ReportFraction = 0.4,
+		Podium = 3,
+	},
+	-- Reveal show. The client plays these when the server tour attributes change.
+	-- Crowd marks are not votes and never enter the average.
+	Show = {
+		Sting = "rbxasset://sounds/electronicpingshort.wav",
+		Crowd = { "👏", "✨", "💛", "🎉", "🌟" },
 	},
 	-- Token buckets for the single action remote. Keyed per player on the server.
 	-- Place has its own wider bucket. The shared action bucket (6, then 3 per
@@ -65,7 +119,7 @@ local Config = {
 	-- Hard cap so 10 rooms stay cheap. The coin budget usually binds first.
 	MaxItems = 16,
 	-- Spent during Build. The server is the only one that subtracts from it.
-	Budget = 96,
+	Budget = 128,
 	-- Theme Match. An item tagged with this round's theme scores Exact.
 	-- An item tagged only with the round type scores Family. The meter stops at Cap.
 	MatchExact = 16,
