@@ -41,7 +41,7 @@ hearth_lamp|Hearth Lamp|Lighting|8|floor|1|1|1.35|lamp|coral|room hearth_cocoa l
 star_lamp|Star Lamp|Lighting|10|floor|1|1|1.4|lamp|butter|room starlight_nook ice_hall
 mudroom_lantern|Mudroom Lantern|Lighting|8|floor|1|1|1.2|lamp|mint|room lantern_mudroom birch_den
 window_candle|Window Candle|Lighting|6|floor|1|1|0.8|lamp|cream|room frosted_window carol_piano
-string_lights|String Lights|Lighting|8|floor|2|1|0.35|slab|butter|room ribbon_window quilted_window
+string_lights|String Lights|Lighting|8|wall|3|1|0.12|slab|butter|room ribbon_window quilted_window
 pinecone_lamp|Pinecone Lamp|Lighting|8|floor|1|1|1.15|lamp|coral|room pinecone_shelf birch_den
 globe_light|Globe Light|Lighting|10|floor|1|1|1.1|ball|lavender|room snow_globe_parlor ice_hall
 reading_lamp|Reading Lamp|Lighting|8|floor|1|1|1.35|lamp|mint|room starlight_nook flannel_corner

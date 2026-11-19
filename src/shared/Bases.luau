@@ -76,8 +76,8 @@ Bases.Shell = {
 	wallA = { 255, 250, 246 },
 	wallB = { 255, 214, 206 },
 	trim = { 255, 186, 173 },
-	gingerA = { 232, 178, 88 },
-	gingerB = { 214, 156, 70 },
+	gingerA = { 208, 136, 54 },
+	gingerB = { 176, 102, 38 },
 	icingA = { 255, 252, 248 },
 	icingB = { 255, 214, 206 },
 	roofA = { 255, 246, 234 },
@@ -216,14 +216,63 @@ function Bases.tileCenter(roundType: string, surface: string, x: number, z: numb
 		local ly = 1 + (z + 0.5) * unit
 		return lx, ly, planeZ
 	end
-	-- Roof pads step up toward the back of the house.
-	local wall = Bases.grid(roundType, "wall")
-	local wallRows = if wall then wall.z else 4
-	local frontZ = grid.z / 2 * unit
+	-- Roof pads sit on the steep left/right gable slopes.
+	local gable = Bases.gableMetrics(roundType)
 	local lx = (-grid.x / 2 + x + 0.5) * unit
-	local lz = frontZ - (z + 0.5) * unit
-	local ly = 1 + wallRows * unit + 0.35 + z * unit * 0.38
+	local lz = gable.frontZ - (z + 0.5) * unit
+	local ly = Bases.gableY(roundType, lx) + 0.35
 	return lx, ly, lz
+end
+
+-- Steep front-facing gable: ridge runs front to back, eaves at the side walls.
+function Bases.gableMetrics(roundType: string): {
+	unit: number,
+	wallX: number,
+	wallZ: number,
+	roofZ: number,
+	width: number,
+	depth: number,
+	wallH: number,
+	eaveY: number,
+	rise: number,
+	ridgeY: number,
+	planeZ: number,
+	frontZ: number,
+	backZ: number,
+}
+	local unit = cell()
+	local wall = Bases.grid(roundType, "wall") or { x = 8, z = 5 }
+	local roof = Bases.grid(roundType, "roof") or { x = 8, z = 4 }
+	local width = wall.x * unit
+	local depth = roof.z * unit
+	local wallH = wall.z * unit
+	local eaveY = 1 + wallH
+	local rise = width * 0.46
+	return {
+		unit = unit,
+		wallX = wall.x,
+		wallZ = wall.z,
+		roofZ = roof.z,
+		width = width,
+		depth = depth,
+		wallH = wallH,
+		eaveY = eaveY,
+		rise = rise,
+		ridgeY = eaveY + rise,
+		planeZ = Bases.wallPlane(roundType),
+		frontZ = depth / 2,
+		backZ = -depth / 2,
+	}
+end
+
+function Bases.gableY(roundType: string, xLocal: number): number
+	local gable = Bases.gableMetrics(roundType)
+	local half = gable.width / 2
+	if half <= 0 then
+		return gable.ridgeY
+	end
+	local t = math.clamp(math.abs(xLocal) / half, 0, 1)
+	return gable.eaveY + gable.rise * (1 - t)
 end
 
 function Bases.wallPlane(roundType: string): number
@@ -306,13 +355,12 @@ function Bases.pivot(
 			yaw = 0,
 		}
 	end
-	local wall = Bases.grid(roundType, "wall")
-	local wallRows = if wall then wall.z else 4
-	local frontZ = grid.z / 2 * unit
+	local gable = Bases.gableMetrics(roundType)
+	local lx = (-grid.x / 2 + x + aw / 2) * unit
 	return {
-		x = (-grid.x / 2 + x + aw / 2) * unit,
-		y = 1 + wallRows * unit + 0.7 + z * unit * 0.38 + (h * unit) / 2,
-		z = frontZ - (z + ad / 2) * unit,
+		x = lx,
+		y = Bases.gableY(roundType, lx) + 0.5 + (h * unit) / 2,
+		z = gable.frontZ - (z + ad / 2) * unit,
 		yaw = rot * math.pi / 2,
 	}
 end
