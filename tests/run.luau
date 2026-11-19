@@ -490,6 +490,152 @@ test("leaving before your tour stop drops that stop only", function()
 	eq(state.phaseEndsAt, 39)
 end)
 
+test("the tour moves to the next room every TourPerRoom seconds", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.join(state, "sam", 0)
+	RoundEngine.join(state, "lee", 0)
+	RoundEngine.advance(state, 25)
+	RoundEngine.pressDone(state, "mike", 30)
+	RoundEngine.pressDone(state, "sam", 31)
+	RoundEngine.pressDone(state, "lee", 32)
+	eq(state.phase, "Tour")
+	eq(state.tourIndex, 1)
+	eq(RoundEngine.snapshot(state, 32).tourLabel, "Room 1 of 3")
+	eq(state.phaseEndsAt, 56)
+	RoundEngine.advance(state, 39)
+	eq(state.phase, "Tour")
+	eq(state.tourIndex, 1)
+	eq(RoundEngine.snapshot(state, 39).tourLabel, "Room 1 of 3")
+	RoundEngine.advance(state, 40)
+	eq(state.phase, "Tour")
+	eq(state.tourIndex, 2)
+	eq(state.tourStops[state.tourIndex], "sam")
+	eq(RoundEngine.snapshot(state, 40).tourLabel, "Room 2 of 3")
+	eq(state.phaseEndsAt, 56)
+	RoundEngine.advance(state, 48)
+	eq(state.tourIndex, 3)
+	eq(RoundEngine.snapshot(state, 48).tourLabel, "Room 3 of 3")
+	RoundEngine.advance(state, 55)
+	eq(state.phase, "Tour")
+	RoundEngine.advance(state, 56)
+	eq(state.phase, "Results")
+end)
+
+test("a late tour tick still lands on the scheduled room", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.join(state, "sam", 0)
+	RoundEngine.join(state, "lee", 0)
+	RoundEngine.advance(state, 25)
+	RoundEngine.pressDone(state, "mike", 30)
+	RoundEngine.pressDone(state, "sam", 31)
+	RoundEngine.pressDone(state, "lee", 32)
+	-- Jump from the start of the tour to the middle of room 3.
+	RoundEngine.advance(state, 50)
+	eq(state.phase, "Tour")
+	eq(state.tourIndex, 3)
+	eq(state.tourStops[state.tourIndex], "lee")
+	eq(RoundEngine.snapshot(state, 50).tourLabel, "Room 3 of 3")
+	eq(RoundEngine.timeLeft(state, 50), 6)
+	RoundEngine.advance(state, 56)
+	eq(state.phase, "Results")
+	eq(state.phaseStartedAt, 56)
+end)
+
+test("build ends right away if every active player already left", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.advance(state, 20)
+	eq(state.phase, "ThemeReveal")
+	RoundEngine.leave(state, "mike", 21)
+	RoundEngine.advance(state, 25)
+	eq(state.phase, "Results")
+	local buildAt, tourAt, resultsAt = nil, nil, nil
+	for _, entry in ipairs(state.trace) do
+		if entry.phase == "Build" then
+			buildAt = entry.at
+		elseif entry.phase == "Tour" then
+			tourAt = entry.at
+		elseif entry.phase == "Results" then
+			resultsAt = entry.at
+		end
+	end
+	eq(buildAt, 25)
+	eq(tourAt, 25)
+	eq(resultsAt, 25)
+end)
+
+test("a full round works with 1, 3, and 10 players", function()
+	local function play(count, allDone)
+		local state = fresh()
+		local ids = {}
+		for i = 1, count do
+			local id = "p" .. tostring(i)
+			table.insert(ids, id)
+			RoundEngine.join(state, id, 0)
+		end
+		eq(state.phase, "Lobby")
+		RoundEngine.advance(state, 20)
+		eq(state.phase, "ThemeReveal")
+		eq(state.theme ~= nil, true)
+		RoundEngine.advance(state, 25)
+		eq(state.phase, "Build")
+		if allDone then
+			for i, id in ipairs(ids) do
+				local ok = RoundEngine.pressDone(state, id, 25 + i)
+				eq(ok, true)
+			end
+			local tourStart = 25 + count
+			eq(state.phase, "Tour")
+			eq(#state.tourStops, count)
+			for i = 1, count do
+				local at = tourStart + (i - 1) * 8
+				RoundEngine.advance(state, at)
+				eq(state.phase, "Tour")
+				eq(state.tourIndex, i)
+				eq(RoundEngine.snapshot(state, at).tourLabel, string.format("Room %d of %d", i, count))
+			end
+			local tourEnd = tourStart + count * 8
+			RoundEngine.advance(state, tourEnd)
+			eq(state.phase, "Results")
+			RoundEngine.advance(state, tourEnd + 15)
+			eq(state.phase, "Lobby")
+			eq(state.roundIndex, 1)
+		else
+			-- Solo player never presses DONE; the full build timer is used.
+			RoundEngine.advance(state, 264)
+			eq(state.phase, "Build")
+			RoundEngine.advance(state, 265)
+			eq(state.phase, "Results")
+			eq(#state.tourStops, 0)
+			RoundEngine.advance(state, 280)
+			eq(state.phase, "Lobby")
+		end
+		return state
+	end
+
+	play(1, true)
+	play(1, false)
+	play(3, true)
+	local ten = play(10, true)
+	eq(ten.players["p10"].role, "active")
+	-- Mid-round joiner on a fresh 10-player server spectates and is ignored by DONE.
+	local busy = fresh()
+	for i = 1, 10 do
+		RoundEngine.join(busy, "p" .. tostring(i), 0)
+	end
+	RoundEngine.advance(busy, 25)
+	RoundEngine.join(busy, "late", 26)
+	eq(RoundEngine.playerView(busy, "late").spectating, true)
+	eq(RoundEngine.pressDone(busy, "late", 27), false)
+	for i = 1, 10 do
+		RoundEngine.pressDone(busy, "p" .. tostring(i), 30)
+	end
+	eq(busy.phase, "Tour")
+	eq(#busy.tourStops, 10)
+end)
+
 test("an empty lobby timer resets when the last player leaves", function()
 	local state = fresh()
 	RoundEngine.join(state, "mike", 0)

@@ -96,9 +96,10 @@ function RoundService.start()
 	RunService.Heartbeat:Connect(function(dt: number)
 		local at = now()
 		local before = state.phase
+		local beforeTour = state.tourIndex
 		RoundEngine.advance(state, at)
 		acc += dt
-		if state.phase ~= before or acc >= 0.25 then
+		if state.phase ~= before or state.tourIndex ~= beforeTour or acc >= 0.25 then
 			acc = 0
 			publish(at)
 		end

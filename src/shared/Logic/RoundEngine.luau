@@ -118,7 +118,9 @@ local function retimeTour(state: State, now: number, restarted: boolean)
 	local per = state.config.Phases.TourPerRoom
 	local remaining = #state.tourStops - state.tourIndex + 1
 	if remaining < 1 then
-		state.phaseEndsAt = now
+		-- Use the scheduled end (last room end, or "now" when the last stop
+		-- was just dropped and tourSegmentStartedAt was reset).
+		state.phaseEndsAt = state.tourSegmentStartedAt
 	else
 		state.phaseEndsAt = state.tourSegmentStartedAt + per * remaining
 	end
@@ -163,7 +165,12 @@ end
 local function beginBuild(state: State, now: number)
 	state.phase = "Build"
 	state.phaseStartedAt = now
-	state.phaseEndsAt = now + state.config.Phases.Build
+	if activeCount(state) < 1 then
+		-- Nobody left to decorate; skip the 240s wait and go to Tour.
+		state.phaseEndsAt = now
+	else
+		state.phaseEndsAt = now + state.config.Phases.Build
+	end
 	note(state, "Build", now)
 end
 
@@ -233,12 +240,38 @@ local function enterNext(state: State, now: number)
 	end
 end
 
+-- Move the tour pointer using scheduled room start times so a late tick still
+-- lands on the room that should be showing, instead of jumping to Results.
+local function advanceTour(state: State, now: number)
+	if state.phase ~= "Tour" then
+		return
+	end
+	local per = state.config.Phases.TourPerRoom
+	if type(per) ~= "number" or per <= 0 then
+		state.phaseEndsAt = now
+		return
+	end
+	while state.tourIndex <= #state.tourStops do
+		local roomEnd = state.tourSegmentStartedAt + per
+		if now < roomEnd then
+			break
+		end
+		state.tourIndex += 1
+		state.tourSegmentStartedAt = roomEnd
+	end
+	retimeTour(state, now, false)
+end
+
 -- Phases start at the time they were scheduled, so a late tick still gives each
 -- phase its full length instead of skipping ahead from "now".
 local function settle(state: State, now: number)
 	local guard = 0
-	while guard < 32 and expired(state, now) do
+	while guard < 32 do
 		guard += 1
+		advanceTour(state, now)
+		if not expired(state, now) then
+			break
+		end
 		local at = state.phaseEndsAt
 		if at == nil then
 			break
@@ -271,9 +304,7 @@ function RoundEngine.create(options: {
 	local state: State = {
 		config = options.config,
 		themes = options.themes,
-		rng = options.rng or function()
-			return 0
-		end,
+		rng = options.rng or math.random,
 		unixNow = options.unixNow or function()
 			return os.time()
 		end,
