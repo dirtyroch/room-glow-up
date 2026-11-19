@@ -107,12 +107,16 @@ local function countsForRush(state: State, id: string, player: PlayerState): boo
 	return ok and value == true
 end
 
-local function rushKnobs(state: State): (number, number, string)
+local function rushKnobs(state: State): (number, number, string, number)
 	local spec = state.config.BuildRush
 	local fraction = 0.6
 	local seconds = 30
 	local banner = "30 seconds left!"
+	local minElapsed = 60
 	if type(spec) == "table" then
+		if type(spec.MinElapsed) == "number" and spec.MinElapsed >= 0 then
+			minElapsed = spec.MinElapsed
+		end
 		if type(spec.Fraction) == "number" and spec.Fraction > 0 and spec.Fraction <= 1 then
 			fraction = spec.Fraction
 		end
@@ -123,7 +127,7 @@ local function rushKnobs(state: State): (number, number, string)
 			banner = spec.Banner
 		end
 	end
-	return fraction, seconds, banner
+	return fraction, seconds, banner, minElapsed
 end
 
 local function rushReady(state: State): boolean
@@ -150,6 +154,12 @@ end
 
 local function maybeRush(state: State, now: number)
 	if state.phase ~= "Build" or state.rush then
+		return
+	end
+	-- Early on, most kids have not placed yet and would not count. Wait until
+	-- the room has had time to fill, so one item and DONE cannot cut the clock.
+	local _f, _s, _b, minElapsed = rushKnobs(state)
+	if now - state.phaseStartedAt < minElapsed then
 		return
 	end
 	if not rushReady(state) then
@@ -708,6 +718,8 @@ function RoundEngine.pressDone(state: State, id: string, now: number): (boolean,
 end
 
 function RoundEngine.advance(state: State, now: number)
+	-- The rush can come due on the clock alone, once MinElapsed has passed.
+	maybeRush(state, now)
 	settle(state, now)
 end
 

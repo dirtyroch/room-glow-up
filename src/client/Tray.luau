@@ -37,6 +37,9 @@ local actions = {
 local noteLabel: TextLabel? = nil
 local selectedId: string? = nil
 local buttons: { [string]: TextButton } = {}
+-- One ViewportFrame per item for the whole session. Rebuilds (category taps,
+-- level ups, new round type) reparent these instead of cloning models again.
+local views: { [string]: ViewportFrame } = {}
 
 function Tray.setActions(next: any)
 	actions = next
@@ -374,6 +377,9 @@ function Tray.start()
 	end
 
 	local function rebuild()
+		for _, view in pairs(views) do
+			view.Parent = nil
+		end
 		for _, child in chips:GetChildren() do
 			if child:IsA("TextButton") then
 				child:Destroy()
@@ -463,10 +469,14 @@ function Tray.start()
 				picture.ClipsDescendants = true
 				picture.Parent = button
 				UI.corner(picture, 16)
-				if useViewport and template and template:IsA("Model") then
+				local cached = views[item.id]
+				if useViewport and cached then
+					cached.Parent = picture
+				elseif useViewport and template and template:IsA("Model") then
 					local source = template
+					local itemId = item.id
 					task.defer(function()
-						if not button.Parent then
+						if not button.Parent or views[itemId] then
 							return
 						end
 						local view = Instance.new("ViewportFrame")
@@ -476,14 +486,14 @@ function Tray.start()
 						view.Ambient = Color3.fromRGB(220, 210, 200)
 						view.LightColor = Color3.fromRGB(255, 244, 230)
 						view.Parent = picture
-						local world = Instance.new("WorldModel")
-						world.Parent = view
+						-- A static picture needs no WorldModel (that adds physics cost).
 						local clone = source:Clone()
-						clone.Parent = world
+						clone.Parent = view
 						local camera = Instance.new("Camera")
 						camera.CFrame = CFrame.new(Vector3.new(7, 5.5, 8), Vector3.new(0, 1.2, 0))
 						camera.Parent = view
 						view.CurrentCamera = camera
+						views[itemId] = view
 					end)
 				else
 					local blob = Instance.new("Frame")
@@ -617,6 +627,10 @@ function Tray.start()
 	roundFolder:GetAttributeChangedSignal("RoundType"):Connect(function()
 		category = "All"
 		selectedId = nil
+		rebuild()
+	end)
+	roundFolder:GetAttributeChangedSignal("ThemeId"):Connect(function()
+		-- The star on theme-fit tiles follows the new theme.
 		rebuild()
 	end)
 	roundFolder:GetAttributeChangedSignal("Phase"):Connect(refreshVisibility)

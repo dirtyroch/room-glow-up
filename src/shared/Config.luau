@@ -184,6 +184,9 @@ local Config = {
 		Fraction = 0.6,
 		FinalSeconds = 30,
 		Banner = "30 seconds left!",
+		-- No cut before this many build seconds, so early DONE presses
+		-- (when nobody else has placed yet) cannot shorten the round.
+		MinElapsed = 60,
 	},
 	-- A late joiner who still has this many build seconds gets a room.
 	-- Otherwise they watch, vote, and play a tutorial or a sandbox.

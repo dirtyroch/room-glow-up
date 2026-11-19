@@ -397,6 +397,29 @@ test("build uses the full timer when most builders are still working", function(
 	eq(state.phase, "Tour")
 end)
 
+test("one item and DONE early cannot cut a big room's build", function()
+	local state = fresh()
+	for i = 1, 10 do
+		RoundEngine.join(state, "k" .. i, 0)
+	end
+	-- Only k1 has a piece down, so k1 is the only one who counts.
+	RoundEngine.setHasWork(state, function(id: string)
+		return id == "k1"
+	end)
+	RoundEngine.advance(state, 25)
+	RoundEngine.pressDone(state, "k1", 28)
+	eq(state.phaseEndsAt, 265)
+	-- By the one-minute mark the others have placed, so 1 of 10 is not a rush.
+	RoundEngine.setHasWork(state, function(_id: string)
+		return true
+	end)
+	for t = 29, 120 do
+		RoundEngine.advance(state, t)
+	end
+	eq(state.rush == true, false)
+	eq(state.phaseEndsAt, 265)
+end)
+
 test("60 percent done, or everyone but one, cuts the build to 30 seconds", function()
 	local state = fresh()
 	RoundEngine.join(state, "mike", 0)
@@ -404,12 +427,20 @@ test("60 percent done, or everyone but one, cuts the build to 30 seconds", funct
 	RoundEngine.advance(state, 25)
 	eq(RoundEngine.pressDone(state, "mike", 30), true)
 	eq(state.phase, "Build")
-	eq(state.phaseEndsAt, 60)
-	eq(state.showBanner, true)
-	eq(RoundEngine.snapshot(state, 30).banner, "30 seconds left!")
-	RoundEngine.advance(state, 59)
+	-- No cut in the first minute of Build, even with half the room done.
+	eq(state.phaseEndsAt, 265)
+	eq(state.showBanner, false)
+	RoundEngine.advance(state, 84)
+	eq(state.phaseEndsAt, 265)
+	-- The heartbeat fires the cut once a minute has passed.
+	RoundEngine.advance(state, 85)
 	eq(state.phase, "Build")
-	RoundEngine.advance(state, 60)
+	eq(state.phaseEndsAt, 115)
+	eq(state.showBanner, true)
+	eq(RoundEngine.snapshot(state, 85).banner, "30 seconds left!")
+	RoundEngine.advance(state, 114)
+	eq(state.phase, "Build")
+	RoundEngine.advance(state, 115)
 	eq(state.phase, "Tour")
 	local crowd = fresh()
 	for i = 1, 5 do
@@ -419,12 +450,12 @@ test("60 percent done, or everyone but one, cuts the build to 30 seconds", funct
 		return true
 	end)
 	RoundEngine.advance(crowd, 25)
-	RoundEngine.pressDone(crowd, "p1", 40)
-	RoundEngine.pressDone(crowd, "p2", 41)
+	RoundEngine.pressDone(crowd, "p1", 100)
+	RoundEngine.pressDone(crowd, "p2", 101)
 	eq(crowd.showBanner, false)
-	RoundEngine.pressDone(crowd, "p3", 42)
+	RoundEngine.pressDone(crowd, "p3", 102)
 	eq(crowd.phase, "Build")
-	eq(crowd.phaseEndsAt, 72)
+	eq(crowd.phaseEndsAt, 132)
 	eq(crowd.showBanner, true)
 	local idle = fresh()
 	RoundEngine.join(idle, "ada", 0)
@@ -434,9 +465,9 @@ test("60 percent done, or everyone but one, cuts the build to 30 seconds", funct
 		return id == "ada"
 	end)
 	RoundEngine.advance(idle, 25)
-	RoundEngine.pressDone(idle, "ada", 30)
+	RoundEngine.pressDone(idle, "ada", 90)
 	eq(idle.phase, "Build")
-	eq(idle.phaseEndsAt, 60)
+	eq(idle.phaseEndsAt, 120)
 	eq(idle.showBanner, true)
 end)
 
@@ -507,7 +538,7 @@ test("a late joiner with a minute left builds, and a later one waits", function(
 	eq(RoundEngine.timeLeft(state, 26) >= Config.LateJoin.MinBuild, true)
 	eq(RoundEngine.pressDone(state, "lee", 27), true)
 	eq(state.phase, "Build")
-	eq(state.phaseEndsAt, 57)
+	eq(state.phaseEndsAt, 265)
 	local early = RoundEngine.pressDone(state, "mike", 40)
 	eq(early, true)
 	eq(state.phase, "Tour")
@@ -3338,6 +3369,78 @@ test("reactions are a fixed set, and tray tiles keep a picture fallback", functi
 	truthy(string.find(hud, "30 seconds left!", 1, true) == nil)
 	truthy(string.find(hud, "BuildRush.Banner", 1, true) ~= nil)
 	truthy(string.find(hud, "Next round in", 1, true) ~= nil)
+end)
+
+test("playtest: one item and DONE in the first seconds does not cut a 10-kid build", function()
+	local world = server()
+	local kids = {}
+	for i = 1, 10 do
+		local kid = world:addPlayer("kid" .. i, "Kid" .. i)
+		world:invoke(kid, "TutorialSkip")
+		kids[i] = kid
+	end
+	untilPhase(world, "Build")
+	stepFor(world, 3)
+	world:invoke(kids[1], "Place", "mint_pouf", 0, 0)
+	stepFor(world, 1)
+	world:invoke(kids[1], "Done")
+	-- The rest are still picking things; they get pieces down within the minute.
+	stepFor(world, 20)
+	for i = 2, 10 do
+		world:invoke(kids[i], "Place", "mint_pouf", i % 3, math.floor(i / 3))
+		stepFor(world, 1)
+	end
+	stepFor(world, 45)
+	local round = world.ctx.round
+	eq(round.rush == true, false)
+	truthy(round.phaseEndsAt - world.workspace:GetServerTimeNow() > 150, "full build kept")
+	noErrors(world)
+end)
+
+test("playtest: a late joiner who leaves and rejoins still has one room", function()
+	local world = server()
+	local a = world:addPlayer("aa_kid", "Aaa")
+	world:invoke(a, "TutorialSkip")
+	untilPhase(world, "Build")
+	stepFor(world, 10)
+	local late = world:addPlayer("late_kid", "Late", 4444)
+	stepFor(world, 2)
+	world:invoke(late, "Place", "mint_pouf", 0, 0)
+	stepFor(world, 2)
+	world:removePlayer(late)
+	stepFor(world, 2)
+	local back = world:addPlayer("late_kid", "Late", 4444)
+	stepFor(world, 2)
+	world:invoke(back, "Place", "mint_pouf", 1, 1)
+	world:invoke(a, "Place", "mint_pouf", 0, 0)
+	stepFor(world, 2)
+	local owned = 0
+	for _, plot in ipairs(world.workspace.Plots:GetChildren()) do
+		if plot:GetAttribute("OwnerKey") == "4444" then
+			owned += 1
+		end
+	end
+	eq(owned, 1)
+	world:invoke(a, "Done")
+	world:invoke(back, "Done")
+	stepFor(world, 1)
+	local round = world.ctx.round
+	eq(round.phase, "Tour")
+	local seen = 0
+	for _, stop in ipairs(round.tourStops) do
+		if stop == "4444" then
+			seen += 1
+		end
+	end
+	eq(seen, 1)
+	eq(#round.tourStops, 2)
+	noErrors(world)
+end)
+
+test("tray pictures are cached per item and skip the WorldModel", function()
+	local tray = fs.readFile("src/client/Tray.luau")
+	truthy(string.find(tray, "views[itemId] = view", 1, true) ~= nil)
+	truthy(string.find(tray, "Instance.new(\"WorldModel\")", 1, true) == nil)
 end)
 
 print(string.format("\n%d passed, %d failed", passed, failed))

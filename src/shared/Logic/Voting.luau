@@ -308,9 +308,10 @@ function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, pr
 		quiet = purse
 	end
 	local cap = config.Voting.EyeNoRoomCap
-	local hasRoom = built
-	if type(hasRoom) ~= "table" then
-		hasRoom = {}
+	local hasRoom: { [string]: boolean } = {}
+	if type(built) == "table" then
+		hasRoom = built
+	else
 		for owner, ballot in pairs(state.rooms) do
 			if ballot.removed ~= true and present[owner] == true then
 				hasRoom[owner] = true
