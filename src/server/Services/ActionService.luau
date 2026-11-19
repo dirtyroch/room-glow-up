@@ -38,6 +38,9 @@ function ActionService.init(c: any)
 		actionBurst = limits.actionBurst,
 		actionRefill = limits.actionRefill,
 		nameMax = limits.nameMax,
+		overrides = {
+			Place = { burst = limits.placeBurst, refill = limits.placeRefill },
+		},
 	})
 end
 
@@ -47,8 +50,12 @@ function ActionService.start()
 		if not args then
 			return { ok = false, msg = "Bad request." }
 		end
-		local ok, msg = ctx.actions.handle(tostring(player.UserId), action, args, os.clock())
-		return { ok = ok, msg = msg }
+		local ok, msg, extra = ctx.actions.handle(tostring(player.UserId), action, args, os.clock())
+		local payload: { [string]: any } = { ok = ok, msg = msg }
+		if type(extra) == "table" and type((extra :: any).id) == "number" then
+			payload.id = (extra :: any).id
+		end
+		return payload
 	end
 end
 

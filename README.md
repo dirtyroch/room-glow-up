@@ -4,7 +4,7 @@ Players decorate a tiny room to a theme against the clock. The server then tours
 
 Auntie Roch, the NPC critic, adds one vote, so a solo round still has a judge. A server holds up to 10 players.
 
-This milestone is the project scaffold and the round engine. Rooms, placement, voting, and the shop come later. The place file is built locally and is not published.
+This milestone adds the plots and phone-first placement. Voting and the shop come later. The place file is built locally and is not published.
 
 ## Round
 
@@ -12,8 +12,8 @@ This milestone is the project scaffold and the round engine. Rooms, placement, v
 | --- | --- | --- |
 | Lobby | 20s | Waits until at least 1 player is here. The timer starts when someone arrives and resets if the lobby empties. |
 | Theme | 5s | The theme is shown. |
-| Build | 240s | Ends early when every active player has pressed DONE. |
-| Tour | 8s per submitted room | Rooms from players who left are skipped. A round with no DONE still passes through Tour. |
+| Build | 240s | Ends early when every active player has pressed DONE. When the timer ends, every active room that has props is submitted too. |
+| Tour | 8s per submitted room | The camera moves from the server tour index and label. Rooms from players who left are skipped. A round with nothing to show still passes through Tour. |
 | Results | 15s | Then back to Lobby. |
 
 Someone who joins after Lobby spectates until the next Lobby. Phase, time left, theme, and season are replicated with attributes on `ReplicatedStorage.RoundState`. The only client remote is `Remotes.Action`. Requests are type-checked and rate-limited. The client is not trusted.
@@ -33,6 +33,22 @@ Holiday trees: Tinsel Topper, Popcorn Garland, Paper Star Tree, Bauble Burst, Ri
 Winter rooms: Frosted Window, Knit Blanket Fort, Lantern Mudroom, Snowfall Sunroom, Pinecone Shelf, Ice Crystal Hall, Flannel Reading Corner, Thermos Table, Quilted Window, Birch Log Den.
 
 Winter trees: Frosted Fir, Ice Lantern Spruce, Silver Cone, Quiet Snow Pine, Blue Glass Branches, Wool Pom Pine, Cedar Candle Tree, Birch White Tree.
+
+## Plots
+
+Ten plots stand in two rows. A player gets one on join and gives it back on leave. The lowest free number is reused. Each round type shows its own shell: a small room (floor grid and back wall), a gingerbread house (wall and roof pads), or a tree with 12 ornament hooks.
+
+## Placement
+
+During Build, an active player taps a prop in the bottom tray, then taps or drags it onto the grid. Rotate, a palette recolor, delete, and undo sit on that same tray. Mouse, keyboard, and gamepad drive the same cursor. Spectators cannot place, spend, or change the meter.
+
+Gingerbread uses the candy and icing pieces only. There is no freehand draw. Tree ornaments snap to hooks. The server checks the cell, the turn, the item cap (16), and the coin budget (96). Place has its own rate bucket, wider than the other actions.
+
+Props pop in with a short scale tween, a sound, and a few sparkles.
+
+## Props
+
+120 original chunky props, built a little larger than life (1.2x) so they read on a phone. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
 
 ## Look
 
@@ -68,8 +84,8 @@ That writes `RoomGlowUp.rbxlx` next to the project file. It does not upload the 
 ## Layout
 
 ```
-src/shared/     Config, Themes, UIKit, Logic (season, themes, rounds, actions)
-src/server/     Main.server, Boot, ActionService, RoundService
-src/client/     Main.client, Net, UI, Hud
-tests/run.luau  Lune tests for the round loop
+src/shared/     Config, Themes, Items, Bases, UIKit, Logic
+src/server/     Main.server, Boot, Props, ActionService, PlotService, RoomService, RoundService
+src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Juice
+tests/run.luau  Lune tests for rounds, plots, and placement
 ```

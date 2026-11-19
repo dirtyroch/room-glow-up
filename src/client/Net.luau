@@ -22,19 +22,20 @@ local function remote(): RemoteFunction?
 	return nil
 end
 
-function Net.act(name: string, a: any?, b: any?, c: any?): (boolean, string?)
+function Net.act(name: string, a: any?, b: any?, c: any?): (boolean, string?, number?)
 	local fn = remote()
 	if not fn then
-		return false, "Still connecting."
+		return false, "Still connecting.", nil
 	end
 	local ok, res = pcall(function()
 		return fn:InvokeServer(name, a, b, c)
 	end)
 	if not ok or type(res) ~= "table" then
-		return false, "Try again."
+		return false, "Try again.", nil
 	end
 	local msg = if type(res.msg) == "string" then res.msg else nil
-	return res.ok == true, msg
+	local id = if type(res.id) == "number" then res.id else nil
+	return res.ok == true, msg, id
 end
 
 return Net

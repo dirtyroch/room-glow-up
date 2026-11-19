@@ -11,6 +11,10 @@ local Season = require("../src/shared/Logic/Season")
 local ThemePicker = require("../src/shared/Logic/ThemePicker")
 local RoundEngine = require("../src/shared/Logic/RoundEngine")
 local Actions = require("../src/shared/Logic/Actions")
+local Bases = require("../src/shared/Bases")
+local Items = require("../src/shared/Items")
+local Plots = require("../src/shared/Logic/Plots")
+local Placement = require("../src/shared/Logic/Placement")
 
 local passed, failed = 0, 0
 local current = ""
@@ -502,6 +506,8 @@ test("the tour moves to the next room every TourPerRoom seconds", function()
 	eq(state.phase, "Tour")
 	eq(state.tourIndex, 1)
 	eq(RoundEngine.snapshot(state, 32).tourLabel, "Room 1 of 3")
+	eq(RoundEngine.snapshot(state, 32).tourIndex, 1)
+	eq(RoundEngine.snapshot(state, 32).tourTarget, "mike")
 	eq(state.phaseEndsAt, 56)
 	RoundEngine.advance(state, 39)
 	eq(state.phase, "Tour")
@@ -512,6 +518,8 @@ test("the tour moves to the next room every TourPerRoom seconds", function()
 	eq(state.tourIndex, 2)
 	eq(state.tourStops[state.tourIndex], "sam")
 	eq(RoundEngine.snapshot(state, 40).tourLabel, "Room 2 of 3")
+	eq(RoundEngine.snapshot(state, 40).tourIndex, 2)
+	eq(RoundEngine.snapshot(state, 40).tourTarget, "sam")
 	eq(state.phaseEndsAt, 56)
 	RoundEngine.advance(state, 48)
 	eq(state.tourIndex, 3)
@@ -829,6 +837,478 @@ test("palette, type, and buttons stay readable on a phone", function()
 	truthy(UIKit.Motion.reveal.time > 0)
 	truthy(UIKit.Motion.reveal.from < 1)
 	eq(themeNamed("hearth_cocoa").name, "Cocoa Hearth")
+end)
+
+print("Plots")
+test("ten plots are assigned on join and freed for the next player", function()
+	local state = Plots.create(Config.Plots)
+	eq(Config.Plots, 10)
+	local ids = {}
+	for i = 1, 10 do
+		local id = "p" .. tostring(i)
+		table.insert(ids, id)
+		eq(Plots.assign(state, id), i)
+		eq(Plots.assign(state, id), i)
+		eq(Plots.plotOf(state, id), i)
+		eq(Plots.owner(state, i), id)
+	end
+	eq(Plots.assign(state, "extra"), nil)
+	eq(Plots.release(state, "p3"), 3)
+	eq(Plots.plotOf(state, "p3"), nil)
+	eq(Plots.owner(state, 3), nil)
+	eq(Plots.assign(state, "extra"), 3)
+	eq(Plots.release(state, "nobody"), nil)
+	eq(Plots.owner(state, 1), "p1")
+	local seen = {}
+	for i = 1, 10 do
+		local x, y, z = Bases.plotOrigin(i)
+		eq(y, 0)
+		local key = string.format("%.3f:%.3f", x, z)
+		truthy(seen[key] == nil, "plots overlap")
+		seen[key] = true
+	end
+	local x1, _, z1 = Bases.plotOrigin(1)
+	local x2, _, z2 = Bases.plotOrigin(2)
+	truthy(math.abs((x2 - x1) - Bases.Spacing) < 1e-6)
+	eq(z1, z2)
+	local _, _, z6 = Bases.plotOrigin(6)
+	truthy(math.abs((z6 - z1) - Bases.Spacing) < 1e-6)
+end)
+
+print("Library")
+test("120 props, theme tags, and no banned words", function()
+	eq(#Items.list, 120)
+	eq(Config.ItemScale, 1.2)
+	truthy(math.abs(Bases.worldCell() - Config.Cell * Config.ItemScale) < 1e-6)
+	local ids = {}
+	local names = {}
+	local themes = {}
+	for _, theme in ipairs(Themes) do
+		themes[theme.id] = 0
+	end
+	local rounds = { room = true, gingerbread = true, tree = true }
+	local banned = {
+		"impress",
+		"cozy",
+		"roblox",
+		"blox",
+		"bedroom",
+		"bathroom",
+		"eggnog",
+		"mulled",
+		"wine",
+		"alcohol",
+		"beer",
+		"whiskey",
+		"vodka",
+		"to impress",
+	}
+	local surfaces = { floor = true, wall = true, roof = true, hook = true }
+	local counts = { room = 0, gingerbread = 0, tree = 0 }
+	for _, item in ipairs(Items.list) do
+		truthy(ids[item.id] == nil, "duplicate id " .. item.id)
+		truthy(names[item.name] == nil, "duplicate name " .. item.name)
+		ids[item.id] = true
+		names[item.name] = true
+		truthy(rounds[item.roundType] == true, item.id)
+		truthy(item.tags[1] == item.roundType, item.id)
+		truthy(surfaces[item.surface] == true, item.id)
+		truthy(item.cost >= 4 and item.cost <= 20, item.name)
+		truthy(item.w >= 1 and item.d >= 1, item.name)
+		local knownColor = false
+		for _, color in ipairs(Config.Palette) do
+			if color == item.color then
+				knownColor = true
+			end
+		end
+		truthy(knownColor, item.name)
+		if item.roundType == "room" then
+			truthy(item.surface == "floor" or item.surface == "wall", item.id)
+		elseif item.roundType == "gingerbread" then
+			truthy(item.surface == "wall" or item.surface == "roof", item.id)
+		else
+			eq(item.surface, "hook")
+		end
+		counts[item.roundType] += 1
+		local blob = string.lower(item.id .. " " .. item.name .. " " .. item.category .. " " .. table.concat(item.tags, " "))
+		for _, word in ipairs(banned) do
+			truthy(string.find(blob, word, 1, true) == nil, item.name .. " contains " .. word)
+		end
+		for index, tag in ipairs(item.tags) do
+			if index == 1 then
+				truthy(rounds[tag] == true, tag)
+			else
+				truthy(themes[tag] ~= nil, item.id .. " " .. tag)
+				themes[tag] += 1
+			end
+		end
+	end
+	eq(counts.room + counts.gingerbread + counts.tree, 120)
+	truthy(counts.room >= 40)
+	truthy(counts.gingerbread >= 16)
+	truthy(counts.tree >= 16)
+	for id, count in pairs(themes) do
+		truthy(count >= 2, id .. " tagged " .. tostring(count))
+	end
+	truthy(#Items.categories() >= 8)
+	eq(#Bases.hooks(), 12)
+end)
+
+local function catalog()
+	return {
+		get = function(id)
+			return Items.get(id)
+		end,
+	}
+end
+
+local function placeCtx(overrides)
+	local ctx = {
+		catalog = catalog(),
+		roundType = "room",
+		themeId = "hearth_cocoa",
+		budget = Config.Budget,
+		maxItems = Config.MaxItems,
+		role = "active",
+		phase = "Build",
+		locked = false,
+		matchExact = Config.MatchExact,
+		matchFamily = Config.MatchFamily,
+		matchCap = Config.MatchCap,
+		palette = Config.Palette,
+		now = 50,
+		undoCap = Config.UndoCap,
+	}
+	if overrides then
+		for key, value in pairs(overrides) do
+			ctx[key] = value
+		end
+	end
+	return ctx
+end
+
+print("Placement")
+test("grid, hooks, overlap, and rotation are checked", function()
+	local room = Placement.empty()
+	local ctx = placeCtx()
+	local ok, msg = Placement.place(room, ctx, "nope", 0, 0)
+	eq(ok, false)
+	eq(msg, "Unknown item.")
+	local fractional = Placement.place(room, ctx, "cocoa_mug", 0.5, 0)
+	eq(fractional, false)
+	local outside = Placement.place(room, ctx, "cocoa_mug", 6, 0)
+	eq(outside, false)
+	eq(Placement.place(room, ctx, "butter_bench", 0, 0), true)
+	eq(Placement.place(room, ctx, "butter_bench", 1, 0), false)
+	local edge = Placement.empty()
+	eq(Placement.place(edge, ctx, "butter_bench", 4, 5), true)
+	local turned, turnMsg = Placement.rotate(edge, ctx, 1)
+	eq(turned, false)
+	eq(turnMsg, "It cannot turn there.")
+	eq(edge.pieces[1].rot, 0)
+	eq(Placement.rotate(room, ctx, 1), true)
+	eq(room.pieces[1].rot, 1)
+	local rug = Placement.empty()
+	eq(Placement.place(rug, ctx, "hearth_rug", 0, 0), true)
+	eq(Placement.place(rug, ctx, "coral_armchair", 0, 0), true)
+	eq(Placement.place(rug, ctx, "hearth_rug", 1, 1), false)
+	eq(Placement.place(rug, ctx, "coral_armchair", 0, 0), false)
+	local house = placeCtx({ roundType = "gingerbread", themeId = "gumdrop_gable" })
+	local candy = Placement.empty()
+	eq(Placement.place(candy, house, "gumdrop", 0, 0), true)
+	eq(Placement.place(candy, house, "gumdrop", 0.25, 1), false)
+	eq(Placement.place(candy, house, "butter_bench", 0, 1), false)
+	local tree = placeCtx({ roundType = "tree", themeId = "bauble_burst" })
+	local ornaments = Placement.empty()
+	eq(Placement.place(ornaments, tree, "butter_bauble", 1, 0), true)
+	eq(Placement.place(ornaments, tree, "coral_bauble", 1, 0), false)
+	eq(Placement.place(ornaments, tree, "coral_bauble", 13, 0), false)
+	eq(Placement.place(ornaments, tree, "coral_bauble", 2, 1), false)
+	eq(Placement.place(ornaments, tree, "cocoa_mug", 2, 0), false)
+	eq(Placement.place(room, ctx, "butter_bauble", 1, 0), false)
+	local hook = Bases.hooks()[3]
+	eq(Bases.nearestHook(hook.x, hook.y, hook.z), 3)
+	eq(Bases.nearestHook(0, 0, 0), nil)
+	local front = Bases.pivot("gingerbread", "wall", 0, 0, 0, 1, 1, 0.28)
+	truthy(front ~= nil and front.z > Bases.wallPlane("gingerbread"), "candy should sit on the front of the house")
+	local hanging = Bases.pivot("room", "wall", 0, 0, 0, 1, 1, 0.12)
+	truthy(hanging ~= nil and hanging.z > Bases.wallPlane("room"), "hangings should sit in front of the back wall")
+	local floor = Bases.grid("room", "floor")
+	local lx0, _, lz0 = Bases.tileCenter("room", "floor", 0, 0)
+	local lx1, _, _lz1 = Bases.tileCenter("room", "floor", 1, 0)
+	truthy(math.abs((lx1 - lx0) - Bases.worldCell()) < 1e-6)
+	local back = math.floor(lx0 / Bases.worldCell() + floor.x / 2)
+	local depth = math.floor(lz0 / Bases.worldCell() + floor.z / 2)
+	eq(back, 0)
+	eq(depth, 0)
+end)
+
+test("budget, meter, undo, and recolor stay on the server numbers", function()
+	local room = Placement.empty()
+	local ctx = placeCtx({ budget = 12 })
+	eq(Placement.place(room, ctx, "butter_bench", 0, 0), true)
+	eq(Placement.coinsLeft(room, 12), 0)
+	eq(Placement.meter(room, ctx), Config.MatchExact)
+	eq(Placement.place(room, ctx, "cocoa_mug", 3, 0), false)
+	eq(room.spent, 12)
+	eq(Placement.delete(room, ctx, 1), true)
+	eq(Placement.coinsLeft(room, 12), 12)
+	eq(Placement.meter(room, ctx), 0)
+	eq(Placement.place(room, ctx, "cocoa_mug", 0, 0), true)
+	eq(Placement.place(room, ctx, "gift_stack", 1, 0), false)
+	local rich = placeCtx({ budget = 400 })
+	local decorated = Placement.empty()
+	eq(Placement.place(decorated, rich, "cocoa_mug", 0, 0), true)
+	eq(Placement.meter(decorated, rich), Config.MatchExact)
+	eq(Placement.place(decorated, rich, "gift_stack", 1, 0), true)
+	eq(Placement.meter(decorated, rich), Config.MatchExact + Config.MatchFamily)
+	for i = 1, 8 do
+		eq(Placement.place(decorated, rich, "cocoa_mug", (i + 1) % 6, 1 + math.floor(i / 6)), true)
+	end
+	eq(Placement.meter(decorated, rich), Config.MatchCap)
+	local tint = Placement.empty()
+	eq(Placement.place(tint, rich, "cocoa_mug", 0, 0), true)
+	eq(Placement.recolor(tint, rich, 1, "gold"), false)
+	eq(tint.pieces[1].color, "butter")
+	eq(Placement.recolor(tint, rich, 1, "mint"), true)
+	eq(tint.pieces[1].color, "mint")
+	eq(Placement.meter(tint, rich), Config.MatchExact)
+	local steps = Placement.empty()
+	eq(Placement.place(steps, rich, "cocoa_mug", 2, 2), true)
+	eq(Placement.undo(steps, rich), true)
+	eq(#steps.pieces, 0)
+	eq(Placement.coinsLeft(steps, rich.budget), rich.budget)
+	eq(Placement.place(steps, rich, "cocoa_mug", 2, 2), true)
+	eq(Placement.delete(steps, rich, 2), true)
+	eq(Placement.undo(steps, rich), true)
+	eq(#steps.pieces, 1)
+	eq(Placement.undo(steps, rich), true)
+	eq(Placement.undo(steps, rich), false)
+	eq(#tint.undo, 2)
+	eq(Placement.recolor(tint, rich, 1, "mint"), true)
+	eq(#tint.undo, 2)
+	eq(tint.pieces[1].color, "mint")
+end)
+
+test("undo cannot turn a piece into an occupied cell", function()
+	local ctx = placeCtx()
+	local room = Placement.empty()
+	eq(Placement.place(room, ctx, "butter_bench", 0, 0), true)
+	eq(Placement.rotate(room, ctx, 1), true)
+	eq(room.pieces[1].rot, 1)
+	-- Occupy the cell the bench would need if it turned back to rot 0.
+	eq(Placement.place(room, ctx, "cocoa_mug", 1, 0), true)
+	-- Undo the mug place so rotate is on top, then put the mug back without
+	-- a new undo-tracked gap: delete is not needed. After undo, mug is gone.
+	-- Place it again, then manually pop? Better: undo mug, place mug, the
+	-- rotate op is still in the stack under the new place. Undo the new place
+	-- (mug gone), rotate is on top, place mug again... that adds another place
+	-- on top. Can't get rotate on top while mug occupies the cell.
+
+	-- Directly replace the undo stack top after placing both.
+	room.undo = { { kind = "rotate", id = 1, rot = 0 } }
+	local turned, turnMsg = Placement.undo(room, ctx)
+	eq(turned, false)
+	eq(turnMsg, "It cannot turn there.")
+	eq(room.pieces[1].rot, 1)
+	eq(#room.pieces, 2)
+	eq(#room.undo, 1)
+end)
+
+test("spectators cannot place, spend, or move the meter", function()
+	local room = Placement.empty()
+	local ctx = placeCtx()
+	eq(Placement.place(room, ctx, "cocoa_mug", 0, 0), true)
+	local spent = room.spent
+	local score = Placement.meter(room, ctx)
+	ctx.role = "spectator"
+	eq(Placement.place(room, ctx, "cocoa_mug", 1, 0), false)
+	eq(Placement.rotate(room, ctx, 1), false)
+	eq(Placement.recolor(room, ctx, 1, "coral"), false)
+	eq(Placement.delete(room, ctx, 1), false)
+	eq(Placement.undo(room, ctx), false)
+	eq(room.spent, spent)
+	eq(#room.pieces, 1)
+	eq(Placement.meter(room, ctx), score)
+	eq(room.pieces[1].color, "butter")
+end)
+
+test("a room stops at the item cap", function()
+	local ctx = placeCtx({ budget = 1000, maxItems = 2 })
+	local room = Placement.empty()
+	eq(Placement.place(room, ctx, "cocoa_mug", 0, 0), true)
+	eq(Placement.place(room, ctx, "cocoa_mug", 1, 0), true)
+	local full, why = Placement.place(room, ctx, "cocoa_mug", 2, 0)
+	eq(full, false)
+	eq(why, "This room is full.")
+	local rooms = {}
+	for _ = 1, 10 do
+		local one = Placement.empty()
+		local wide = placeCtx({ budget = 1000 })
+		for i = 1, Config.MaxItems do
+			local x = (i - 1) % 6
+			local z = math.floor((i - 1) / 6)
+			eq(Placement.place(one, wide, "cocoa_mug", x, z), true)
+		end
+		eq(Placement.place(one, wide, "star_mat", 5, 5), false)
+		table.insert(rooms, one)
+	end
+	eq(#rooms, 10)
+	eq(Config.MaxItems, 16)
+	eq(Config.Budget, 96)
+end)
+
+print("Auto submit")
+test("build end submits every active room that has props", function()
+	local state = fresh()
+	RoundEngine.join(state, "ada", 0)
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.join(state, "sam", 0)
+	RoundEngine.join(state, "lee", 0)
+	RoundEngine.setHasWork(state, function(id)
+		return id == "sam" or id == "lee"
+	end)
+	RoundEngine.advance(state, 25)
+	eq(state.phase, "Build")
+	eq(RoundEngine.snapshot(state, 30).tourIndex, 0)
+	eq(RoundEngine.snapshot(state, 30).tourTarget, "")
+	eq(RoundEngine.pressDone(state, "mike", 30), true)
+	eq(state.phase, "Build")
+	RoundEngine.advance(state, 265)
+	eq(state.phase, "Tour")
+	eq(#state.tourStops, 3)
+	eq(state.tourStops[1], "mike")
+	eq(state.tourStops[2], "lee")
+	eq(state.tourStops[3], "sam")
+	eq(RoundEngine.snapshot(state, 265).tourTarget, "mike")
+	eq(RoundEngine.snapshot(state, 265).tourLabel, "Room 1 of 3")
+end)
+
+test("a spectator with props still cannot be submitted", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.advance(state, 25)
+	RoundEngine.join(state, "lee", 26)
+	eq(RoundEngine.playerView(state, "lee").spectating, true)
+	RoundEngine.setHasWork(state, function()
+		return true
+	end)
+	RoundEngine.advance(state, 265)
+	eq(#state.tourStops, 1)
+	eq(state.tourStops[1], "mike")
+	eq(RoundEngine.playerView(state, "lee").spectating, true)
+end)
+
+test("a broken prop check does not stop the round", function()
+	local state = fresh()
+	RoundEngine.join(state, "mike", 0)
+	RoundEngine.setHasWork(state, function()
+		error("nope")
+	end)
+	RoundEngine.advance(state, 265)
+	eq(state.phase, "Results")
+	eq(#state.tourStops, 0)
+end)
+
+print("Rate limit")
+test("Place has its own wider bucket on the action remote", function()
+	eq(Config.RateLimit.placeBurst > Config.RateLimit.actionBurst, true)
+	eq(Config.RateLimit.placeRefill > Config.RateLimit.actionRefill, true)
+	local api = Actions.create({
+		globalBurst = Config.RateLimit.globalBurst,
+		globalRefill = Config.RateLimit.globalRefill,
+		actionBurst = Config.RateLimit.actionBurst,
+		actionRefill = Config.RateLimit.actionRefill,
+		nameMax = Config.RateLimit.nameMax,
+		overrides = {
+			Place = { burst = Config.RateLimit.placeBurst, refill = Config.RateLimit.placeRefill },
+		},
+	})
+	api.register("Ping", {}, function()
+		return true, "ok"
+	end)
+	api.register("Place", { "string", "number", "number" }, function()
+		return true, "Placed."
+	end)
+	for _ = 1, Config.RateLimit.actionBurst do
+		eq(api.handle("p", "Ping", {}, 0), true)
+	end
+	local limited, why = api.handle("p", "Ping", {}, 0)
+	eq(limited, false)
+	eq(why, "Slow down a moment.")
+	eq(api.handle("p", "Place", { "cocoa_mug", 0, 0 }, 0), true)
+	api.forget("p")
+	for _ = 1, Config.RateLimit.placeBurst do
+		eq(api.handle("p", "Place", { "cocoa_mug", 1, 1 }, 5), true)
+	end
+	eq(api.handle("p", "Place", { "cocoa_mug", 1, 1 }, 5), false)
+	eq(api.handle("p", "Place", { "cocoa_mug", 1, 1 }, 6), true)
+	eq(api.handle("q", "Draw", {}, 0), false)
+	local source = fs.readFile("src/server/Services/ActionService.luau")
+	truthy(string.find(source, "placeBurst", 1, true) ~= nil)
+	truthy(string.find(source, "overrides", 1, true) ~= nil)
+end)
+
+print("HUD fit")
+test("tray, meter, and budget stay clear of the board, reveal, and DONE", function()
+	local function gap(a, b)
+		return b.top - a.bottom
+	end
+	local heights = { 420, 480, 500, 519, 520, 600, 640, 679, 680, 800, 900 }
+	for _, height in ipairs(heights) do
+		local bands = UIKit.bands(height)
+		local order = { bands.board, bands.reveal, bands.meter, bands.tray, bands.done }
+		for _, band in ipairs(order) do
+			truthy(band.bottom > band.top, tostring(height))
+			truthy(band.top >= 0, tostring(height))
+			truthy(band.bottom <= height, tostring(height))
+		end
+		truthy(gap(bands.board, bands.reveal) >= 4, "board " .. tostring(height))
+		truthy(gap(bands.reveal, bands.meter) >= 4, "reveal " .. tostring(height))
+		truthy(gap(bands.meter, bands.tray) >= 4, "meter " .. tostring(height))
+		truthy(gap(bands.tray, bands.done) >= 4, "tray " .. tostring(height))
+		eq(bands.done.bottom, height - UIKit.Layout.bottom)
+		truthy(bands.done.bottom - bands.done.top >= UIKit.Layout.minButton, tostring(height))
+	end
+	local hud = fs.readFile("src/client/Hud.luau")
+	local tray = fs.readFile("src/client/Tray.luau")
+	truthy(string.find(hud, "UIKit.bands", 1, true) ~= nil)
+	truthy(string.find(tray, "UIKit.bands", 1, true) ~= nil)
+	truthy(string.find(tray, "Theme Match", 1, true) ~= nil)
+	truthy(string.find(tray, "coins", 1, true) ~= nil)
+end)
+
+test("placement input and the tour camera follow the server", function()
+	local place = fs.readFile("src/client/Place.luau")
+	truthy(string.find(place, "Touch", 1, true) ~= nil)
+	truthy(string.find(place, "MouseButton1", 1, true) ~= nil)
+	truthy(string.find(place, "KeyCode", 1, true) ~= nil)
+	truthy(string.find(place, "ButtonA", 1, true) ~= nil)
+	truthy(string.find(place, "Thumbstick1", 1, true) ~= nil)
+	local tour = fs.readFile("src/client/TourCam.luau")
+	truthy(string.find(tour, "TourIndex", 1, true) ~= nil)
+	truthy(string.find(tour, "TourLabel", 1, true) ~= nil)
+	truthy(string.find(tour, "TourPlot", 1, true) ~= nil)
+	truthy(string.find(tour, "task.wait", 1, true) == nil)
+	truthy(string.find(tour, "task.delay", 1, true) == nil)
+	truthy(string.find(string.lower(tour), "tourperroom", 1, true) == nil)
+	local juice = fs.readFile("src/client/Juice.luau")
+	truthy(string.find(juice, "TweenService", 1, true) ~= nil)
+	truthy(string.find(juice, "ParticleEmitter", 1, true) ~= nil)
+	truthy(string.find(juice, "Sound", 1, true) ~= nil)
+	local function walk(dir)
+		for _, name in ipairs(fs.readDir(dir)) do
+			local path = dir .. "/" .. name
+			if fs.isDir(path) then
+				walk(path)
+			elseif string.sub(name, -5) == ".luau" then
+				local text = fs.readFile(path)
+				truthy(string.find(text, 'register("Draw"', 1, true) == nil, path)
+				truthy(string.find(text, 'register("Paint"', 1, true) == nil, path)
+			end
+		end
+	end
+	walk("src")
 end)
 
 print(string.format("\n%d passed, %d failed", passed, failed))

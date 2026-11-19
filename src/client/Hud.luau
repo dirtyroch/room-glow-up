@@ -28,19 +28,7 @@ function Hud.start()
 	local playerGui = player:WaitForChild("PlayerGui")
 	local roundFolder = ReplicatedStorage:WaitForChild("RoundState")
 
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "GlowHud"
-	gui.ResetOnSpawn = false
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	gui.DisplayOrder = 10
-	gui.IgnoreGuiInset = true
-	local insetsApplied = pcall(function()
-		(gui :: any).ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
-	end)
-	if not insetsApplied then
-		gui.IgnoreGuiInset = false
-	end
-	gui.Parent = playerGui
+	local gui = UI.screen(playerGui, "GlowHud", 10)
 
 	local layout = UIKit.Layout
 	local board = Instance.new("Frame")
@@ -51,10 +39,10 @@ function Hud.start()
 	board.BackgroundColor3 = UI.rgb("cream")
 	board.BorderSizePixel = 0
 	board.Parent = gui
-	board.AutomaticSize = Enum.AutomaticSize.Y
+	board.AutomaticSize = Enum.AutomaticSize.None
 	UI.corner(board, UIKit.Shape.cornerChunky)
 	UI.stroke(board, "ink", UIKit.Shape.stroke)
-	UI.pad(board, 12)
+	local boardPad = UI.pad(board, 12)
 	local boardList = Instance.new("UIListLayout")
 	boardList.FillDirection = Enum.FillDirection.Vertical
 	boardList.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -159,11 +147,31 @@ function Hud.start()
 	local function layoutForViewport()
 		local camera = workspace.CurrentCamera
 		local height = if camera then camera.ViewportSize.Y else 800
-		local short = height > 0 and height < 520
-		board.Size = UDim2.new(1, -layout.side * 2, 0, 0)
-		countdown.Size = UDim2.new(1, 0, 0, if short then 56 else layout.countdownHeight)
-		detail.Visible = not short
-		reveal.Position = UDim2.new(0.5, 0, if short then 0.48 else 0.4, 0)
+		if height < 1 then
+			height = 800
+		end
+		local bands = UIKit.bands(height)
+		local boardH = bands.board.bottom - bands.board.top
+		local revealH = bands.reveal.bottom - bands.reveal.top
+		local compact = boardH < UIKit.Layout.boardHeight - 1
+		local padPx = if compact then 8 else 12
+		boardPad.PaddingTop = UDim.new(0, padPx)
+		boardPad.PaddingBottom = UDim.new(0, padPx)
+		boardPad.PaddingLeft = UDim.new(0, padPx)
+		boardPad.PaddingRight = UDim.new(0, padPx)
+		board.Position = UDim2.new(0.5, 0, 0, bands.board.top)
+		board.Size = UDim2.new(1, -layout.side * 2, 0, boardH)
+		countdown.Size = UDim2.new(1, 0, 0, if compact then 48 else layout.countdownHeight)
+		themeLabel.Size = UDim2.new(1, 0, 0, if compact then 28 else 36)
+		phaseLabel.Size = UDim2.new(1, 0, 0, if compact then 24 else 28)
+		detail.Visible = not compact
+		local revealCenter = (bands.reveal.top + bands.reveal.bottom) / 2
+		reveal.Position = UDim2.new(0.5, 0, 0, revealCenter)
+		reveal.Size = UDim2.new(1, -layout.side * 2, 0, revealH)
+		revealKicker.Size = UDim2.new(1, 0, 0, if revealH < 100 then 22 else 28)
+		revealName.Size = UDim2.new(1, 0, 0, if revealH < 100 then 32 else 48)
+		thumb.Position = UDim2.new(0.5, 0, 0, bands.done.bottom)
+		thumb.Size = UDim2.new(1, -layout.side * 2, 0, bands.done.bottom - bands.done.top)
 		local fillName = UIKit.PhaseFill[read("Phase", "Lobby")] or "cream"
 		board.BackgroundColor3 = UI.rgb(fillName)
 	end
