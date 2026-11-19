@@ -32,7 +32,8 @@ local function publish(at: number)
 	folder:SetAttribute("Season", snap.season)
 	folder:SetAttribute("TourLabel", snap.tourLabel)
 	folder:SetAttribute("TourIndex", snap.tourIndex or 0)
-	folder:SetAttribute("TourTarget", snap.tourTarget or "")
+	-- Never replicate the owner's user id. The camera and vote UI use TourPlot.
+	folder:SetAttribute("TourTarget", "")
 	local tourPlot = 0
 	if snap.tourTarget ~= "" and ctx.plots then
 		local index = ctx.plots.indexOf(snap.tourTarget)

@@ -1430,6 +1430,10 @@ test("a vote can change until lock-in, and a late vote is rejected", function()
 	local missed = Voting.cast(state, "ada", "mike", 3, locked, Config)
 	eq(missed, false)
 	eq(state.rooms.mike.votes.ada, nil)
+	local offstage, offWhy = Voting.cast(state, "ada", "mike", 3, openGate("lee", "active"), Config)
+	eq(offstage, false)
+	eq(offWhy, "That room is not on stage.")
+	eq(state.rooms.mike.votes.ada, nil)
 end)
 
 test("Vote and Report share the action remote and will not take a username", function()
@@ -1496,6 +1500,14 @@ test("a room is removed at the higher of 3 reports or 40 percent", function()
 	eq(select(3, Voting.report(small, "a", "ada", few, Config)), false)
 	eq(select(3, Voting.report(small, "b", "ada", few, Config)), false)
 	eq(select(3, Voting.report(small, "c", "ada", few, Config)), true)
+	-- In a 3-player server only two people can vote, so 3 reports are
+	-- required and two friends cannot take the third player's room down.
+	eq(Voting.threshold(2, Config), 3)
+	local trio = Voting.create()
+	local tight = openGate("ada", "active", 2)
+	eq(select(3, Voting.report(trio, "a", "ada", tight, Config)), false)
+	eq(select(3, Voting.report(trio, "b", "ada", tight, Config)), false)
+	eq(trio.rooms.ada.removed, false)
 end)
 
 test("Auntie Roch's vote and line are deterministic", function()
@@ -1617,6 +1629,21 @@ test("names stay hidden until the podium", function()
 	truthy(string.find(voteUi, "bands.reveal", 1, true) ~= nil)
 	truthy(string.find(voteUi, 'Net.act("Report")', 1, true) ~= nil)
 	truthy(string.find(voteUi, 'Net.act("Vote"', 1, true) ~= nil)
+	truthy(string.find(voteUi, "TourPlot", 1, true) ~= nil)
+	truthy(string.find(voteUi, "isOwnRoom", 1, true) ~= nil)
+	local roundSrc = fs.readFile("src/server/Services/RoundService.luau")
+	truthy(string.find(roundSrc, 'SetAttribute("TourTarget", snap.tourTarget', 1, true) == nil)
+	truthy(string.find(plots, "hideOwner", 1, true) ~= nil)
+	local banned = { "impress", "cozy", "roblox", "blox", "bedroom", "bathroom", "eggnog", "mulled", "wine", "alcohol", "beer", "whiskey", "vodka" }
+	for stars, lines in ipairs(Config.Critic.lines) do
+		eq(#lines >= 1, true)
+		for _, line in ipairs(lines) do
+			local blob = string.lower(line)
+			for _, word in ipairs(banned) do
+				truthy(string.find(blob, word, 1, true) == nil, "line " .. tostring(stars) .. " contains " .. word)
+			end
+		end
+	end
 end)
 
 test("a reported room leaves the tour and the panels stay off the board", function()

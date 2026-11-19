@@ -180,8 +180,17 @@ local function writeSign(index: number, phase: string)
 end
 
 local function veil(phase: string)
+	local hideOwner = phase == "Tour" or phase == "Results"
 	for index = 1, #models do
 		writeSign(index, phase)
+		local model = models[index]
+		if model then
+			if hideOwner then
+				model:SetAttribute("OwnerKey", nil)
+			else
+				model:SetAttribute("OwnerKey", ctx.Plots.owner(state, index))
+			end
+		end
 	end
 end
 

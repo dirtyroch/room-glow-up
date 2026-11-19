@@ -117,6 +117,7 @@ local function onPhase(round: any, _at: number)
 		clearCards()
 		for _, player in Players:GetPlayers() do
 			player:SetAttribute("MyStars", nil)
+			player:SetAttribute("EyeCoins", nil)
 		end
 		return
 	end

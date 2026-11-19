@@ -291,11 +291,17 @@ function Vote.start()
 
 	local refresh: () -> ()
 
+	local function isOwnRoom(): boolean
+		local phase = folder:GetAttribute("Phase")
+		local plot = folder:GetAttribute("TourPlot")
+		local mine = player:GetAttribute("Plot")
+		return phase == "Tour" and type(plot) == "number" and plot > 0 and type(mine) == "number" and mine == plot
+	end
+
 	local function ownOrLocked(): (boolean, boolean)
 		local phase = folder:GetAttribute("Phase")
 		local label = folder:GetAttribute("TourLabel")
-		local target = folder:GetAttribute("TourTarget")
-		local own = phase == "Tour" and type(target) == "string" and target ~= "" and target == tostring(player.UserId)
+		local own = isOwnRoom()
 		local locked = phase == "Tour" and type(label) == "string" and lockedNow(label)
 		return own, locked
 	end
@@ -361,12 +367,8 @@ function Vote.start()
 		local phase = folder:GetAttribute("Phase")
 		local label = folder:GetAttribute("TourLabel")
 		local index = folder:GetAttribute("TourIndex")
-		local target = folder:GetAttribute("TourTarget")
 		if type(label) ~= "string" then
 			label = ""
-		end
-		if type(target) ~= "string" then
-			target = ""
 		end
 		if type(index) ~= "number" then
 			index = 0
@@ -375,8 +377,7 @@ function Vote.start()
 			seenIndex = index
 			status = ""
 		end
-		local mine = tostring(player.UserId)
-		local own = phase == "Tour" and target ~= "" and target == mine
+		local own = isOwnRoom()
 		local locked = phase == "Tour" and lockedNow(label)
 		local touring = phase == "Tour" and label ~= ""
 		panel.Visible = touring
