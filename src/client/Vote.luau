@@ -423,7 +423,9 @@ function Vote.start()
 			return
 		end
 		pendingVote = true
-		local ok, msg = Net.act("Vote", stars)
+		-- Name the room on screen, so a slow tap never lands on the next one.
+		local plot = folder:GetAttribute("TourPlot")
+		local ok, msg = Net.act("Vote", stars, if type(plot) == "number" then plot else 0)
 		pendingVote = false
 		if not ok and type(msg) == "string" and msg ~= "" then
 			status = msg
@@ -460,7 +462,8 @@ function Vote.start()
 			return
 		end
 		pendingReport = true
-		local ok, msg = Net.act("Report")
+		local plot = folder:GetAttribute("TourPlot")
+		local ok, msg = Net.act("Report", if type(plot) == "number" then plot else 0)
 		pendingReport = false
 		if type(msg) == "string" and msg ~= "" then
 			status = msg

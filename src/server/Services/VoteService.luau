@@ -108,6 +108,18 @@ local function gateFor(round: any, owner: string, at: number): any
 	}
 end
 
+-- The client says which plot it was looking at. A vote or report that
+-- arrives after the camera moved on is dropped, not given to the next room.
+local function stillOnStage(owner: string, plot: any): boolean
+	if type(plot) ~= "number" or plot ~= plot or plot % 1 ~= 0 then
+		return false
+	end
+	if not ctx.plots or type(ctx.plots.indexOf) ~= "function" then
+		return true
+	end
+	return ctx.plots.indexOf(owner) == plot
+end
+
 local function currentOwner(round: any, at: number): string
 	local snap = RoundEngine.snapshot(round, at)
 	local owner = snap.tourTarget
@@ -278,7 +290,7 @@ function VoteService.init(c: any)
 		end,
 	}
 
-	ctx.actions.register("Vote", { "number" }, function(key: string, args: { any }): (boolean, string?)
+	ctx.actions.register("Vote", { "number", "number" }, function(key: string, args: { any }): (boolean, string?)
 		local round = ctx.round
 		if type(round) ~= "table" then
 			return false, "Not ready."
@@ -287,6 +299,9 @@ function VoteService.init(c: any)
 		local owner = currentOwner(round, at)
 		if owner == "" then
 			return false, "That room is not on stage."
+		end
+		if not stillOnStage(owner, args[2]) then
+			return false, "That room already moved on."
 		end
 		local gate = gateFor(round, owner, at)
 		gate.role = roleOf(round, key)
@@ -327,7 +342,7 @@ function VoteService.init(c: any)
 		return true, "Sent."
 	end)
 
-	ctx.actions.register("Report", {}, function(key: string, _args: { any }): (boolean, string?)
+	ctx.actions.register("Report", { "number" }, function(key: string, args: { any }): (boolean, string?)
 		local round = ctx.round
 		if type(round) ~= "table" then
 			return false, "Not ready."
@@ -336,6 +351,9 @@ function VoteService.init(c: any)
 		local owner = currentOwner(round, at)
 		if owner == "" then
 			return false, "That room is not on stage."
+		end
+		if not stillOnStage(owner, args[1]) then
+			return false, "That room already moved on."
 		end
 		local gate = gateFor(round, owner, at)
 		gate.role = roleOf(round, key)

@@ -1601,8 +1601,9 @@ test("Vote and Report share the action remote and will not take a username", fun
 	eq(state.rooms.room.votes.p, 4)
 	eq(api.handle("p", "Report", {}, 0), true)
 	local voteSrc = fs.readFile("src/server/Services/VoteService.luau")
-	truthy(string.find(voteSrc, 'register("Vote", { "number" }', 1, true) ~= nil)
-	truthy(string.find(voteSrc, 'register("Report", {}', 1, true) ~= nil)
+	truthy(string.find(voteSrc, 'register("Vote", { "number", "number" }', 1, true) ~= nil)
+	truthy(string.find(voteSrc, 'register("Report", { "number" }', 1, true) ~= nil)
+	truthy(string.find(voteSrc, "stillOnStage", 1, true) ~= nil)
 	truthy(string.find(voteSrc, "tourTarget", 1, true) ~= nil)
 	truthy(string.find(voteSrc, "DataStore", 1, true) == nil)
 	local actionSrc = fs.readFile("src/server/Services/ActionService.luau")
@@ -1781,7 +1782,7 @@ test("names stay hidden until the podium", function()
 	truthy(string.find(voteUi, "UIKit.bands", 1, true) ~= nil)
 	truthy(string.find(voteUi, "bands.tray", 1, true) ~= nil)
 	truthy(string.find(voteUi, "bands.reveal", 1, true) ~= nil)
-	truthy(string.find(voteUi, 'Net.act("Report")', 1, true) ~= nil)
+	truthy(string.find(voteUi, 'Net.act("Report", ', 1, true) ~= nil)
 	truthy(string.find(voteUi, 'Net.act("Vote"', 1, true) ~= nil)
 	truthy(string.find(voteUi, "TourPlot", 1, true) ~= nil)
 	truthy(string.find(voteUi, "isOwnRoom", 1, true) ~= nil)
@@ -3441,6 +3442,161 @@ test("tray pictures are cached per item and skip the WorldModel", function()
 	local tray = fs.readFile("src/client/Tray.luau")
 	truthy(string.find(tray, "views[itemId] = view", 1, true) ~= nil)
 	truthy(string.find(tray, "Instance.new(\"WorldModel\")", 1, true) == nil)
+end)
+
+test("a bought minute survives the 30-second rush", function()
+	local state = fresh()
+	for _, id in ipairs({ "a", "b", "c" }) do
+		RoundEngine.join(state, id, 0)
+	end
+	RoundEngine.setHasWork(state, function()
+		return true
+	end)
+	RoundEngine.advance(state, 25)
+	eq(RoundEngine.extend(state, Config.Shop.TimeBonus, Config.Shop.TimeCap), true)
+	eq(state.phaseEndsAt, 325)
+	RoundEngine.pressDone(state, "a", 90)
+	RoundEngine.pressDone(state, "b", 91)
+	eq(state.rush, true)
+	-- 30 seconds of rush plus the 60 that was paid for.
+	eq(state.phaseEndsAt, 91 + 30 + Config.Shop.TimeBonus)
+	local banked = fresh()
+	for _, id in ipairs({ "a", "b", "c" }) do
+		RoundEngine.join(banked, id, 0)
+	end
+	RoundEngine.setHasWork(banked, function()
+		return true
+	end)
+	eq(RoundEngine.extend(banked, Config.Shop.TimeBonus, Config.Shop.TimeCap), true)
+	RoundEngine.advance(banked, 25)
+	eq(banked.phaseEndsAt, 325)
+	RoundEngine.pressDone(banked, "a", 100)
+	RoundEngine.pressDone(banked, "b", 100)
+	eq(banked.phaseEndsAt, 100 + 30 + Config.Shop.TimeBonus)
+end)
+
+test("a one-piece DONE does not push the rush", function()
+	local state = fresh()
+	for _, id in ipairs({ "grief1", "grief2", "a", "b" }) do
+		RoundEngine.join(state, id, 0)
+	end
+	RoundEngine.setHasWork(state, function()
+		return true
+	end)
+	RoundEngine.setRealBuild(state, function(id: string)
+		return string.sub(id, 1, 5) ~= "grief"
+	end)
+	RoundEngine.advance(state, 25)
+	RoundEngine.pressDone(state, "grief1", 26)
+	RoundEngine.pressDone(state, "grief2", 26)
+	for t = 27, 120 do
+		RoundEngine.advance(state, t)
+	end
+	eq(state.rush, false)
+	eq(state.phaseEndsAt, 265)
+	-- One real builder done out of the two who are really building: rush.
+	RoundEngine.pressDone(state, "a", 121)
+	eq(state.rush, true)
+	eq(state.phaseEndsAt, 151)
+end)
+
+test("a kid back from a dropped connection builds again even late", function()
+	local state = fresh()
+	RoundEngine.join(state, "a", 0)
+	RoundEngine.join(state, "b", 0)
+	RoundEngine.advance(state, 25)
+	RoundEngine.leave(state, "b", 230)
+	RoundEngine.join(state, "b", 235, true)
+	eq(RoundEngine.playerView(state, "b").spectating, false)
+	RoundEngine.leave(state, "b", 236)
+	RoundEngine.join(state, "b", 237)
+	eq(RoundEngine.playerView(state, "b").spectating, true)
+end)
+
+test("playtest: a dropped kid who comes back mid-build gets the room back", function()
+	local world = server()
+	local a = world:addPlayer("aa_kid", "Aaa")
+	local b = world:addPlayer("bb_kid", "Bbb", 4444)
+	world:invoke(a, "TutorialSkip")
+	world:invoke(b, "TutorialSkip")
+	untilPhase(world, "Build")
+	stepFor(world, 5)
+	world:invoke(a, "Place", "mint_pouf", 0, 0)
+	for i = 1, 3 do
+		world:invoke(b, "Place", "mint_pouf", i, 1)
+		stepFor(world, 1)
+	end
+	local coins = b:GetAttribute("CoinsLeft")
+	world:removePlayer(b)
+	stepFor(world, 5)
+	local back = world:addPlayer("bb_kid", "Bbb", 4444)
+	stepFor(world, 1)
+	eq(back:GetAttribute("Spectating") == true, false)
+	eq(back:GetAttribute("CoinsLeft"), coins)
+	local pieces = 0
+	for _, plot in ipairs(world.workspace.Plots:GetChildren()) do
+		if plot:GetAttribute("OwnerKey") == "4444" then
+			pieces += #plot:FindFirstChild("Items"):GetChildren()
+		end
+	end
+	eq(pieces, 3)
+	-- Gone past the grace: the room is not kept.
+	world:removePlayer(back)
+	stepFor(world, Config.Reconnect.Grace + 2)
+	local late = world:addPlayer("bb_kid", "Bbb", 4444)
+	stepFor(world, 1)
+	local after = 0
+	for _, plot in ipairs(world.workspace.Plots:GetChildren()) do
+		if plot:GetAttribute("OwnerKey") == "4444" then
+			after += #plot:FindFirstChild("Items"):GetChildren()
+		end
+	end
+	eq(after, 0)
+	eq(late:GetAttribute("CoinsLeft") == coins, false)
+	noErrors(world)
+end)
+
+test("playtest: a slow vote for the last room does not land on the next one", function()
+	local world = server()
+	local kids = {}
+	for i = 1, 3 do
+		kids[i] = world:addPlayer("kid" .. i, "Kid" .. i)
+		world:invoke(kids[i], "TutorialSkip")
+	end
+	untilPhase(world, "Build")
+	stepFor(world, 3)
+	for i = 1, 3 do
+		world:invoke(kids[i], "Place", "mint_pouf", i, 1)
+	end
+	stepFor(world, 1)
+	for i = 1, 3 do
+		world:invoke(kids[i], "Done")
+	end
+	untilPhase(world, "Tour")
+	local folder = world.game:GetService("ReplicatedStorage").RoundState
+	local first = folder:GetAttribute("TourPlot")
+	local index = folder:GetAttribute("TourIndex")
+	while folder:GetAttribute("TourIndex") == index do
+		world:step(0.1)
+	end
+	local round = world.ctx.round
+	local owner = round.tourStops[round.tourIndex]
+	local voter = nil
+	for _, kid in ipairs(kids) do
+		if tostring(kid.UserId) ~= owner and world.ctx.plots.indexOf(tostring(kid.UserId)) ~= first then
+			voter = kid
+		end
+	end
+	local payload = world:invoke(voter, "Vote", 1, first)
+	eq(payload.ok, false)
+	eq(payload.msg, "That room already moved on.")
+	local ballot = world.ctx.votes.ballots.rooms[owner]
+	eq(ballot == nil or ballot.votes[tostring(voter.UserId)] == nil, true)
+	local okVote = world:invoke(voter, "Vote", 4, folder:GetAttribute("TourPlot"))
+	eq(okVote.ok, true)
+	local report = world:invoke(voter, "Report", first)
+	eq(report.ok, false)
+	noErrors(world)
 end)
 
 print(string.format("\n%d passed, %d failed", passed, failed))
