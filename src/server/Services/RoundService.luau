@@ -87,6 +87,10 @@ local function onJoin(player: Player)
 	local at = now()
 	local resume, hadSpot = canResume(key, at)
 	RoundEngine.join(state, key, at, resume)
+	if resume and RoundEngine.playerView(state, key).spectating then
+		-- The server filled up while they were gone.
+		resume = false
+	end
 	if hadSpot and not resume and ctx.rooms then
 		-- Back too late. The kept room is not theirs any more.
 		ctx.rooms.forget(key)
