@@ -149,7 +149,8 @@ local function dressRoom(shellModel: Model, pivot: CFrame, width: number, depth:
 	)
 	decor(shellModel, "Sill", "Block", Vector3.new(winW + 1.1, 0.28, 0.7), pivot * CFrame.new(0, winY - winH / 2 - 0.1, winZ + 0.2), shell("floorA"), "Wood", nil)
 	decor(shellModel, "Mullion", "Block", Vector3.new(0.18, winH, 0.16), pivot * CFrame.new(0, winY, winZ + 0.2), shell("floorA"), "Wood", nil)
-	wash(glass, Color3.fromRGB(255, 220, 190), 1.15, 18)
+	decor(shellModel, "Rail", "Block", Vector3.new(winW, 0.18, 0.16), pivot * CFrame.new(0, winY, winZ + 0.2), shell("floorA"), "Wood", nil)
+	wash(glass, Color3.fromRGB(255, 220, 190), 0.5, 12)
 end
 
 local function dressGinger(shellModel: Model, pivot: CFrame, width: number, depth: number, height: number)
@@ -175,7 +176,7 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 		"SmoothPlastic",
 		nil
 	)
-	wash(glass, Color3.fromRGB(255, 196, 150), 1.2, 16)
+	wash(glass, Color3.fromRGB(255, 196, 150), 0.5, 12)
 	decor(shellModel, "Door", "Block", Vector3.new(3.4, 6.2, 0.35), pivot * CFrame.new(-width * 0.22, 4.2, planeZ + 0.48), shell("gingerB"), "Wood", nil)
 	decor(shellModel, "Knob", "Ball", Vector3.new(0.45, 0.45, 0.45), pivot * CFrame.new(-width * 0.22 + 1.1, 4.1, planeZ + 0.75), shell("hook"), "Metal", nil)
 	local caneH = math.clamp(height * 0.45, 6, 10)
@@ -203,6 +204,16 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 			nil
 		)
 	end
+	decor(
+		shellModel,
+		"Eave",
+		"Block",
+		Vector3.new(width - 0.4, 0.7, 0.9),
+		pivot * CFrame.new(0, height + 0.15, planeZ + 0.5),
+		shell("icingA"),
+		"SmoothPlastic",
+		nil
+	)
 	for index = 0, 4 do
 		local x = -width * 0.36 + index * (width * 0.18)
 		decor(
@@ -210,7 +221,7 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 			"Drip",
 			"Wedge",
 			Vector3.new(1.3, 1.5, 0.8),
-			pivot * CFrame.new(x, height + 0.4, planeZ * 0.15),
+			pivot * CFrame.new(x, height - 0.35, planeZ + 0.55),
 			shell("icingA"),
 			"SmoothPlastic",
 			nil
@@ -223,9 +234,12 @@ end
 local function dressTree(shellModel: Model, pivot: CFrame)
 	local skirt = decor(shellModel, "Skirt", "Cylinder", Vector3.new(0.45, 8.5, 8.5), pivot * CFrame.new(0, 0.7, 0) * CFrame.Angles(0, 0, math.rad(90)), shell("floorA"), "Fabric", nil)
 	decor(shellModel, "Stand", "Cylinder", Vector3.new(0.8, 3.2, 3.2), pivot * CFrame.new(0, 0.45, 0) * CFrame.Angles(0, 0, math.rad(90)), shell("trunk"), "Wood", nil)
-	decor(shellModel, "TopperA", "Block", Vector3.new(2.4, 0.28, 0.28), pivot * CFrame.new(0, 12.1, 0), shell("hook"), "Neon", nil)
-	decor(shellModel, "TopperB", "Block", Vector3.new(0.28, 2.4, 0.28), pivot * CFrame.new(0, 12.1, 0), shell("hook"), "Neon", nil)
-	wash(skirt, Color3.fromRGB(255, 226, 170), 0.8, 14)
+	local top = pivot * CFrame.new(0, 12.1, 0)
+	decor(shellModel, "TopperA", "Block", Vector3.new(2.2, 0.28, 0.28), top, shell("hook"), "Neon", nil)
+	decor(shellModel, "TopperB", "Block", Vector3.new(0.28, 2.2, 0.28), top, shell("hook"), "Neon", nil)
+	decor(shellModel, "TopperC", "Block", Vector3.new(2.0, 0.28, 0.28), top * CFrame.Angles(0, 0, math.rad(45)), shell("hook"), "Neon", nil)
+	decor(shellModel, "TopperD", "Block", Vector3.new(2.0, 0.28, 0.28), top * CFrame.Angles(0, 0, math.rad(-45)), shell("hook"), "Neon", nil)
+	wash(skirt, Color3.fromRGB(255, 226, 170), 0.45, 10)
 end
 
 -- The plot model is the parent of each shell. Its PrimaryPart is the pivot.
@@ -358,7 +372,7 @@ function Props.gingerbread(shellModel: Model)
 			local lx, ly, lz = Bases.tileCenter("gingerbread", "roof", x, z)
 			if lx and ly and lz then
 				local tint = if (x + z) % 2 == 0 then "roofA" else "roofB"
-				part(shellModel, "Cell", "Block", Vector3.new(unit - 0.12, 0.45, unit - 0.12), pivot * CFrame.new(lx, ly, lz), shell(tint), {
+				part(shellModel, "Cell", "Block", Vector3.new(unit + 0.06, 0.4, unit + 0.06), pivot * CFrame.new(lx, ly, lz), shell(tint), {
 					collide = false,
 					query = true,
 					shadow = false,
@@ -370,6 +384,22 @@ function Props.gingerbread(shellModel: Model)
 			end
 		end
 	end
+	local frontZ = depth / 2 + 0.35
+	local backZ = -depth / 2 - 0.35
+	local frontY = 1 + height + 0.2
+	local backY = frontY + (roof.z - 1) * unit * 0.38 + 0.2
+	local mid = Vector3.new(0, (frontY + backY) / 2, (frontZ + backZ) / 2)
+	local dest = Vector3.new(0, frontY, frontZ)
+	local span = (Vector3.new(0, backY, backZ) - dest).Magnitude
+	part(
+		shellModel,
+		"RoofDeck",
+		"Block",
+		Vector3.new(width + 0.8, 0.7, span),
+		pivot * CFrame.lookAt(mid, dest, Vector3.yAxis),
+		shell("gingerB"),
+		{ collide = false, query = false, shadow = true, material = "SmoothPlastic" }
+	)
 	dressGinger(shellModel, pivot, width, depth, height)
 end
 
@@ -562,12 +592,15 @@ local function sculpt(model: Model, cf: CFrame, item: any, sx: number, sy: numbe
 		put("Base", "Cylinder", box(sy * 0.12, sx * 0.55, sz * 0.55), Vector3.new(0, -sy * 0.4, 0), wood, false, "Wood", nil, nil, nil)
 		put("Stem", "Cylinder", box(sy * 0.5, sx * 0.12, sz * 0.12), Vector3.new(0, -sy * 0.08, 0), trim, false, "Metal", nil, nil, nil)
 		if id == "star_lamp" then
-			put("Across", "Block", box(sx * 0.7, sy * 0.12, sz * 0.12), Vector3.new(0, sy * 0.28, 0), main, true, "Neon", nil, nil, nil)
-			put("Up", "Block", box(sx * 0.12, sy * 0.42, sz * 0.12), Vector3.new(0, sy * 0.28, 0), main, true, "Neon", nil, nil, nil)
+			local starY = Vector3.new(0, sy * 0.28, 0)
+			put("Across", "Block", box(sx * 0.56, sy * 0.1, sz * 0.1), starY, main, true, "Neon", nil, nil, nil)
+			put("Up", "Block", box(sx * 0.1, sy * 0.56, sz * 0.1), starY, main, true, "Neon", nil, nil, nil)
+			put("DiagA", "Block", box(sx * 0.5, sy * 0.08, sz * 0.1), starY, main, true, "Neon", CFrame.Angles(0, 0, math.rad(45)), nil, nil)
+			put("DiagB", "Block", box(sx * 0.5, sy * 0.08, sz * 0.1), starY, main, true, "Neon", CFrame.Angles(0, 0, math.rad(-45)), nil, nil)
 		else
-			put("Shade", "Ball", box(sx * 0.72, sy * 0.36, sz * 0.72), Vector3.new(0, sy * 0.22, 0), main, true, "SmoothPlastic", nil, 0.08, nil)
+			put("Shade", "Ball", box(sx * 0.5, sy * 0.26, sz * 0.5), Vector3.new(0, sy * 0.22, 0), main, true, "SmoothPlastic", nil, 0.08, nil)
 		end
-		put("Bulb", "Ball", box(sx * 0.22, sy * 0.18, sz * 0.22), Vector3.new(0, sy * 0.05, 0), cream, false, "Neon", nil, 0.05, 0.75)
+		put("Bulb", "Ball", box(sx * 0.22, sy * 0.18, sz * 0.22), Vector3.new(0, sy * 0.05, 0), cream, false, "Neon", nil, 0.05, 0.45)
 		put("Finial", "Ball", box(sx * 0.12, sy * 0.1, sz * 0.12), Vector3.new(0, sy * 0.4, 0), accent, false, "Metal", nil, nil, nil)
 	elseif shape == "shelf" then
 		if item.h >= 1.15 then
@@ -588,9 +621,9 @@ local function sculpt(model: Model, cf: CFrame, item: any, sx: number, sy: numbe
 		put("Pot", "Cylinder", box(sy * 0.28, sx * 0.5, sz * 0.5), Vector3.new(0, -sy * 0.3, 0), cream, false, "SmoothPlastic", nil, nil, nil)
 		if treeForm then
 			put("Trunk", "Cylinder", box(sy * 0.35, sx * 0.12, sz * 0.12), Vector3.new(0, -sy * 0.02, 0), wood, false, "Wood", nil, nil, nil)
-			put("Leaf", "Ball", box(sx * 0.7, sy * 0.32, sz * 0.7), Vector3.new(0, sy * 0.08, 0), main, true, "Grass", nil, nil, nil)
-			put("Leaf", "Ball", box(sx * 0.5, sy * 0.26, sz * 0.5), Vector3.new(0, sy * 0.28, 0), main, true, "Grass", nil, nil, nil)
-			put("Tip", "Ball", box(sx * 0.28, sy * 0.18, sz * 0.28), Vector3.new(0, sy * 0.42, 0), accent, false, "Grass", nil, nil, nil)
+			put("Leaf", "Cylinder", box(sy * 0.26, sx * 0.72, sz * 0.72), Vector3.new(0, sy * 0.06, 0), main, true, "Grass", nil, nil, nil)
+			put("Leaf", "Cylinder", box(sy * 0.22, sx * 0.5, sz * 0.5), Vector3.new(0, sy * 0.26, 0), main, true, "Grass", nil, nil, nil)
+			put("Tip", "Cylinder", box(sy * 0.18, sx * 0.28, sz * 0.28), Vector3.new(0, sy * 0.44, 0), accent, false, "Grass", nil, nil, nil)
 		else
 			put("Soil", "Cylinder", box(sy * 0.08, sx * 0.4, sz * 0.4), Vector3.new(0, -sy * 0.16, 0), wood, false, "Ground", nil, nil, nil)
 			put("Leaf", "Ball", box(sx * 0.72, sy * 0.4, sz * 0.72), Vector3.new(0, sy * 0.08, 0), main, true, "Grass", nil, nil, nil)
@@ -707,9 +740,11 @@ local function sculpt(model: Model, cf: CFrame, item: any, sx: number, sy: numbe
 			put("Leaf", "Ball", box(sx * 0.22, sy * 0.8, sz * 0.35), Vector3.new(sx * 0.16, sy * 0.05, 0), main, true, "Grass", nil, nil, nil)
 			put("Berry", "Ball", box(0.28, sy * 0.5, 0.28), Vector3.new(0, sy * 0.15, sz * 0.08), accent, false, "SmoothPlastic", nil, nil, nil)
 		elseif item.id == "spark_accent" then
-			put("Across", "Block", box(sx * 0.7, sy * 0.35, sz * 0.2), Vector3.zero, main, true, "Neon", nil, nil, nil)
-			put("Up", "Block", box(sx * 0.16, sy * 0.9, sz * 0.2), Vector3.zero, main, true, "Neon", nil, nil, nil)
-			put("Core", "Ball", box(sx * 0.16, sy * 0.5, sz * 0.2), Vector3.zero, cream, false, "Neon", nil, nil, nil)
+			put("Across", "Block", box(sx * 0.7, sy * 0.16, sz * 0.16), Vector3.zero, main, true, "Neon", nil, nil, nil)
+			put("Up", "Block", box(sx * 0.16, sy * 0.7, sz * 0.16), Vector3.zero, main, true, "Neon", nil, nil, nil)
+			put("DiagA", "Block", box(sx * 0.62, sy * 0.14, sz * 0.14), Vector3.zero, main, true, "Neon", CFrame.Angles(0, 0, math.rad(45)), nil, nil)
+			put("DiagB", "Block", box(sx * 0.62, sy * 0.14, sz * 0.14), Vector3.zero, main, true, "Neon", CFrame.Angles(0, 0, math.rad(-45)), nil, nil)
+			put("Core", "Ball", box(sx * 0.2, sy * 0.2, sz * 0.2), Vector3.zero, cream, false, "Neon", nil, nil, nil)
 		elseif item.category == "Accents" then
 			put("Loop", "Ball", box(sx * 0.22, sy * 0.8, sz * 0.4), Vector3.new(-sx * 0.16, sy * 0.1, 0), main, true, "SmoothPlastic", nil, nil, nil)
 			put("Loop", "Ball", box(sx * 0.22, sy * 0.8, sz * 0.4), Vector3.new(sx * 0.16, sy * 0.1, 0), main, true, "SmoothPlastic", nil, nil, nil)
