@@ -369,8 +369,13 @@ function RoomService.init(c: any)
 			local visiting = ctx.dream and ctx.dream.isVisiting(key) == true
 			if not visiting then
 				local bag = bagOf(key)
-				if bag and Easter then
+				if bag and bag.hold == true and Easter then
 					Easter.note(bag.profile, Items.get(args[1]), levelFor(key))
+					if ctx.saves and type(ctx.saves.apply) == "function" then
+						pcall(function()
+							ctx.saves.apply(key, bag.profile)
+						end)
+					end
 				end
 				if ctx.funnel and type(ctx.funnel.onPlace) == "function" then
 					pcall(ctx.funnel.onPlace, key)

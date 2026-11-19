@@ -85,6 +85,51 @@ local function finishTutorial(key: string, state: any)
 	end
 end
 
+local function currentPhase(): string
+	local round = ctx.round
+	if type(round) == "table" and type(round.phase) == "string" then
+		return round.phase
+	end
+	return ""
+end
+
+local function inLobby(): boolean
+	local phase = currentPhase()
+	return phase == "Lobby" or phase == ""
+end
+
+local function leftover(): number?
+	local round = ctx.round
+	if type(round) ~= "table" or type(round.phaseEndsAt) ~= "number" then
+		return nil
+	end
+	return round.phaseEndsAt - workspace:GetServerTimeNow()
+end
+
+-- A just-opened lobby is only 20s. Hold it so a 30s Mini Room can finish.
+local function keepLobby(untilAt: number)
+	local round = ctx.round
+	if type(round) ~= "table" or round.phase ~= "Lobby" then
+		return
+	end
+	if type(round.phaseEndsAt) ~= "number" or untilAt > round.phaseEndsAt then
+		round.phaseEndsAt = untilAt
+	end
+end
+
+local function closeTutorials()
+	local keys: { string } = {}
+	for key in pairs(sessions) do
+		table.insert(keys, key)
+	end
+	for _, key in ipairs(keys) do
+		local state = sessions[key]
+		if state then
+			finishTutorial(key, state)
+		end
+	end
+end
+
 local function present(player: Player)
 	local key = keyOf(player)
 	local bag = ctx.saves.session(key)
@@ -96,12 +141,34 @@ local function present(player: Player)
 		player:SetAttribute("TutorialActive", false)
 		return
 	end
+	-- The Mini Room stays in the lobby so it never covers Theme Reveal, the tour, or a ballot.
+	if not inLobby() then
+		player:SetAttribute("TutorialActive", false)
+		return
+	end
 	if sessions[key] then
 		publishTutorial(player, sessions[key])
 		return
 	end
-	local state = Tutorial.start(workspace:GetServerTimeNow())
+	local pace = Tutorial.pace()
+	local left = leftover()
+	if type(left) == "number" and left < pace.placeBy then
+		player:SetAttribute("TutorialActive", false)
+		return
+	end
+	local now = workspace:GetServerTimeNow()
+	local state = Tutorial.start(now)
 	sessions[key] = state
+	local lobbySpan = 20
+	if type(ctx.round) == "table" and type(ctx.round.config) == "table" then
+		local phases = ctx.round.config.Phases
+		if type(phases) == "table" and type(phases.Lobby) == "number" then
+			lobbySpan = phases.Lobby
+		end
+	end
+	if type(left) ~= "number" or left >= lobbySpan - 2 then
+		keepLobby(now + pace.duration)
+	end
 	publishTutorial(player, state)
 end
 
@@ -118,6 +185,13 @@ local function roundKey(round: any): string
 end
 
 local function onPhase(round: any)
+	if type(round) == "table" and round.phase == "Lobby" then
+		for _, player in Players:GetPlayers() do
+			present(player)
+		end
+	else
+		closeTutorials()
+	end
 	local folder = ctx.RoundState
 	if type(round) ~= "table" or round.phase ~= "Results" then
 		if folder then
@@ -253,6 +327,10 @@ function FunnelService.start()
 		present(player)
 	end
 	RunService.Heartbeat:Connect(function()
+		if not inLobby() then
+			closeTutorials()
+			return
+		end
 		local now = workspace:GetServerTimeNow()
 		for key, state in pairs(sessions) do
 			Tutorial.tick(state, now)
