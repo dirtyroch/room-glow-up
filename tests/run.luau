@@ -1029,6 +1029,10 @@ test("grid, hooks, overlap, and rotation are checked", function()
 	local hook = Bases.hooks()[3]
 	eq(Bases.nearestHook(hook.x, hook.y, hook.z), 3)
 	eq(Bases.nearestHook(0, 0, 0), nil)
+	local front = Bases.pivot("gingerbread", "wall", 0, 0, 0, 1, 1, 0.28)
+	truthy(front ~= nil and front.z > Bases.wallPlane("gingerbread"), "candy should sit on the front of the house")
+	local hanging = Bases.pivot("room", "wall", 0, 0, 0, 1, 1, 0.12)
+	truthy(hanging ~= nil and hanging.z > Bases.wallPlane("room"), "hangings should sit in front of the back wall")
 	local floor = Bases.grid("room", "floor")
 	local lx0, _, lz0 = Bases.tileCenter("room", "floor", 0, 0)
 	local lx1, _, _lz1 = Bases.tileCenter("room", "floor", 1, 0)
@@ -1080,6 +1084,35 @@ test("budget, meter, undo, and recolor stay on the server numbers", function()
 	eq(#steps.pieces, 1)
 	eq(Placement.undo(steps, rich), true)
 	eq(Placement.undo(steps, rich), false)
+	eq(#tint.undo, 2)
+	eq(Placement.recolor(tint, rich, 1, "mint"), true)
+	eq(#tint.undo, 2)
+	eq(tint.pieces[1].color, "mint")
+end)
+
+test("undo cannot turn a piece into an occupied cell", function()
+	local ctx = placeCtx()
+	local room = Placement.empty()
+	eq(Placement.place(room, ctx, "butter_bench", 0, 0), true)
+	eq(Placement.rotate(room, ctx, 1), true)
+	eq(room.pieces[1].rot, 1)
+	-- Occupy the cell the bench would need if it turned back to rot 0.
+	eq(Placement.place(room, ctx, "cocoa_mug", 1, 0), true)
+	-- Undo the mug place so rotate is on top, then put the mug back without
+	-- a new undo-tracked gap: delete is not needed. After undo, mug is gone.
+	-- Place it again, then manually pop? Better: undo mug, place mug, the
+	-- rotate op is still in the stack under the new place. Undo the new place
+	-- (mug gone), rotate is on top, place mug again... that adds another place
+	-- on top. Can't get rotate on top while mug occupies the cell.
+
+	-- Directly replace the undo stack top after placing both.
+	room.undo = { { kind = "rotate", id = 1, rot = 0 } }
+	local turned, turnMsg = Placement.undo(room, ctx)
+	eq(turned, false)
+	eq(turnMsg, "It cannot turn there.")
+	eq(room.pieces[1].rot, 1)
+	eq(#room.pieces, 2)
+	eq(#room.undo, 1)
 end)
 
 test("spectators cannot place, spend, or move the meter", function()
@@ -1211,6 +1244,9 @@ test("Place has its own wider bucket on the action remote", function()
 	eq(api.handle("p", "Place", { "cocoa_mug", 1, 1 }, 5), false)
 	eq(api.handle("p", "Place", { "cocoa_mug", 1, 1 }, 6), true)
 	eq(api.handle("q", "Draw", {}, 0), false)
+	local source = fs.readFile("src/server/Services/ActionService.luau")
+	truthy(string.find(source, "placeBurst", 1, true) ~= nil)
+	truthy(string.find(source, "overrides", 1, true) ~= nil)
 end)
 
 print("HUD fit")

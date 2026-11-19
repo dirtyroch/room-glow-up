@@ -110,7 +110,10 @@ end
 
 function RoomService.welcome(player: Player)
 	local key = tostring(player.UserId)
-	rooms[key] = Placement.empty()
+	-- PlayerAdded can also fire for someone already in GetPlayers. Keep the room.
+	if rooms[key] == nil then
+		rooms[key] = Placement.empty()
+	end
 	local c = contextFor(key)
 	publish(player, key, rooms[key], c)
 end

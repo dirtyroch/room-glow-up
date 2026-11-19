@@ -307,6 +307,9 @@ function Placement.recolor(room: Room, ctx: Context, pieceId: number, color: str
 		return false, "That piece is gone.", nil
 	end
 	local previous = piece.color
+	if previous == color then
+		return true, "Already that color.", copyPiece(piece)
+	end
 	piece.color = color
 	pushUndo(room, ctx, { kind = "recolor", id = piece.id, color = previous })
 	return true, "Recolored.", copyPiece(piece)
@@ -385,8 +388,18 @@ function Placement.undo(room: Room, ctx: Context): (boolean, string?, any)
 		end
 		if op.kind == "rotate" then
 			local item = ctx.catalog.get(piece.itemId)
-			if item and not Bases.fits(ctx.roundType, piece.surface, piece.x, piece.z, item.w, item.d, op.rot) then
-				return false, "It cannot turn there.", nil
+			if item then
+				if not Bases.fits(ctx.roundType, piece.surface, piece.x, piece.z, item.w, item.d, op.rot) then
+					return false, "It cannot turn there.", nil
+				end
+				local layer = layerOf(item)
+				local taken = occupied(room, ctx.catalog, piece.id)
+				for _, cell in ipairs(cellsOf(item, piece.surface, piece.x, piece.z, op.rot)) do
+					local key = piece.surface .. ":" .. layer .. ":" .. tostring(cell[1]) .. ":" .. tostring(cell[2])
+					if taken[key] then
+						return false, "It cannot turn there.", nil
+					end
+				end
 			end
 			piece.rot = op.rot
 		else

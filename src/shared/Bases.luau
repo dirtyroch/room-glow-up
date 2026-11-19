@@ -266,7 +266,8 @@ function Bases.pivot(
 	end
 	if surface == "wall" then
 		local thick = math.max(0.4, h * unit)
-		local outward = if roundType == "room" then thick / 2 else -thick / 2
+		-- Sit on the visible face: into the room, or on the front of the house.
+		local outward = thick / 2
 		return {
 			x = (-grid.x / 2 + x + aw / 2) * unit,
 			y = 1 + (z + ad / 2) * unit,

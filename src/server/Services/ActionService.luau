@@ -38,6 +38,9 @@ function ActionService.init(c: any)
 		actionBurst = limits.actionBurst,
 		actionRefill = limits.actionRefill,
 		nameMax = limits.nameMax,
+		overrides = {
+			Place = { burst = limits.placeBurst, refill = limits.placeRefill },
+		},
 	})
 end
 
