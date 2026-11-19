@@ -83,6 +83,23 @@ function UI.button(parent: Instance, text: string, styleName: string, onClick: (
 	return button
 end
 
+function UI.screen(parent: Instance, name: string, order: number): ScreenGui
+	local gui = Instance.new("ScreenGui")
+	gui.Name = name
+	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.DisplayOrder = order
+	gui.IgnoreGuiInset = true
+	local applied = pcall(function()
+		(gui :: any).ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+	end)
+	if not applied then
+		gui.IgnoreGuiInset = false
+	end
+	gui.Parent = parent
+	return gui
+end
+
 function UI.pop(scale: UIScale, motion: { from: number, to: number, time: number, style: string })
 	scale.Scale = motion.from
 	local easing = if motion.style == "Back" then Enum.EasingStyle.Back else Enum.EasingStyle.Quad

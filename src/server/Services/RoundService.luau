@@ -31,6 +31,16 @@ local function publish(at: number)
 	folder:SetAttribute("RoundType", snap.roundType)
 	folder:SetAttribute("Season", snap.season)
 	folder:SetAttribute("TourLabel", snap.tourLabel)
+	folder:SetAttribute("TourIndex", snap.tourIndex or 0)
+	folder:SetAttribute("TourTarget", snap.tourTarget or "")
+	local tourPlot = 0
+	if snap.tourTarget ~= "" and ctx.plots then
+		local index = ctx.plots.indexOf(snap.tourTarget)
+		if type(index) == "number" then
+			tourPlot = index
+		end
+	end
+	folder:SetAttribute("TourPlot", tourPlot)
 	folder:SetAttribute("Critic", snap.critic)
 	for _, player in Players:GetPlayers() do
 		local view = RoundEngine.playerView(state, keyOf(player))
@@ -41,12 +51,24 @@ end
 
 local function onJoin(player: Player)
 	RoundEngine.join(state, keyOf(player), now())
+	if ctx.plots then
+		ctx.plots.assign(player)
+	end
+	if ctx.rooms then
+		ctx.rooms.welcome(player)
+	end
 	publish(now())
 end
 
 local function onLeave(player: Player)
 	local key = keyOf(player)
 	RoundEngine.leave(state, key, now())
+	if ctx.rooms then
+		ctx.rooms.forget(key)
+	end
+	if ctx.plots then
+		ctx.plots.release(player)
+	end
 	if ctx.actions then
 		ctx.actions.forget(key)
 	end
@@ -98,6 +120,9 @@ function RoundService.start()
 		local before = state.phase
 		local beforeTour = state.tourIndex
 		RoundEngine.advance(state, at)
+		if ctx.rooms and state.phase ~= before then
+			ctx.rooms.onPhase(state)
+		end
 		acc += dt
 		if state.phase ~= before or state.tourIndex ~= beforeTour or acc >= 0.25 then
 			acc = 0

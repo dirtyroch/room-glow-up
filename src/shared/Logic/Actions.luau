@@ -18,25 +18,35 @@ local RateLimiter = sibling("RateLimiter")
 
 local Actions = {}
 
+export type ActionBudget = { burst: number, refill: number }
+
 export type Limits = {
 	globalBurst: number,
 	globalRefill: number,
 	actionBurst: number,
 	actionRefill: number,
 	nameMax: number?,
+	-- Optional wider buckets for named actions. Place uses one.
+	overrides: { [string]: ActionBudget }?,
 }
 
-export type Handler = (playerKey: string, args: { any }) -> (boolean, string?)
+export type Handler = (playerKey: string, args: { any }) -> (boolean, string?, any?)
 
 export type Api = {
 	register: (name: string, argTypes: { string }, fn: Handler) -> (),
-	handle: (playerKey: string, action: any, args: any, now: number) -> (boolean, string?),
+	handle: (playerKey: string, action: any, args: any, now: number) -> (boolean, string?, any?),
 	forget: (playerKey: string) -> (),
 }
 
 function Actions.create(limits: Limits): Api
 	local globalLimiter = RateLimiter.new(limits.globalBurst, limits.globalRefill)
 	local actionLimiter = RateLimiter.new(limits.actionBurst, limits.actionRefill)
+	local extraLimiters: { [string]: any } = {}
+	if limits.overrides then
+		for name, spec in pairs(limits.overrides) do
+			extraLimiters[name] = RateLimiter.new(spec.burst, spec.refill)
+		end
+	end
 	local handlers: { [string]: Handler } = {}
 	local specs: { [string]: { string } } = {}
 	local busy: { [string]: boolean } = {}
@@ -49,7 +59,7 @@ function Actions.create(limits: Limits): Api
 		specs[name] = argTypes
 	end
 
-	function api.handle(playerKey: string, action: any, args: any, now: number): (boolean, string?)
+	function api.handle(playerKey: string, action: any, args: any, now: number): (boolean, string?, any?)
 		if type(playerKey) ~= "string" or playerKey == "" then
 			return false, "Bad request."
 		end
@@ -87,26 +97,27 @@ function Actions.create(limits: Limits): Api
 			end
 		end
 		local actionKey = playerKey .. "\0" .. action
-		if not actionLimiter:allow(actionKey, now) then
-			return false, "Slow down a moment."
+		local limiter = extraLimiters[action] or actionLimiter
+		if not limiter:allow(actionKey, now) then
+			return false, "Slow down a moment.", nil
 		end
 
 		busy[playerKey] = true
-		local ok, res, msg = pcall(fn, playerKey, args)
+		local ok, res, msg, extra = pcall(fn, playerKey, args)
 		busy[playerKey] = nil
 		if not ok then
-			return false, "Something went wrong."
+			return false, "Something went wrong.", nil
 		end
 		if res ~= true then
 			if type(msg) == "string" then
-				return false, msg
+				return false, msg, nil
 			end
-			return false, "Nope."
+			return false, "Nope.", nil
 		end
-		if type(msg) == "string" then
-			return true, msg
+		if type(msg) ~= "string" then
+			msg = nil
 		end
-		return true, nil
+		return true, msg, extra
 	end
 
 	function api.forget(playerKey: string)
@@ -114,6 +125,9 @@ function Actions.create(limits: Limits): Api
 		busy[playerKey] = nil
 		for name in pairs(handlers) do
 			actionLimiter:forget(playerKey .. "\0" .. name)
+		end
+		for name, limiter in pairs(extraLimiters) do
+			limiter:forget(playerKey .. "\0" .. name)
 		end
 	end
 

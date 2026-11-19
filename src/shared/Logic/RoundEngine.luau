@@ -50,6 +50,9 @@ export type State = {
 	theme: any,
 	season: string,
 	trace: { Trace },
+	-- Returns true when that player has placed at least one prop.
+	-- Wired by the room service. Nil keeps the older DONE-only tour.
+	hasWork: ((string) -> any)?,
 }
 
 local function activeCount(state: State): number
@@ -174,7 +177,33 @@ local function beginBuild(state: State, now: number)
 	note(state, "Build", now)
 end
 
+-- When Build ends, submit every active room that has props, not only DONE.
+local function autoSubmit(state: State)
+	local fn = state.hasWork
+	if type(fn) ~= "function" then
+		return
+	end
+	local pending: { string } = {}
+	for id, player in pairs(state.players) do
+		if player.role == "active" and not player.submitted then
+			local ok, value = pcall(fn, id)
+			if ok and value == true then
+				table.insert(pending, id)
+			end
+		end
+	end
+	table.sort(pending)
+	for _, id in ipairs(pending) do
+		local player = state.players[id]
+		player.submitted = true
+		player.done = true
+		player.doneOrder = state.nextDoneOrder
+		state.nextDoneOrder += 1
+	end
+end
+
 local function beginTour(state: State, now: number)
+	autoSubmit(state)
 	state.tourStops = collectStops(state)
 	state.tourIndex = 1
 	state.tourSegmentStartedAt = now
@@ -322,10 +351,15 @@ function RoundEngine.create(options: {
 		theme = nil,
 		season = "",
 		trace = {},
+		hasWork = nil,
 	}
 	state.season = Season.resolve(state.config.Season, state.unixNow(), state.config.TimezoneOffsetHours)
 	note(state, "Lobby", 0)
 	return state
+end
+
+function RoundEngine.setHasWork(state: State, fn: (string) -> any)
+	state.hasWork = fn
 end
 
 function RoundEngine.setUnixNow(state: State, unixNow: () -> number)
@@ -435,8 +469,12 @@ function RoundEngine.snapshot(state: State, now: number): { [string]: any }
 		roundType = theme.roundType or ""
 	end
 	local tourLabel = ""
+	local tourIndex = 0
+	local tourTarget = ""
 	if state.phase == "Tour" and #state.tourStops > 0 then
 		local shown = math.clamp(state.tourIndex, 1, #state.tourStops)
+		tourIndex = shown
+		tourTarget = state.tourStops[shown]
 		tourLabel = string.format("Room %d of %d", shown, #state.tourStops)
 	end
 	local waiting = state.phase == "Lobby" and state.phaseEndsAt == nil
@@ -450,6 +488,8 @@ function RoundEngine.snapshot(state: State, now: number): { [string]: any }
 		roundType = roundType,
 		season = state.season,
 		tourLabel = tourLabel,
+		tourIndex = tourIndex,
+		tourTarget = tourTarget,
 		critic = state.config.Critic.name,
 		roundIndex = state.roundIndex,
 	}
