@@ -114,6 +114,7 @@ function Vote.start()
 	local seenIndex = -1
 	local wasLocked = false
 	local painted = ""
+	local rewarded = ""
 	local cardHeight = 160
 
 	local function lockedNow(label: string): boolean
@@ -210,13 +211,13 @@ function Vote.start()
 			score.Name = "Stars"
 			score.Position = UDim2.new(0, 0, 0.5, 0)
 			score.Font = Enum.Font.GothamBold
-			local credit = UI.label(frame, "Auntie Roch", UIKit.Text.min, 22)
-			credit.Position = UDim2.new(0, 10, 1, -50)
-			credit.Size = UDim2.new(1, -20, 0, 18)
-			local quote = UI.label(frame, cardData.line, UIKit.Text.eyebrow, 28)
+			local credit = UI.label(frame, "Auntie Roch", UIKit.Text.body, 28)
+			credit.Position = UDim2.new(0, 10, 1, -64)
+			credit.Size = UDim2.new(1, -20, 0, 24)
+			local quote = UI.label(frame, cardData.line, UIKit.Text.body, 36)
 			quote.Name = "Line"
-			quote.Position = UDim2.new(0, 10, 1, -30)
-			quote.Size = UDim2.new(1, -20, 0, 26)
+			quote.Position = UDim2.new(0, 10, 1, -38)
+			quote.Size = UDim2.new(1, -20, 0, 34)
 		end
 		if coins > 0 then
 			addLine("Judge's Eye +" .. tostring(coins), order, 22)
@@ -227,7 +228,7 @@ function Vote.start()
 		podium.Name = "Podium"
 		podium.LayoutOrder = order
 		podium.BackgroundTransparency = 1
-		podium.Size = UDim2.new(1, 0, 0, 148)
+		podium.Size = UDim2.new(1, 0, 0, 188)
 		podium.Parent = results
 		order += 1
 		local shown: { any } = {}
@@ -266,21 +267,21 @@ function Vote.start()
 				avatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(userId) .. "&w=150&h=150"
 			end
 			if row.name ~= "" then
-				local name = UI.label(slot, row.name, UIKit.Text.min, 22)
+				local name = UI.label(slot, row.name, UIKit.Text.body, 28)
 				name.Name = "Owner"
 				name.Position = UDim2.new(0, 2, 0, 54)
-				name.Size = UDim2.new(1, -4, 0, 18)
+				name.Size = UDim2.new(1, -4, 0, 26)
 			end
-			local avg = UI.label(slot, UIKit.Icons.star .. " " .. string.format("%.1f", row.average), UIKit.Text.min, 22)
-			avg.Position = UDim2.new(0, 2, 0, if row.name ~= "" then 72 else 56)
-			avg.Size = UDim2.new(1, -4, 0, 18)
-			local note = UI.label(slot, row.comment, UIKit.Text.min, 40)
-			note.Position = UDim2.new(0, 4, 1, -44)
-			note.Size = UDim2.new(1, -8, 0, 40)
+			local avg = UI.label(slot, UIKit.Icons.star .. " " .. string.format("%.1f", row.average), UIKit.Text.body, 26)
+			avg.Position = UDim2.new(0, 2, 0, if row.name ~= "" then 80 else 56)
+			avg.Size = UDim2.new(1, -4, 0, 24)
+			local note = UI.label(slot, row.comment, UIKit.Text.min, 56)
+			note.Position = UDim2.new(0, 4, 1, -58)
+			note.Size = UDim2.new(1, -8, 0, 54)
 		end
 		for _, row in ipairs(rows) do
 			if row.rank > 3 then
-				addLine(string.format("%.1f   %s", row.average, row.comment), order, 36)
+				addLine(string.format("%.1f   %s", row.average, row.comment), order, 44)
 				order += 1
 			end
 		end
@@ -330,15 +331,18 @@ function Vote.start()
 			stampLine,
 			questLine,
 		}, "\0")
-		if key == painted then
+		if key == rewarded and results:FindFirstChild("RewardCard") then
 			layout()
 			return
 		end
-		painted = key
-		clearResults()
+		rewarded = key
+		local previous = results:FindFirstChild("RewardCard")
+		if previous then
+			previous:Destroy()
+		end
 		local frame = Instance.new("Frame")
 		frame.Name = "RewardCard"
-		frame.LayoutOrder = 1
+		frame.LayoutOrder = 50
 		frame.AutomaticSize = Enum.AutomaticSize.Y
 		frame.Size = UDim2.new(1, 0, 0, 0)
 		frame.BackgroundColor3 = UI.rgb("cream")
@@ -408,9 +412,8 @@ function Vote.start()
 
 	local function ownOrLocked(): (boolean, boolean)
 		local phase = folder:GetAttribute("Phase")
-		local label = folder:GetAttribute("TourLabel")
 		local own = isOwnRoom()
-		local locked = phase == "Tour" and type(label) == "string" and lockedNow(label)
+		local locked = phase == "Tour" and folder:GetAttribute("VotesOpen") ~= true
 		return own, locked
 	end
 
@@ -471,6 +474,44 @@ function Vote.start()
 	report.Name = "Report"
 	report.TextSize = 20
 
+	local reactions = Instance.new("Frame")
+	reactions.Name = "Reactions"
+	reactions.BackgroundTransparency = 1
+	reactions.AnchorPoint = Vector2.new(0.5, 0)
+	reactions.Size = UDim2.new(1, -16, 0, 44)
+	reactions.Visible = false
+	reactions.ZIndex = 6
+	reactions.Parent = gui
+	local reactionList = Instance.new("UIListLayout")
+	reactionList.FillDirection = Enum.FillDirection.Horizontal
+	reactionList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	reactionList.Padding = UDim.new(0, 6)
+	reactionList.Parent = reactions
+	local pendingReact = false
+	for index, mark in ipairs(Config.Show.Crowd) do
+		local button = Instance.new("TextButton")
+		button.Name = "React" .. tostring(index)
+		button.Size = UDim2.fromOffset(44, 44)
+		button.BackgroundColor3 = UI.rgb("cream")
+		button.Font = UI.face()
+		button.TextSize = 22
+		button.TextColor3 = UI.rgb("ink")
+		button.Text = mark
+		button.LayoutOrder = index
+		button.Parent = reactions
+		UI.corner(button, 16)
+		UI.stroke(button, "ink", 2)
+		local picked = index
+		button.Activated:Connect(function()
+			if pendingReact then
+				return
+			end
+			pendingReact = true
+			Net.act("React", picked)
+			pendingReact = false
+		end)
+	end
+
 	function refresh()
 		local phase = folder:GetAttribute("Phase")
 		local label = folder:GetAttribute("TourLabel")
@@ -490,6 +531,7 @@ function Vote.start()
 		local touring = phase == "Tour" and label ~= ""
 		panel.Visible = touring
 		caption.Visible = touring
+		reactions.Visible = touring
 		results.Visible = phase == "Results"
 		starRow.Visible = not own
 		ownLabel.Visible = own
@@ -501,14 +543,21 @@ function Vote.start()
 			button.Active = not locked and not own
 			button.AutoButtonColor = not locked and not own
 		end
+		local streak = player:GetAttribute("EyeStreak")
+		local streakText = ""
+		if type(streak) == "number" and streak > 0 then
+			streakText = "Judge's Eye ×" .. tostring(math.floor(streak))
+		end
 		if status ~= "" then
 			caption.Text = status
 		elseif locked then
-			caption.Text = "Locked in"
+			caption.Text = if streakText ~= "" then "Locked in · " .. streakText else "Locked in"
+		elseif type(label) == "string" and lockedNow(label) then
+			caption.Text = if streakText ~= "" then "Last second · " .. streakText else "Last second"
 		elseif own then
 			caption.Text = "Your room"
 		else
-			caption.Text = "Rate this room"
+			caption.Text = if streakText ~= "" then streakText else "Rate this room"
 		end
 		caption.BackgroundColor3 = UI.rgb(if locked then "butter" else "mint")
 		if locked and not wasLocked then
@@ -516,31 +565,42 @@ function Vote.start()
 		end
 		wasLocked = locked
 		if phase == "Results" then
-			local left = folder:GetAttribute("TimeLeft")
-			local timeLeft = if type(left) == "number" then left else Config.Phases.Results
-			if Voting.showRewards(timeLeft, Config.Phases.Results) then
-				paintRewards()
+			local endsAt = folder:GetAttribute("EndsAt")
+			local timeLeft = Config.Phases.Results
+			if type(endsAt) == "number" and endsAt > 0 then
+				timeLeft = math.max(0, endsAt - workspace:GetServerTimeNow())
 			else
-				local payload = folder:GetAttribute("Podium")
-				if type(payload) ~= "string" then
-					payload = ""
+				local left = folder:GetAttribute("TimeLeft")
+				if type(left) == "number" then
+					timeLeft = left
 				end
-				local theme = folder:GetAttribute("ThemeName")
-				if type(theme) ~= "string" or theme == "" then
-					theme = "Room Glow Up"
-				end
-				local cardStars = player:GetAttribute("CardStars")
-				local cardLine = player:GetAttribute("CardLine")
-				if type(cardLine) ~= "string" then
-					cardLine = ""
-				end
-				local stars = if type(cardStars) == "number" then cardStars else nil
-				local coinsAttr = player:GetAttribute("EyeCoins")
-				local coins = if type(coinsAttr) == "number" then coinsAttr else 0
-				paint(payload, theme, stars, cardLine, coins)
+			end
+			local payload = folder:GetAttribute("Podium")
+			if type(payload) ~= "string" then
+				payload = ""
+			end
+			local theme = folder:GetAttribute("ThemeName")
+			if type(theme) ~= "string" or theme == "" then
+				theme = "Room Glow Up"
+			end
+			local cardStars = player:GetAttribute("CardStars")
+			local cardLine = player:GetAttribute("CardLine")
+			if type(cardLine) ~= "string" then
+				cardLine = ""
+			end
+			local stars = if type(cardStars) == "number" then cardStars else nil
+			local coinsAttr = player:GetAttribute("EyeCoins")
+			local coins = if type(coinsAttr) == "number" then coinsAttr else 0
+			paint(payload, theme, stars, cardLine, coins)
+			if Voting.showRewards(timeLeft, Config.Phases.Results, Config.Phases.ResultsRewardsAt) then
+				paintRewards()
 			end
 		end
 		layout()
+		local size = viewport()
+		local bands = UIKit.bands(size.Y)
+		reactions.Position = UDim2.new(0.5, 0, 0, bands.meter.top)
+		reactions.Size = UDim2.new(1, -32, 0, 44)
 	end
 
 	layout()
@@ -557,6 +617,9 @@ function Vote.start()
 	player:GetAttributeChangedSignal("CardStars"):Connect(refresh)
 	player:GetAttributeChangedSignal("CardLine"):Connect(refresh)
 	player:GetAttributeChangedSignal("EyeCoins"):Connect(refresh)
+	player:GetAttributeChangedSignal("EyeStreak"):Connect(refresh)
+	folder:GetAttributeChangedSignal("VotesOpen"):Connect(refresh)
+	folder:GetAttributeChangedSignal("EndsAt"):Connect(refresh)
 	player:GetAttributeChangedSignal("AwardCoins"):Connect(refresh)
 	player:GetAttributeChangedSignal("AwardXp"):Connect(refresh)
 	player:GetAttributeChangedSignal("Level"):Connect(refresh)

@@ -25,7 +25,7 @@ function Settings.start()
 	mute.Size = UDim2.fromOffset(118, 44)
 	mute.BackgroundColor3 = UI.rgb("lavender")
 	mute.Font = UI.face()
-	mute.TextSize = UI.kit.Text.min
+	mute.TextSize = UI.kit.Text.body
 	mute.TextColor3 = UI.rgb("ink")
 	mute.Text = "Sound"
 	mute.ZIndex = 8
@@ -40,7 +40,7 @@ function Settings.start()
 	low.Size = UDim2.fromOffset(124, 44)
 	low.BackgroundColor3 = UI.rgb("mint")
 	low.Font = UI.face()
-	low.TextSize = UI.kit.Text.min
+	low.TextSize = UI.kit.Text.body
 	low.TextColor3 = UI.rgb("ink")
 	low.Text = "Low-end"
 	low.ZIndex = 8

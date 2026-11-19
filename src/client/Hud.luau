@@ -98,6 +98,41 @@ function Hud.start()
 	revealName.LayoutOrder = 2
 	revealName.ZIndex = 6
 
+	local rush = Instance.new("Frame")
+	rush.Name = "Rush"
+	rush.AnchorPoint = Vector2.new(0.5, 0)
+	rush.Position = UDim2.new(0.5, 0, 0, layout.top + layout.boardHeight + 8)
+	rush.Size = UDim2.new(1, -layout.side * 2, 0, 52)
+	rush.BackgroundColor3 = UI.rgb("butter")
+	rush.BorderSizePixel = 0
+	rush.Visible = false
+	rush.ZIndex = 8
+	rush.Parent = gui
+	UI.corner(rush, UIKit.Shape.cornerChunky)
+	UI.stroke(rush, "ink", UIKit.Shape.stroke)
+	local rushText = UI.label(rush, Config.BuildRush.Banner, 28, 44)
+	rushText.Name = "Banner"
+	rushText.ZIndex = 9
+	local rushCap = Instance.new("UITextSizeConstraint")
+	rushCap.MinTextSize = UIKit.Text.min
+	rushCap.MaxTextSize = 28
+	rushCap.Parent = rushText
+
+	local chimeHost = Instance.new("Part")
+	chimeHost.Name = "RushChime"
+	chimeHost.Anchored = true
+	chimeHost.CanCollide = false
+	chimeHost.CanQuery = false
+	chimeHost.CanTouch = false
+	chimeHost.Transparency = 1
+	chimeHost.Size = Vector3.new(1, 1, 1)
+	chimeHost.Parent = workspace
+	local chime = Instance.new("Sound")
+	chime.Name = "Rush"
+	chime.SoundId = Config.Audio.Rush
+	chime.Volume = 0.6
+	chime.Parent = chimeHost
+
 	local thumb = Instance.new("Frame")
 	thumb.Name = "Thumb"
 	thumb.AnchorPoint = Vector2.new(0.5, 1)
@@ -178,6 +213,7 @@ function Hud.start()
 
 	local lastPhase = ""
 	local revealShown = false
+	local heardBanner = ""
 
 	local function refresh()
 		local phase = read("Phase", "Lobby") :: string
@@ -205,8 +241,26 @@ function Hud.start()
 		local spectating = player:GetAttribute("Spectating") == true
 		local built = player:GetAttribute("BuildDone") == true
 		local touring = read("TourLabel", "") :: string
+		local banner = read("Banner", "")
+		local bannerText = if type(banner) == "string" then banner else ""
+		rush.Visible = phase == "Build" and bannerText ~= ""
+		rushText.Text = bannerText
+		if bannerText ~= "" and bannerText ~= heardBanner then
+			heardBanner = bannerText
+			chime.Volume = 0.6
+			local playerVolume = player:GetAttribute("Volume")
+			local muted = player:GetAttribute("Muted") == true
+			if muted or playerVolume == 0 then
+				chime.Volume = 0
+			end
+			chime:Play()
+		elseif bannerText == "" then
+			heardBanner = ""
+		end
+		local nextRound = read("NextRound", 0)
 		if spectating then
-			quiet.Text = "You'll play the next round"
+			local waitLeft = if type(nextRound) == "number" then nextRound else 0
+			quiet.Text = "Next round in " .. clockText(waitLeft)
 		elseif phase == "Build" and built then
 			quiet.Text = "Locked in"
 		elseif touring ~= "" then

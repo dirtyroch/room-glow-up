@@ -284,6 +284,25 @@ function Show.start()
 		end
 	end
 
+	local lastNonce = 0
+	folder:GetAttributeChangedSignal("ReactionNonce"):Connect(function()
+		if folder:GetAttribute("Phase") ~= "Tour" then
+			return
+		end
+		local nonce = folder:GetAttribute("ReactionNonce")
+		local index = folder:GetAttribute("ReactionIndex")
+		if type(nonce) ~= "number" or nonce == lastNonce then
+			return
+		end
+		lastNonce = nonce
+		local marks = Config.Show.Crowd
+		if type(index) ~= "number" or index < 1 or index > #marks then
+			return
+		end
+		crowd.Text = marks[index]
+		board.Enabled = true
+		UI.pop(crowdScale, UIKit.Motion.crowd)
+	end)
 	folder:GetAttributeChangedSignal("Phase"):Connect(apply)
 	folder:GetAttributeChangedSignal("TourIndex"):Connect(apply)
 	folder:GetAttributeChangedSignal("TourPlot"):Connect(apply)

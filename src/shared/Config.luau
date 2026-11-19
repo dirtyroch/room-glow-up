@@ -18,12 +18,17 @@ local Config = {
 		Lobby = 20,
 		ThemeReveal = 5,
 		Build = 240,
-		-- Each tour stop is this long. The last TourLockIn seconds are the
-		-- lock-in beat: votes freeze, then the camera moves with the next index.
+		-- Each tour stop is this long. The visual lock starts TourLockIn seconds
+		-- before the camera moves. Votes stay open for TourVoteGrace after that
+		-- lock, so a room has about 10 seconds of voting. Once everyone has
+		-- voted the server moves on after TourSkipBeat.
 		TourPerRoom = 10,
-		TourLockIn = 2,
-		-- Long enough for the podium, then coins, XP, and unlocks.
+		TourLockIn = 1,
+		TourVoteGrace = 1,
+		TourSkipBeat = 1,
+		-- Podium and Auntie Roch first. Rewards and Spot the Theme at this second.
 		Results = 30,
+		ResultsRewardsAt = 10,
 	},
 	PhaseOrder = { "Lobby", "ThemeReveal", "Build", "Tour", "Results" },
 	PhaseLabels = {
@@ -89,6 +94,10 @@ local Config = {
 		-- Judge's Eye coins. The server turns these into real coins after Results.
 		-- The EyeCoins attribute is a display copy. Payout never reads it.
 		EyeCoins = 8,
+		-- A player with no submitted room earns a smaller purse, and it stops
+		-- at this cap, so decorating stays the better path.
+		EyeNoRoomCoins = 2,
+		EyeNoRoomCap = 8,
 		-- A room drops after this many different reports, or this share of the
 		-- people who can vote, whichever is higher. Half, rounded up.
 		ReportMin = 3,
@@ -155,6 +164,9 @@ local Config = {
 		actionRefill = 3,
 		placeBurst = 16,
 		placeRefill = 8,
+		-- Emoji reactions. A short burst, then a slow refill. No free text.
+		reactBurst = 3,
+		reactRefill = 1,
 		-- Code attempts. A burst, then a slow refill, so guessing cannot spin.
 		codeBurst = 4,
 		codeRefill = 1,
@@ -165,6 +177,22 @@ local Config = {
 	-- Phone-readable prop scale. Grid cells are Cell * ItemScale studs.
 	Cell = 4,
 	ItemScale = 1.2,
+	-- When this share of the builders who actually placed are done, or everyone
+	-- but one of them, the clock drops to FinalSeconds. Idle and empty builders
+	-- are not in that count. The server owns the cut.
+	BuildRush = {
+		Fraction = 0.6,
+		FinalSeconds = 30,
+		Banner = "30 seconds left!",
+		-- No cut before this many build seconds, so early DONE presses
+		-- (when nobody else has placed yet) cannot shorten the round.
+		MinElapsed = 60,
+	},
+	-- A late joiner who still has this many build seconds gets a room.
+	-- Otherwise they watch, vote, and play a tutorial or a sandbox.
+	LateJoin = {
+		MinBuild = 60,
+	},
 	-- Hard cap so 10 rooms stay cheap. The coin budget usually binds first.
 	MaxItems = 16,
 	-- Spent during Build. The server is the only one that subtracts from it.
@@ -219,6 +247,7 @@ local Config = {
 	Audio = {
 		Place = "rbxasset://sounds/electronicpingshort.wav",
 		Sting = "rbxasset://sounds/electronicpingshort.wav",
+		Rush = "rbxasset://sounds/electronicpingshort.wav",
 		Level = "rbxasset://sounds/electronicpingshort.wav",
 		Music = "rbxasset://sounds/bass.mp3",
 		PlaceVolume = 0.45,

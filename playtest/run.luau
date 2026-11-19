@@ -213,6 +213,7 @@ local function session(opts)
 				byKey[tostring(bot.userId)] = bot
 				bot.joinedPhase = phase
 				bot.joinedRound = when
+				bot.joinedAt = world.clock
 			end
 			local l = spec.leave
 			if l and bot.player and not bot.left and l.round == when and l.phase == phase and sinceStart >= (l.after or 0) then
@@ -386,6 +387,13 @@ local function session(opts)
 
 		for _, bot in ipairs(bots) do
 			Bots.think(bot, world.clock)
+			if bot.player and bot.joinedAt and not bot.busyAt then
+				local spectating = bot.player:GetAttribute("Spectating") == true
+				local playing = bot.player:GetAttribute("TutorialActive") == true or bot.player:GetAttribute("AtHome") == true
+				if not spectating or playing then
+					bot.busyAt = world.clock
+				end
+			end
 		end
 	end
 
@@ -458,6 +466,10 @@ local function session(opts)
 			fails = fails,
 			tutorial = bot.tutorial,
 			voteFails = bot.voteFails,
+			joinedPhase = bot.joinedPhase,
+			joinedRound = bot.joinedRound,
+			idleWait = if bot.joinedAt and bot.busyAt then bot.busyAt - bot.joinedAt else nil,
+			spectating = bot.player ~= nil and bot.player:GetAttribute("Spectating") == true,
 		})
 		if bot.tutorial then
 			table.insert(report.tutorial, {
@@ -550,6 +562,32 @@ do
 	warm.world = nil
 	warm.botsRef = nil
 	table.insert(report.sessions, warm)
+end
+
+-- A joiner with little build time left, and one who arrives on the tour.
+do
+	local late = session({
+		name = "late-wait",
+		rounds = 2,
+		datastore = datastore,
+		seed = SEED + 40,
+		bots = {
+			{ kind = "builder", userId = 8101, skill = 0.7, pressesDone = false },
+			{ kind = "late", userId = 8102, join = { round = 1, phase = "Build", after = 200 } },
+			{ kind = "late", userId = 8103, join = { round = 1, phase = "Tour", after = 1 } },
+		},
+	})
+	for _, b in ipairs(late.botsRef or {}) do
+		Bots.leave(b)
+	end
+	for _ = 1, 20 do
+		if late.world then
+			late.world:step(DT)
+		end
+	end
+	late.world = nil
+	late.botsRef = nil
+	table.insert(report.sessions, late)
 end
 
 local plans = {
@@ -795,10 +833,77 @@ local function pearson(x, y)
 end
 
 summary.qualityVsScore = pearson(corr.q, corr.s)
+local pace = { roundLengths = {}, buildLengths = {}, idleCoins = {}, winnerCoins = {}, lockedVotes = 0, voteTries = 0, lateIdle = {} }
+for _, s in ipairs(report.sessions) do
+	local ten = s.name == "family10"
+	for _, r in ipairs(s.rounds) do
+		if r.done and ten then
+			table.insert(pace.roundLengths, r.total or 0)
+			for _, ph in ipairs(r.phases) do
+				if ph.phase == "Build" then
+					table.insert(pace.buildLengths, ph.seconds)
+				end
+			end
+			local best = 0
+			for _, a in ipairs(r.awards or {}) do
+				if a.kind == "idle" and type(a.coins) == "number" then
+					table.insert(pace.idleCoins, a.coins)
+				elseif a.kind ~= "idle" and type(a.coins) == "number" then
+					best = math.max(best, a.coins)
+				end
+			end
+			if best > 0 then
+				table.insert(pace.winnerCoins, best)
+			end
+		end
+	end
+	for _, b in ipairs(s.bots or {}) do
+		local calls = b.calls or {}
+		pace.voteTries += calls.Vote or 0
+		local fails = b.voteFails or {}
+		if type(fails) == "table" then
+			for k, v in pairs(fails) do
+				if string.find(string.lower(k), "locked", 1, true) then
+					pace.lockedVotes += v
+				end
+			end
+		end
+		if b.kind == "late" and type(b.idleWait) == "number" then
+			table.insert(pace.lateIdle, { session = s.name, phase = b.joinedPhase, seconds = b.idleWait })
+		end
+	end
+end
+pace.roundMean = mean(pace.roundLengths)
+pace.buildMean = mean(pace.buildLengths)
+pace.idleMean = mean(pace.idleCoins)
+pace.winnerMean = mean(pace.winnerCoins)
+pace.lateVoteShare = if pace.voteTries > 0 then pace.lockedVotes / pace.voteTries else 0
+pace.lateIdleMean = mean((function()
+	local list = {}
+	for _, row in ipairs(pace.lateIdle) do
+		table.insert(list, row.seconds)
+	end
+	return list
+end)())
+summary.pace = {
+	roundMean = pace.roundMean,
+	buildMean = pace.buildMean,
+	idleMean = pace.idleMean,
+	winnerMean = pace.winnerMean,
+	lockedVotes = pace.lockedVotes,
+	voteTries = pace.voteTries,
+	lateVoteShare = pace.lateVoteShare,
+	firstBias = pace.firstBias,
+	lateIdleMean = pace.lateIdleMean,
+}
 summary.orderBias = {}
 for k, v in pairs(orderBias) do
 	summary.orderBias[k] = { mean = mean(v), n = #v }
 end
+local firstMean = if summary.orderBias.first then summary.orderBias.first.mean else 0
+local middleMean = if summary.orderBias.middle then summary.orderBias.middle.mean else 0
+pace.firstBias = firstMean - middleMean
+summary.pace.firstBias = pace.firstBias
 summary.coins = {}
 for k, v in pairs(summary.coinsByKind) do
 	summary.coins[k] = { mean = mean(v), n = #v, min = math.min(table.unpack(v)), max = math.max(table.unpack(v)) }
@@ -890,6 +995,17 @@ w("|---|---|---|---|")
 for _, row in ipairs(summary.levelPace) do
 	w(string.format("| %d | %d | %d | %.1f |", row.level, row.xp, row.rounds, row.hours))
 end
+w("")
+w("## Pace")
+w(string.format("- 10-player round length: %.1fs mean (%d rounds)", summary.pace.roundMean, #pace.roundLengths))
+w(string.format("- 10-player build (idle-kid wait): %.1fs mean", summary.pace.buildMean))
+w(string.format("- Late-joiner idle before an activity: %.2fs mean", summary.pace.lateIdleMean))
+for _, row in ipairs(pace.lateIdle) do
+	w(string.format("  - %s joined in %s, idle %.2fs", row.session, tostring(row.phase), row.seconds))
+end
+w(string.format("- Late votes: %d of %d (%.2f%%)", summary.pace.lockedVotes, summary.pace.voteTries, summary.pace.lateVoteShare * 100))
+w(string.format("- First-room star bias (first minus middle): %+.3f", summary.pace.firstBias))
+w(string.format("- 10-player coins: idle mean %.1f, best builder mean %.1f", summary.pace.idleMean, summary.pace.winnerMean))
 w("")
 w(string.format("Room quality (Theme Match) vs. final stars, Pearson r = %.2f over %d rooms.", summary.qualityVsScore, #corr.q))
 for k, v in pairs(summary.orderBias) do

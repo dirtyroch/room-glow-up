@@ -267,11 +267,57 @@ function Voting.report(state: State, reporter: string, owner: string, gate: Gate
 	return true, "Reported.", false
 end
 
-function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, present: { [string]: boolean }, config: any): { ScoreRow }
+function Voting.reactionIndex(index: any, count: number): boolean
+	if type(index) ~= "number" or index ~= index or index % 1 ~= 0 then
+		return false
+	end
+	if type(count) ~= "number" or count < 1 then
+		return false
+	end
+	return index >= 1 and index <= count
+end
+
+-- Who landed inside the window. Does not pay coins or edit the ballot.
+function Voting.eyeHits(ballot: Ballot, facts: RoomFacts, config: any): { [string]: boolean }
+	local hits: { [string]: boolean } = {}
+	local criticId = config.Critic.id
+	local stars = Voting.critic(facts, config)
+	local list: { number } = { stars }
+	for voter, value in pairs(ballot.votes) do
+		if voter ~= criticId then
+			table.insert(list, value)
+		end
+	end
+	local average = Voting.average(list, config.Voting.TrimAt)
+	local window = config.Voting.EyeWindow
+	for voter, value in pairs(ballot.votes) do
+		if voter ~= criticId and Voting.withinEye(value, average, window) then
+			hits[voter] = true
+		end
+	end
+	return hits
+end
+
+function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, present: { [string]: boolean }, config: any, built: { [string]: boolean }?): { ScoreRow }
 	state.eyeCoins = {}
 	local criticId = config.Critic.id
 	local window = config.Voting.EyeWindow
 	local purse = config.Voting.EyeCoins
+	local quiet = config.Voting.EyeNoRoomCoins
+	if type(quiet) ~= "number" or quiet < 0 then
+		quiet = purse
+	end
+	local cap = config.Voting.EyeNoRoomCap
+	local hasRoom: { [string]: boolean } = {}
+	if type(built) == "table" then
+		hasRoom = built
+	else
+		for owner, ballot in pairs(state.rooms) do
+			if ballot.removed ~= true and present[owner] == true then
+				hasRoom[owner] = true
+			end
+		end
+	end
 	local rows: { ScoreRow } = {}
 	for owner, ballot in pairs(state.rooms) do
 		local facts = factsByOwner[owner]
@@ -299,8 +345,15 @@ function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, pr
 			ballot.average = average
 			for voter, value in pairs(ballot.votes) do
 				if voter ~= criticId and Voting.withinEye(value, average, window) then
+					local gain = if hasRoom[voter] == true then purse else quiet
 					local soFar = state.eyeCoins[voter] or 0
-					state.eyeCoins[voter] = soFar + purse
+					local nextCoins = soFar + gain
+					if hasRoom[voter] ~= true and type(cap) == "number" and nextCoins > cap then
+						nextCoins = cap
+					end
+					if nextCoins > 0 then
+						state.eyeCoins[voter] = nextCoins
+					end
 				end
 			end
 			table.insert(rows, {
@@ -357,12 +410,17 @@ function Voting.standings(state: State): { ScoreRow }
 	return rows
 end
 
--- The podium uses the first half of Results. Coins and XP use the rest.
-function Voting.showRewards(timeLeft: number, span: number): boolean
+-- Podium and Auntie Roch come first. Rewards show once `at` seconds have passed
+-- (10 by default), not at the halfway mark.
+function Voting.showRewards(timeLeft: number, span: number, at: number?): boolean
 	if type(timeLeft) ~= "number" or type(span) ~= "number" or span <= 0 then
 		return false
 	end
-	return timeLeft <= math.floor(span / 2)
+	local mark = if type(at) == "number" and at >= 0 then at else 10
+	if mark >= span then
+		return false
+	end
+	return timeLeft <= span - mark
 end
 
 -- Plot signs through Tour and Results. The owner's name stays off the sign.

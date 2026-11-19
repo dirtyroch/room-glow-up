@@ -13,6 +13,8 @@ local Config: any = nil
 local RoundEngine: any = nil
 local Voting: any = nil
 local ballots: any = nil
+local streak: { [string]: number } = {}
+local scored: { [string]: boolean } = {}
 
 local function displayName(key: string): string
 	local userId = tonumber(key)
@@ -51,6 +53,21 @@ local function voterCount(round: any, owner: string): number
 	return n
 end
 
+local function everyoneVoted(round: any, owner: string): boolean
+	local owners = ownerSet(owner)
+	local pending = 0
+	local room = ballots.rooms[owner]
+	for id, player in pairs(round.players) do
+		if owners[id] ~= true and (player.role == "active" or player.role == "spectator") then
+			pending += 1
+			if not room or type(room.votes[id]) ~= "number" then
+				return false
+			end
+		end
+	end
+	return pending > 0
+end
+
 local function roleOf(round: any, key: string): string
 	local view = RoundEngine.playerView(round, key)
 	if not view.inRound then
@@ -82,7 +99,7 @@ local function gateFor(round: any, owner: string, at: number): any
 	end
 	return {
 		phase = round.phase,
-		locked = RoundEngine.roomLocked(round, at),
+		locked = RoundEngine.votesClosed(round, at),
 		tourTarget = owner,
 		role = "active",
 		ownerPresent = present,
@@ -132,10 +149,13 @@ end
 local function onPhase(round: any, _at: number)
 	if round.phase == "Lobby" then
 		Voting.reset(ballots)
+		streak = {}
+		scored = {}
 		clearCards()
 		for _, player in Players:GetPlayers() do
 			player:SetAttribute("MyStars", nil)
 			player:SetAttribute("EyeCoins", nil)
+			player:SetAttribute("EyeStreak", 0)
 		end
 		return
 	end
@@ -161,7 +181,18 @@ local function onPhase(round: any, _at: number)
 			facts[id] = ctx.rooms.inspect(id)
 		end
 	end
-	local rows = Voting.finalize(ballots, facts, present, Config)
+	local built: { [string]: boolean } = {}
+	for id, player in pairs(round.players) do
+		if player.submitted == true or player.done == true then
+			built[id] = true
+			if ctx.duo and type(ctx.duo.owners) == "function" then
+				for _, partner in ipairs(ctx.duo.owners(id)) do
+					built[partner] = true
+				end
+			end
+		end
+	end
+	local rows = Voting.finalize(ballots, facts, present, Config, built)
 	local folder = ctx.RoundState
 	if folder then
 		folder:SetAttribute("Podium", Voting.encodeBoard(rows, names, Config.Voting.Podium))
@@ -210,6 +241,41 @@ function VoteService.init(c: any)
 			Voting.reassign(ballots, fromId, toId)
 		end,
 		ballots = ballots,
+		scoreRoom = function(owner: string)
+			if type(owner) ~= "string" or owner == "" or scored[owner] then
+				return
+			end
+			scored[owner] = true
+			local ballot = ballots.rooms[owner]
+			if not ballot or ballot.removed == true then
+				return
+			end
+			local round = ctx.round
+			if type(round) ~= "table" then
+				return
+			end
+			local facts = { meter = 0, unique = 0, pieces = 0, maxItems = 0 }
+			if ctx.rooms and type(ctx.rooms.inspect) == "function" then
+				local got = ctx.rooms.inspect(owner)
+				if type(got) == "table" then
+					facts = got
+				end
+			end
+			local hits = Voting.eyeHits(ballot, facts, Config)
+			local owners = ownerSet(owner)
+			for _, player in Players:GetPlayers() do
+				local key = tostring(player.UserId)
+				local person = round.players[key]
+				if person and owners[key] ~= true and (person.role == "active" or person.role == "spectator") then
+					if hits[key] == true then
+						streak[key] = (streak[key] or 0) + 1
+					else
+						streak[key] = 0
+					end
+					player:SetAttribute("EyeStreak", streak[key])
+				end
+			end
+		end,
 	}
 
 	ctx.actions.register("Vote", { "number" }, function(key: string, args: { any }): (boolean, string?)
@@ -231,8 +297,34 @@ function VoteService.init(c: any)
 			if ctx.funnel and type(ctx.funnel.onVote) == "function" then
 				pcall(ctx.funnel.onVote, key)
 			end
+			if everyoneVoted(round, owner) then
+				RoundEngine.hurryTour(round, at)
+			end
 		end
 		return ok, msg
+	end)
+
+	ctx.actions.register("React", { "number" }, function(key: string, args: { any }): (boolean, string?)
+		local round = ctx.round
+		if type(round) ~= "table" or round.phase ~= "Tour" then
+			return false, "Reactions wait for the tour."
+		end
+		local marks = Config.Show.Crowd
+		if not Voting.reactionIndex(args[1], #marks) then
+			return false, "Bad request."
+		end
+		local view = RoundEngine.playerView(round, key)
+		if not view.inRound then
+			return false, "You are not in this round."
+		end
+		local folder = ctx.RoundState
+		if folder then
+			local nonce = folder:GetAttribute("ReactionNonce")
+			local nextNonce = if type(nonce) == "number" then nonce + 1 else 1
+			folder:SetAttribute("ReactionIndex", args[1])
+			folder:SetAttribute("ReactionNonce", nextNonce)
+		end
+		return true, "Sent."
 	end)
 
 	ctx.actions.register("Report", {}, function(key: string, _args: { any }): (boolean, string?)

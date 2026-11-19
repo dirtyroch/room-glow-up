@@ -777,6 +777,30 @@ local function sculpt(model: Model, cf: CFrame, item: any, sx: number, sy: numbe
 	end
 end
 
+-- One real model per item, at the origin, for tray ViewportFrames.
+function Props.previews(parent: Folder, items: { any })
+	for _, item in ipairs(items) do
+		if type(item) == "table" and type(item.id) == "string" and parent:FindFirstChild(item.id) == nil then
+			local piece = {
+				id = 0,
+				itemId = item.id,
+				x = 0,
+				z = 0,
+				rot = 0,
+				color = item.color,
+				placedAt = 0,
+			}
+			local roundType = item.roundType
+			if type(roundType) ~= "string" or roundType == "" then
+				roundType = "room"
+			end
+			local model = Props.prop(CFrame.identity, item, piece, roundType)
+			model.Name = item.id
+			model.Parent = parent
+		end
+	end
+end
+
 function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string): Model
 	local model = Instance.new("Model")
 	model.Name = "P" .. tostring(piece.id)

@@ -23,6 +23,8 @@ local Themes: any = nil
 local Items: any = nil
 local Voting: any = nil
 local Easter: any = nil
+local Tutorial: any = nil
+local RoundEngine: any = nil
 
 local group: any = nil
 local visiting: { [string]: boolean } = {}
@@ -185,6 +187,43 @@ local function publishDuo(round: any)
 			player:SetAttribute("Grid", nil)
 		end
 	end
+end
+
+local function openSandbox(key: string, player: Player)
+	if visiting[key] then
+		return
+	end
+	local bag = bagOf(key)
+	if bag.hold ~= true then
+		return
+	end
+	if Tutorial and Tutorial.needed(bag.profile) then
+		return
+	end
+	visiting[key] = true
+	local level = levelOf(bag.profile)
+	player:SetAttribute("AtHome", true)
+	player:SetAttribute("Grid", Dream.tier(level))
+	player:SetAttribute("Level", level)
+	player:SetAttribute("NextUnlock", Levels.next(level))
+	player:SetAttribute("CanSandbox", true)
+	showHome(key)
+end
+
+local function offerWait(player: Player)
+	local key = tostring(player.UserId)
+	local round = ctx.round
+	local waiting = false
+	if type(round) == "table" and RoundEngine then
+		waiting = RoundEngine.playerView(round, key).spectating == true
+	else
+		waiting = player:GetAttribute("Spectating") == true
+	end
+	player:SetAttribute("CanSandbox", waiting)
+	if not waiting then
+		return
+	end
+	openSandbox(key, player)
 end
 
 local function endVisits()
@@ -377,6 +416,8 @@ function ProgressService.init(c: any)
 	Shop = require(Logic:WaitForChild("Shop") :: ModuleScript) :: any
 	Owned = require(Logic:WaitForChild("Owned") :: ModuleScript) :: any
 	Easter = require(Logic:WaitForChild("Easter") :: ModuleScript) :: any
+	Tutorial = require(Logic:WaitForChild("Tutorial") :: ModuleScript) :: any
+	RoundEngine = require(Logic:WaitForChild("RoundEngine") :: ModuleScript) :: any
 	group = Duo.create()
 
 	ctx.duo = {
@@ -442,6 +483,7 @@ function ProgressService.init(c: any)
 					player:SetAttribute("UnlockLine", "")
 					player:SetAttribute("StampLine", "")
 					player:SetAttribute("QuestLine", "")
+					player:SetAttribute("CanSandbox", false)
 				end
 				return
 			end
@@ -454,12 +496,16 @@ function ProgressService.init(c: any)
 				end
 				applySkip(round)
 				publishDuo(round)
-				return
-			end
-			if round.phase == "Build" then
+			elseif round.phase == "Build" then
 				hands = {}
 				publishDuo(round)
 			end
+			for _, player in Players:GetPlayers() do
+				offerWait(player)
+			end
+		end,
+		welcome = function(player: Player)
+			offerWait(player)
 		end,
 		settle = settle,
 	}
@@ -477,7 +523,11 @@ function ProgressService.init(c: any)
 
 	ctx.actions.register("Home", {}, function(key: string, _args: { any }): (boolean, string?)
 		local round = ctx.round
-		if type(round) ~= "table" or round.phase ~= "Lobby" then
+		local waiting = false
+		if type(round) == "table" and RoundEngine then
+			waiting = RoundEngine.playerView(round, key).spectating == true
+		end
+		if type(round) ~= "table" or (round.phase ~= "Lobby" and not waiting) then
 			return false, "The dream home is open in the lobby."
 		end
 		local bag = bagOf(key)

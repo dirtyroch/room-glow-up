@@ -12,11 +12,11 @@ This milestone adds the shop, codes, and Family Night private servers. The place
 | --- | --- | --- |
 | Lobby | 20s | Waits until at least 1 player is here. The timer starts when someone arrives and resets if the lobby empties. |
 | Theme | 5s | The theme is shown. |
-| Build | 240s | Ends early when every active player has pressed DONE. When the timer ends, every active room that has props is submitted too. |
-| Tour | 10s per submitted room | The camera, spotlight, sting, and crowd emoji follow the server tour index, plot, and label. The last 2s are a lock-in beat: votes freeze, then the camera moves. Rooms from players who left are skipped. A round with nothing to show still passes through Tour. |
-| Results | 30s | The podium first, then coins, XP, level-ups, and unlocks. Then back to Lobby. |
+| Build | 240s | Ends early when every active player has pressed DONE. When 60% of the builders who placed are done, or all but one of them, the server cuts the rest to 30 seconds and shows "30 seconds left!". Idle and empty builders are not in that count. When the timer ends, every active room that has props is submitted too. |
+| Tour | about 10s of voting per room | The camera, spotlight, sting, and crowd emoji follow the server tour index, plot, and label. The tour order is shuffled on the server. The visual lock is the last second, and votes are still accepted for that second. Once everyone who can vote has voted, the server moves on. Rooms from players who left are skipped. A round with nothing to show still passes through Tour. |
+| Results | 30s | The podium and Auntie Roch first. At 10 seconds the rewards card and Spot the Theme show, with the podium still first. Then back to Lobby. |
 
-Someone who joins after Lobby spectates until the next Lobby. Phase, time left, theme, and season are replicated with attributes on `ReplicatedStorage.RoundState`. The only client remote is `Remotes.Action`. Requests are type-checked and rate-limited. The client is not trusted.
+Someone who joins during Build with at least 60 seconds left gets a room and plays the shortened build. Anyone else who joins after Lobby can vote on the tour and, while they wait, do the Mini Room or a free-decorate sandbox. A countdown shows when the next round starts. Names stay off the tour. Phase, time left, theme, and season are replicated with attributes on `ReplicatedStorage.RoundState`. The only client remote is `Remotes.Action`. Requests are type-checked and rate-limited. The client is not trusted.
 
 `RoundService.setHostTheme` is the Family Night hook. Only the private-server owner can set it, and only to a theme on the server allowlist.
 
@@ -48,13 +48,13 @@ Props pop in with a short scale tween, a sound, and a few sparkles.
 
 ## Props
 
-130 original chunky props, built a little larger than life (1.2x) so they read on a phone. Eight of them are cheap 2-cell rugs and accents so a room can look full. Two of them are free jokes: a pit-bull rug and a recliner with a remote and reading glasses. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
+130 original chunky props, built a little larger than life (1.2x) so they read on a phone. Eight of them are cheap 2-cell rugs and accents so a room can look full. Two of them are free jokes: a pit-bull rug and a recliner with a remote and reading glasses. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray shows a picture of the real prop, a price, and a star when it fits the theme. Category chips are at least 44px, and item names are at least 16px on a 420px-wide phone. Low-end devices get a colored silhouette instead of the live preview. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
 
 ## Voting
 
-During Tour, everyone except the room's owner can give 1 to 5 stars. Spectators can vote. A vote can change until that room's lock-in beat, and it goes through the same rate-limited Action remote as every other request. With 5 or more votes, the highest and lowest star are dropped before the average.
+During Tour, everyone except the room's owner can give 1 to 5 stars. Spectators can vote. A vote can change until one second after the visual lock, and it goes through the same rate-limited Action remote as every other request. With 5 or more votes, the highest and lowest star are dropped before the average. A fixed set of emoji reactions is rate-limited and is not a vote. The Judge's Eye streak counts rooms in a row.
 
-Auntie Roch adds one vote from Theme Match, item variety, and how full the room is, plus one friendly line from a preset list for that star band. A solo round still has her vote. Players whose stars land within 1 of the final average earn Judge's Eye coins. At Results the server turns those coins into real coins. It never reads the EyeCoins attribute.
+Auntie Roch adds one vote from Theme Match, item variety, and how full the room is, plus one friendly line from a preset list for that star band. A solo round still has her vote. Players whose stars land within 1 of the final average earn Judge's Eye coins. A player with no room earns a smaller purse, capped, so building pays more. At Results the server turns those coins into real coins. It never reads the EyeCoins attribute.
 
 Report targets the room on stage, not a username. The room leaves the round after reports from at least 3 different players, or half of the people who can vote, whichever is higher. Votes for a room whose owner left are ignored. In a duo room the partner is not an eligible voter and cannot report that room.
 

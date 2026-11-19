@@ -22,6 +22,8 @@ local UIKit = {
 		countdown = 64,
 		countdownMin = 32,
 		reveal = 32,
+		-- Item names on a 420px-wide phone. Nothing on a phone sits under min.
+		item = 18,
 		-- Nothing on a phone should sit under this.
 		min = 18,
 	},
@@ -43,24 +45,25 @@ local UIKit = {
 		top = 12,
 		bottom = 18,
 		boardHeight = 188,
-		boardShort = 128,
+		boardShort = 108,
 		countdownHeight = 72,
 		revealHeight = 116,
-		revealShort = 80,
+		revealShort = 56,
 		minButton = 64,
 		-- Below this height the board, reveal, meter, tray, and DONE button use
 		-- the compact sizes. 520px phones are inside this range.
 		compactBelow = 680,
-		trayHeight = 172,
-		trayShort = 120,
+		trayHeight = 188,
+		trayShort = 164,
+		chip = 44,
 		meterHeight = 44,
 		meterShort = 40,
 		stackGap = 8,
 		minGap = 4,
-		minBoard = 112,
-		minReveal = 64,
-		minTray = 96,
-		minMeter = 32,
+		minBoard = 80,
+		minReveal = 40,
+		minTray = 148,
+		minMeter = 28,
 	},
 	Buttons = {
 		primary = {

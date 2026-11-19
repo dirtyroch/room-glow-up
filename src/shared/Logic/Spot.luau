@@ -118,6 +118,15 @@ function Spot.visible(phase: string, podium: any): boolean
 	return phase == "Results" and type(podium) == "string" and podium ~= ""
 end
 
+-- Spot sits with the rewards card, at `at` seconds into Results (10 by default).
+function Spot.open(elapsed: number, at: number?): boolean
+	if type(elapsed) ~= "number" or elapsed ~= elapsed then
+		return false
+	end
+	local mark = if type(at) == "number" and at >= 0 then at else 10
+	return elapsed >= mark
+end
+
 function Spot.pay(profile: { [string]: any }, roundKey: string, correct: boolean): number
 	if type(roundKey) ~= "string" or roundKey == "" then
 		return 0
