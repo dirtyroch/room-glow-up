@@ -25,3 +25,21 @@ id 0 item, a name on the tour, or a save that does not round-trip.
 
 Bot stars follow each room's Theme Match plus noise, so the fairness numbers say
 how the scoring math treats rooms, not how real kids vote.
+
+## Rough players
+
+`stress.luau` runs six short servers with harder kids: two griefers who place
+one piece, press DONE, and mash Report, one-star votes, and reactions; a kid
+who drops and rejoins every 25 to 70 seconds; a +60 s buyer (in the lobby,
+before the rush, in the last half second of Build, and just after the tour
+starts, through a test-only product id); a Speed Round with late joiners; a
+duo where one partner leaves; and a 10-kid server of phones (slower taps) and
+low-end clients (every call lands 0.4 to 1.4 s late).
+
+```
+lune run playtest/stress.luau [--seed N]
+```
+
+It writes `playtest/out/stress.md` and `stress.json` and exits 1 on a server
+error, two plots for one kid, a kid twice on the tour, an honest room taken
+down by reports, or a purchase window for an id 0 item.

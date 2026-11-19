@@ -69,13 +69,36 @@ local function publish(at: number)
 	end
 end
 
+-- Rooms kept through a short disconnect, by player key.
+local parked: { [string]: { round: number, untilAt: number } } = {}
+local graceSeconds = 60
+
+local function canResume(key: string, at: number): (boolean, boolean)
+	local spot = parked[key]
+	parked[key] = nil
+	if not spot then
+		return false, false
+	end
+	return state.phase == "Build" and state.roundIndex == spot.round and at <= spot.untilAt, true
+end
+
 local function onJoin(player: Player)
-	RoundEngine.join(state, keyOf(player), now())
+	local key = keyOf(player)
+	local at = now()
+	local resume, hadSpot = canResume(key, at)
+	RoundEngine.join(state, key, at, resume)
+	if hadSpot and not resume and ctx.rooms then
+		-- Back too late. The kept room is not theirs any more.
+		ctx.rooms.forget(key)
+	end
 	if ctx.plots then
 		ctx.plots.assign(player)
 	end
 	if ctx.rooms then
 		ctx.rooms.welcome(player)
+		if resume and type(ctx.rooms.restore) == "function" then
+			ctx.rooms.restore(player)
+		end
 	end
 	publish(now())
 	if ctx.funnel and type(ctx.funnel.present) == "function" then
@@ -106,8 +129,21 @@ local function onLeave(player: Player)
 			ctx.plots.handOff(player, partner)
 		end
 	end
+	-- Mid-build, a solo builder with pieces down keeps the room for a short
+	-- while in case this was a dropped connection.
+	local before = state.players[key]
+	local keep = false
+	if not inherited and partner == nil and state.phase == "Build" and before and before.role == "active" then
+		local fn = state.hasWork
+		if type(fn) == "function" then
+			local ok, has = pcall(fn, key)
+			keep = ok and has == true
+		end
+	end
 	RoundEngine.leave(state, key, now())
-	if ctx.rooms then
+	if keep then
+		parked[key] = { round = state.roundIndex, untilAt = now() + graceSeconds }
+	elseif ctx.rooms then
 		ctx.rooms.forget(key)
 	end
 	if not inherited and ctx.plots then
@@ -137,6 +173,10 @@ function RoundService.init(c: any)
 		end,
 	})
 	ctx.round = state
+	local reconnect = Config.Reconnect
+	if type(reconnect) == "table" and type(reconnect.Grace) == "number" then
+		graceSeconds = reconnect.Grace
+	end
 	ctx.actions.register("Done", {}, function(playerKey: string): (boolean, string?)
 		local at = now()
 		local ok, msg = RoundEngine.pressDone(state, playerKey, at)

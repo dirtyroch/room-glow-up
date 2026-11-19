@@ -11,7 +11,23 @@ local Levels = require("../src/shared/Logic/Levels")
 
 local Bots = {}
 
+-- Newer servers want the plot on screen with each Vote and Report. Older
+-- builds (for before/after runs) take the bare form.
+local fs = require("@lune/fs")
+local okSrc, voteSrc = pcall(fs.readFile, "src/server/Services/VoteService.luau")
+Bots.namesStop = okSrc and string.find(voteSrc, "stillOnStage", 1, true) ~= nil
+
+local function stopArg(plot)
+	if Bots.namesStop then
+		return plot or 0
+	end
+	return nil
+end
+
 -- kind: builder | newbie | returning | leaver | idle | duo | spammer | novote | late
+--       | griefer (one piece then DONE, spams React/Report/Vote) | rejoiner
+-- spec.lag = { min, max }: a slow phone network. Every call lands that much later.
+-- spec.slow = number: a phone kid who taps slower (think gaps times this).
 function Bots.new(world, rng, spec)
 	local bot = {
 		world = world,
@@ -42,15 +58,60 @@ function Bots.new(world, rng, spec)
 	return bot
 end
 
+-- Returns ok, msg. A handler that yields counts as ok for now; its row is
+-- filled in when it returns, so the report still sees the real answer.
 local function rs(world)
 	return world.game:GetService("ReplicatedStorage"):FindFirstChild("RoundState")
 end
 
--- Returns ok, msg. A handler that yields counts as ok for now; its row is
--- filled in when it returns, so the report still sees the real answer.
+local function send(bot, row, action, a, b, c)
+	local state = rs(bot.world)
+	row.landedIndex = state and state:GetAttribute("TourIndex") or 0
+	row.landedPhase = state and state:GetAttribute("Phase") or ""
+	if not bot.player or bot.left then
+		row.status = "dropped"
+		return
+	end
+	local _payload, status = bot.world:invoke(bot.player, action, a, b, c, function(p, took)
+		row.ok = type(p) == "table" and p.ok == true
+		row.msg = if type(p) == "table" then p.msg else nil
+		row.status = "done"
+		row.took = took
+	end)
+	return status
+end
+
+-- Calls that were sent over a laggy network and have now arrived.
+function Bots.flush(bot, now)
+	local queue = bot.queue
+	if not queue or #queue == 0 then
+		return
+	end
+	local keep = {}
+	for _, item in ipairs(queue) do
+		if now >= item.due then
+			send(bot, item.row, item.action, item.a, item.b, item.c)
+		else
+			table.insert(keep, item)
+		end
+	end
+	bot.queue = keep
+end
+
 function Bots.call(bot, action, a, b, c)
+	local state = rs(bot.world)
 	local row = { at = bot.world.clock, action = action, ok = false, msg = nil, status = "pending" }
+	row.sentIndex = state and state:GetAttribute("TourIndex") or 0
+	row.sentPhase = state and state:GetAttribute("Phase") or ""
 	table.insert(bot.responses, row)
+	local lag = bot.spec.lag
+	if type(lag) == "table" then
+		bot.queue = bot.queue or {}
+		table.insert(bot.queue, { due = bot.world.clock + bot.rng:NextNumber(lag[1], lag[2]), row = row, action = action, a = a, b = b, c = c })
+		return true, "queued", nil
+	end
+	row.landedIndex = row.sentIndex
+	row.landedPhase = row.sentPhase
 	local payload, status = bot.world:invoke(bot.player, action, a, b, c, function(p, took)
 		row.ok = type(p) == "table" and p.ok == true
 		row.msg = if type(p) == "table" then p.msg else nil
@@ -169,6 +230,7 @@ function Bots.think(bot, now)
 	if bot.left or not bot.player then
 		return
 	end
+	Bots.flush(bot, now)
 	local world = bot.world
 	local state = rs(world)
 	if not state then
@@ -231,10 +293,25 @@ function Bots.think(bot, now)
 		Bots.call(bot, "ShopOpen")
 	end
 
+	-- Griefer: every tour stop, report it, one-star it, and mash reactions.
+	if bot.kind == "griefer" and phase == "Tour" and now >= (bot.nextGrief or 0) then
+		bot.nextGrief = now + 0.2
+		Bots.call(bot, "React", bot.rng:NextInteger(0, #Config.Show.Crowd + 1))
+		local stop = state:GetAttribute("TourIndex") or 0
+		if stop ~= bot.griefStop then
+			bot.griefStop = stop
+			Bots.call(bot, "Report", stopArg(state:GetAttribute("TourPlot")))
+		end
+		if bot.rng:NextNumber() < 0.3 then
+			Bots.call(bot, "Vote", 1, stopArg(state:GetAttribute("TourPlot")))
+		end
+	end
+
 	if now < bot.nextThink then
 		return
 	end
 	bot.nextThink = now + 0.5
+	local slow = bot.spec.slow or 1
 
 	if phase == "Lobby" then
 		if bot.kind == "duo" and not bot.duoAsked then
@@ -253,6 +330,16 @@ function Bots.think(bot, now)
 		if bot.kind == "idle" then
 			return
 		end
+		if bot.kind == "griefer" then
+			-- One piece, then DONE straight away, to try to cut everyone's build.
+			if bot.placed == 0 then
+				tryPlace(bot, state)
+			elseif not bot.pressedDone then
+				bot.pressedDone = true
+				Bots.call(bot, "Done")
+			end
+			return
+		end
 		if bot.placed < bot.target then
 			local before = bot.placed
 			local ok = tryPlace(bot, state)
@@ -261,7 +348,7 @@ function Bots.think(bot, now)
 			if not ok or bot.misses >= 4 then
 				bot.target = bot.placed
 			end
-			bot.nextThink = now + bot.rng:NextNumber(3, 11)
+			bot.nextThink = now + bot.rng:NextNumber(3, 11) * slow
 			if bot.rng:NextNumber() < 0.15 and bot.placed > 0 then
 				Bots.call(bot, "Recolor", 1, Config.Palette[bot.rng:NextInteger(1, #Config.Palette)])
 			end
@@ -283,13 +370,13 @@ function Bots.think(bot, now)
 		local plot = state:GetAttribute("TourPlot") or 0
 		if stop ~= bot.lastStop then
 			bot.lastStop = stop
-			bot.voteAt = now + bot.rng:NextNumber(1.0, 7.5)
+			bot.voteAt = now + bot.rng:NextNumber(1.0, 7.5) * slow
 			bot.voteTarget = plot
 			if bot.kind ~= "novote" and bot.rng:NextNumber() < 0.7 then
 				Bots.call(bot, "React", bot.rng:NextInteger(1, #Config.Show.Crowd))
 			end
 		end
-		if bot.kind == "novote" then
+		if bot.kind == "novote" or bot.kind == "griefer" then
 			return
 		end
 		if bot.voteAt and now >= bot.voteAt then
@@ -299,7 +386,7 @@ function Bots.think(bot, now)
 				local model = world.workspace:FindFirstChild("Plots")
 				model = model and model:FindFirstChild("Plot" .. tostring(plot))
 				local meter = model and model:GetAttribute("ThemeMatch") or 0
-				local ok, msg = Bots.call(bot, "Vote", starsFor(bot, meter))
+				local ok, msg = Bots.call(bot, "Vote", starsFor(bot, meter), stopArg(plot))
 				bot.votes = (bot.votes or 0) + 1
 				if not ok then
 					bot.voteFails = bot.voteFails or {}

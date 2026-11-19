@@ -54,6 +54,11 @@ export type State = {
 	-- Returns true when that player has placed at least one prop.
 	-- Wired by the room service. Nil keeps the older DONE-only tour.
 	hasWork: ((string) -> any)?,
+	-- True when a DONE builder made a real room (a few pieces or half the
+	-- budget). A one-piece DONE does not push the 30-second rush. Nil = any.
+	realBuild: ((string) -> any)?,
+	-- Seconds bought this build (+60 s). The rush never cuts these away.
+	paidSeconds: number,
 	-- Partner ids in a duo room. They build, but the tour stops once.
 	tourSkip: { [string]: boolean },
 	-- Extra minutes bought for this round. Reset when the next lobby starts.
@@ -97,6 +102,13 @@ local function countsForRush(state: State, id: string, player: PlayerState): boo
 		return false
 	end
 	if player.done then
+		-- One piece and DONE is the same as idle: it neither waits on the
+		-- others nor pushes them to hurry.
+		local real = state.realBuild
+		if type(real) == "function" then
+			local ok, value = pcall(real, id)
+			return ok and value == true
+		end
 		return true
 	end
 	local fn = state.hasWork
@@ -166,6 +178,11 @@ local function maybeRush(state: State, now: number)
 		return
 	end
 	local _, seconds = rushKnobs(state)
+	-- A bought minute is kept on top of the rush clock.
+	local paid = state.paidSeconds
+	if type(paid) == "number" and paid > 0 then
+		seconds += paid
+	end
 	local ends = state.phaseEndsAt
 	if type(ends) ~= "number" then
 		return
@@ -304,6 +321,7 @@ local function beginBuild(state: State, now: number)
 		extra = 0
 	end
 	state.bankedTime = 0
+	state.paidSeconds = extra
 	state.rush = false
 	state.showBanner = false
 	if activeCount(state) < 1 then
@@ -565,6 +583,8 @@ function RoundEngine.create(options: {
 		season = "",
 		trace = {},
 		hasWork = nil,
+		realBuild = nil,
+		paidSeconds = 0,
 		tourSkip = {},
 		timeAdds = 0,
 		bankedTime = 0,
@@ -579,6 +599,10 @@ end
 
 function RoundEngine.setHasWork(state: State, fn: (string) -> any)
 	state.hasWork = fn
+end
+
+function RoundEngine.setRealBuild(state: State, fn: (string) -> any)
+	state.realBuild = fn
 end
 
 function RoundEngine.setUnixNow(state: State, unixNow: () -> number)
@@ -624,6 +648,7 @@ function RoundEngine.extend(state: State, seconds: number, cap: number): (boolea
 	if state.phase == "Build" and type(state.phaseEndsAt) == "number" then
 		state.timeAdds += 1
 		state.phaseEndsAt += add
+		state.paidSeconds = (state.paidSeconds or 0) + add
 		-- Paid time is not the rush banner. The rush does not fire again.
 		state.showBanner = false
 		return true, "Added a minute for everyone."
@@ -636,13 +661,23 @@ function RoundEngine.extend(state: State, seconds: number, cap: number): (boolea
 	return false, "Extra time waits for the lobby."
 end
 
-function RoundEngine.join(state: State, id: string, now: number)
+-- `returning` is a kid whose room was kept through a short disconnect. They
+-- go back to building however much time is left.
+function RoundEngine.join(state: State, id: string, now: number, returning: boolean?)
 	if state.players[id] then
 		return
 	end
 	local role: Role = "spectator"
 	if state.phase == "Lobby" then
 		role = "active"
+	elseif state.phase == "Build" and returning == true then
+		local cap = state.config.MaxPlayers
+		if type(cap) ~= "number" or cap < 1 then
+			cap = 10
+		end
+		if activeCount(state) < cap then
+			role = "active"
+		end
 	elseif state.phase == "Build" then
 		local minSeconds = 60
 		local late = state.config.LateJoin

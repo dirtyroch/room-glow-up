@@ -234,6 +234,44 @@ function RoomService.forget(key: string)
 	rooms[key] = nil
 end
 
+-- A kid back from a short disconnect in the same build gets their pieces
+-- put back on whatever plot they were given now.
+function RoomService.restore(player: Player): boolean
+	local key = tostring(player.UserId)
+	local room = rooms[key]
+	if not room or #room.pieces == 0 then
+		return false
+	end
+	local index = ctx.plots.indexOf(key)
+	if type(index) ~= "number" then
+		return false
+	end
+	local c = contextFor(key)
+	local grid = c.gridType or c.roundType
+	for _, piece in ipairs(room.pieces) do
+		ctx.plots.spawnPiece(index, piece, grid, false)
+	end
+	publish(player, key, room, c)
+	return true
+end
+
+-- A room big enough that its DONE should count toward the 30-second rush.
+function RoomService.realBuild(key: string): boolean
+	local room = rooms[key]
+	if not room then
+		return false
+	end
+	local rush = Config.BuildRush or {}
+	local minPieces = if type(rush.MinPieces) == "number" then rush.MinPieces else 3
+	local spendShare = if type(rush.RealSpend) == "number" then rush.RealSpend else 0.5
+	if #room.pieces >= minPieces then
+		return true
+	end
+	local c = contextFor(key)
+	local budget = if type(c.budget) == "number" then c.budget else 0
+	return budget > 0 and room.spent >= budget * spendShare
+end
+
 function RoomService.inspect(key: string): any
 	local room = rooms[key]
 	local pieces = 0
@@ -347,6 +385,7 @@ function RoomService.init(c: any)
 	ctx.rooms = {
 		welcome = RoomService.welcome,
 		forget = RoomService.forget,
+		restore = RoomService.restore,
 		onPhase = RoomService.onPhase,
 		inspect = RoomService.inspect,
 		copyPieces = RoomService.copyPieces,
@@ -501,6 +540,7 @@ function RoomService.start()
 	RoundEngine.setHasWork(ctx.round, function(id: string): boolean
 		return Placement.hasPieces(rooms[id])
 	end)
+	RoundEngine.setRealBuild(ctx.round, RoomService.realBuild)
 	local Props = require(script.Parent.Parent:WaitForChild("Props") :: ModuleScript) :: any
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local folder = ReplicatedStorage:FindFirstChild("PropPreviews")

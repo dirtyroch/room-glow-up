@@ -187,6 +187,15 @@ local Config = {
 		-- No cut before this many build seconds, so early DONE presses
 		-- (when nobody else has placed yet) cannot shorten the round.
 		MinElapsed = 60,
+		-- A DONE only pushes the rush when the room has this many pieces,
+		-- or has spent this share of the budget (Tiny Budget rounds).
+		MinPieces = 3,
+		RealSpend = 0.5,
+	},
+	-- A kid who drops and comes back within this many seconds of the same
+	-- build gets their room back instead of starting over as a spectator.
+	Reconnect = {
+		Grace = 60,
 	},
 	-- A late joiner who still has this many build seconds gets a room.
 	-- Otherwise they watch, vote, and play a tutorial or a sandbox.
