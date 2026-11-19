@@ -179,16 +179,16 @@ local function heroTree(parent: Instance, at: Vector3, cream: Color3, coral: Col
 	pine(tree, at, scale, cream, leaf, snow)
 	local star = bit(tree, "TreeStar", "Ball", Vector3.new(1.3, 1.3, 1.3), CFrame.new(at.X, 5.6 * scale, at.Z), butter, Enum.Material.Neon, false, nil)
 	glow(star, butter, 0.7, 14)
-	local ornaments = {
-		{ 1.6, 4.2, 0.6, coral },
-		{ -1.5, 5.4, 0.8, butter },
-		{ 0.4, 6.8, -1.5, lavender },
-		{ -1.2, 8.2, 0.9, coral },
-		{ 1.3, 9.4, -0.7, butter },
-		{ -0.6, 3.6, -1.4, lavender },
+	local ornaments: { { x: number, y: number, z: number, color: Color3 } } = {
+		{ x = 1.6, y = 4.2, z = 0.6, color = coral },
+		{ x = -1.5, y = 5.4, z = 0.8, color = butter },
+		{ x = 0.4, y = 6.8, z = -1.5, color = lavender },
+		{ x = -1.2, y = 8.2, z = 0.9, color = coral },
+		{ x = 1.3, y = 9.4, z = -0.7, color = butter },
+		{ x = -0.6, y = 3.6, z = -1.4, color = lavender },
 	}
 	for _, row in ipairs(ornaments) do
-		bit(tree, "Bauble", "Ball", Vector3.new(0.85, 0.85, 0.85), CFrame.new(at.X + row[1], row[2], at.Z + row[3]), row[4], Enum.Material.SmoothPlastic, false, nil)
+		bit(tree, "Bauble", "Ball", Vector3.new(0.85, 0.85, 0.85), CFrame.new(at.X + row.x, row.y, at.Z + row.z), row.color, Enum.Material.SmoothPlastic, false, nil)
 	end
 	gift(tree, Vector3.new(at.X - 2.2, 0, at.Z + 1.6), coral, butter)
 	gift(tree, Vector3.new(at.X + 2.0, 0, at.Z + 1.3), mint, lavender)
