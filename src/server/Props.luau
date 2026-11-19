@@ -13,6 +13,14 @@ local function rgb(triple: { number }): Color3
 	return Color3.fromRGB(triple[1], triple[2], triple[3])
 end
 
+local function asMaterial(name: string): Enum.Material?
+	local material = (Enum.Material :: any)[name]
+	if typeof(material) ~= "EnumItem" then
+		return nil
+	end
+	return material :: Enum.Material
+end
+
 local function named(colorName: string): Color3
 	local channels = UIKit.color(colorName)
 	return Color3.fromRGB(channels[1], channels[2], channels[3])
@@ -338,8 +346,8 @@ function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string)
 	end
 	local materialName = piece.material
 	if type(materialName) == "string" then
-		local material = (Enum.Material :: any)[materialName]
-		if typeof(material) == "EnumItem" then
+		local material = asMaterial(materialName)
+		if material then
 			for _, child in model:GetDescendants() do
 				if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
 					child.Material = material
@@ -374,8 +382,8 @@ function Props.recolor(model: Model, colorName: string)
 end
 
 function Props.finish(model: Model, materialName: string)
-	local material = (Enum.Material :: any)[materialName]
-	if typeof(material) ~= "EnumItem" then
+	local material = asMaterial(materialName)
+	if not material then
 		return
 	end
 	model:SetAttribute("Material", materialName)

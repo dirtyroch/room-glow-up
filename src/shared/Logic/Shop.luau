@@ -331,11 +331,11 @@ local function applyProduct(profile: { [string]: any }, entry: any, ctx: GrantCo
 		end
 	end
 	if entry.rain == true and ctx.startRain then
-		local name = ctx.buyerName
-		if type(name) ~= "string" or name == "" then
-			name = "Someone"
+		local buyer = "Someone"
+		if type(ctx.buyerName) == "string" and ctx.buyerName ~= "" then
+			buyer = ctx.buyerName
 		end
-		ctx.startRain(name, Config.Shop.RainSeconds)
+		ctx.startRain(buyer, Config.Shop.RainSeconds)
 		detail.rain = true
 	end
 	if entry.hint == true then
