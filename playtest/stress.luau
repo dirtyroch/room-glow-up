@@ -16,9 +16,15 @@ local Config = require("../src/shared/Config")
 
 local SEED = 4242
 local args = process.args
+local ONLY = nil
+local ROUNDS = nil
 for i, a in ipairs(args) do
 	if a == "--seed" and args[i + 1] then
 		SEED = tonumber(args[i + 1]) or SEED
+	elseif a == "--only" and args[i + 1] then
+		ONLY = args[i + 1]
+	elseif a == "--rounds" and args[i + 1] then
+		ROUNDS = tonumber(args[i + 1])
 	end
 end
 
@@ -76,6 +82,8 @@ local function run(opts)
 		reports = { sent = 0, ok = 0, misrouted = 0, removedHonest = 0 },
 		reactions = { sent = 0, ok = 0, maxPerStop = 0 },
 		midBuildRejoins = 0,
+		byPosition = {},
+		tourSeconds = {},
 		roomsKept = 0,
 		multiPlot = 0,
 		dupStops = 0,
@@ -141,6 +149,7 @@ local function run(opts)
 			end
 			if phase == "Tour" and current then
 				current.stops = #round.tourStops
+				current.order = table.clone(round.tourStops)
 				current.rush = round.rush == true
 				local seen = {}
 				for _, id in ipairs(round.tourStops) do
@@ -153,6 +162,9 @@ local function run(opts)
 			end
 			if phase == "Results" and current then
 				current.resultsAt = world.clock
+				if (current.stops or 0) >= 8 then
+					table.insert(out.tourSeconds, current.phases.Tour or 0)
+				end
 				-- Honest rooms that a report took off the tour.
 				local ballots = ctx.votes.ballots
 				for owner, room in pairs(ballots.rooms) do
@@ -189,14 +201,57 @@ local function run(opts)
 				out.reactions.maxPerStop = math.max(out.reactions.maxPerStop, reactCount)
 			end
 		end
+		-- Votes and stars by tour position, once the ballots are final.
+		if phase == "Results" and current and not current.scored and since >= 2 and (current.stops or 0) >= 8 then
+			current.scored = true
+			local ballots = ctx.votes.ballots
+			local voters = 0
+			for _, p in pairs(round.players) do
+				if p.role == "active" or p.role == "spectator" then
+					voters += 1
+				end
+			end
+			for pos, owner in ipairs(current.order or {}) do
+				local room = ballots.rooms[owner]
+				if room and not room.removed then
+					local n = 0
+					for voter in pairs(room.votes) do
+						if voter ~= Config.Critic.id then
+							n += 1
+						end
+					end
+					local bucket = if pos <= 6 then "stops 1-6" else "stops 7+"
+					local row = out.byPosition[bucket] or { rooms = 0, votes = 0, stars = 0, possible = 0 }
+					row.rooms += 1
+					row.votes += n
+					row.possible += math.max(0, voters - 1)
+					row.stars += room.average or 0
+					out.byPosition[bucket] = row
+				end
+			end
+		end
 		-- Payouts, once per round.
 		if phase == "Results" and current and not current.paid and since >= Config.Phases.Results - 1 then
 			current.paid = true
 			for _, bot in ipairs(bots) do
 				if bot.player and not bot.left then
 					local k = bot.kind .. (if bot.spec.tag then "/" .. bot.spec.tag else "")
-					local row = out.perKind[k] or { n = 0, coins = 0, xp = 0, spectating = 0 }
+					local row = out.perKind[k] or { n = 0, coins = 0, xp = 0, spectating = 0, eye = 0, stars = 0, pieces = 0, spend = 0 }
 					row.n += 1
+					row.eye += bot.player:GetAttribute("EyeCoins") or 0
+					local room = ctx.votes.ballots.rooms[tostring(bot.userId)]
+					row.stars += room and room.average or 0
+					local me = tostring(bot.userId)
+					for owner, ballot in pairs(ctx.votes.ballots.rooms) do
+						if owner ~= me and not ballot.removed then
+							row.could = (row.could or 0) + 1
+							if ballot.votes[me] ~= nil then
+								row.cast = (row.cast or 0) + 1
+							end
+						end
+					end
+					local facts = ctx.rooms.inspect(tostring(bot.userId))
+					row.pieces += facts and facts.pieces or 0
 					row.coins += bot.player:GetAttribute("AwardCoins") or 0
 					row.xp += bot.player:GetAttribute("AwardXp") or 0
 					if bot.player:GetAttribute("Spectating") == true then
@@ -315,11 +370,11 @@ local function run(opts)
 				end
 				if r.sentIndex ~= r.landedIndex then
 					out.votes.lagged += 1
-					if r.ok and r.sentPhase == "Tour" then
-						out.votes.misrouted += 1
-					end
 				end
-				if r.msg == "Votes are locked." then
+				if r.ok and r.sentPhase == "Tour" and r.landedRight == false then
+					out.votes.misrouted += 1
+				end
+				if r.msg == "Votes are locked." or r.msg == "That room already moved on." then
 					out.votes.lateLocked += 1
 				end
 			elseif r.action == "Report" then
@@ -443,9 +498,14 @@ local scenarios = {
 
 local results = {}
 for i, sc in ipairs(scenarios) do
-	sc.seed = SEED + i * 17
-	local out = run(sc)
-	table.insert(results, out)
+	if ONLY == nil or ONLY == sc.name then
+		sc.seed = SEED + i * 17
+		if ROUNDS then
+			sc.rounds = ROUNDS
+		end
+		local out = run(sc)
+		table.insert(results, out)
+	end
 end
 
 -- Report.
@@ -484,9 +544,27 @@ for _, out in ipairs(results) do
 	table.sort(kinds)
 	for _, k in ipairs(kinds) do
 		local row = out.perKind[k]
-		w(string.format("- pay %s: %.0f coins, %.0f xp per round (%d rows, %d spectating)", k, row.coins / row.n, row.xp / row.n, row.n, row.spectating))
+		w(string.format("- pay %s: %.0f coins, %.0f xp per round (%d rows, %d spectating); eye %.1f, stars %.2f, pieces %.1f, voted %.0f%%", k, row.coins / row.n, row.xp / row.n, row.n, row.spectating, row.eye / row.n, row.stars / row.n, row.pieces / row.n, 100 * (row.cast or 0) / math.max(1, row.could or 0)))
 	end
-	w(string.format("- votes: %d sent, %d ok, %d crossed a stop in flight, %d counted for the wrong room, %d locked", out.votes.sent, out.votes.ok, out.votes.lagged, out.votes.misrouted, out.votes.lateLocked))
+	local phone = out.perKind["builder/phone"]
+	local pc = out.perKind["builder/pc"]
+	if phone and pc and pc.coins > 0 then
+		w(string.format("- phone vs pc coins: %.0f vs %.0f (%+.1f%%)", phone.coins / phone.n, pc.coins / pc.n, 100 * ((phone.coins / phone.n) / (pc.coins / pc.n) - 1)))
+	end
+	for _, bucket in ipairs({ "stops 1-6", "stops 7+" }) do
+		local row = out.byPosition[bucket]
+		if row and row.rooms > 0 then
+			w(string.format("- %s: %.0f%% of possible votes cast, %.2f stars mean (%d rooms)", bucket, 100 * row.votes / math.max(1, row.possible), row.stars / row.rooms, row.rooms))
+		end
+	end
+	if #out.tourSeconds > 0 then
+		local sum = 0
+		for _, t in ipairs(out.tourSeconds) do
+			sum += t
+		end
+		w(string.format("- tour with 8+ rooms: %.0fs mean", sum / #out.tourSeconds))
+	end
+	w(string.format("- votes: %d sent, %d ok, %d crossed a stop in flight, %d counted for the wrong room, %d refused as late", out.votes.sent, out.votes.ok, out.votes.lagged, out.votes.misrouted, out.votes.lateLocked))
 	w(string.format("- reports: %d sent, %d ok, %d wrong room, %d honest rooms removed", out.reports.sent, out.reports.ok, out.reports.misrouted, out.reports.removedHonest))
 	w(string.format("- reactions: %d sent, %d ok, max %d on one stop", out.reactions.sent, out.reactions.ok, out.reactions.maxPerStop))
 	for kind, s in pairs(out.spectateSeconds) do
@@ -514,13 +592,13 @@ for _, out in ipairs(results) do
 	w(string.format("- DataStore: %d calls, peak %d a minute", out.store.calls, out.store.perMinutePeak))
 end
 fs.writeDir("playtest/out")
-fs.writeFile("playtest/out/stress.md", table.concat(lines, "\n") .. "\n")
+fs.writeFile("playtest/out/stress" .. (if ONLY then "-" .. ONLY else "") .. ".md", table.concat(lines, "\n") .. "\n")
 for _, out in ipairs(results) do
 	for _, p in ipairs(out.purchases) do
 		p.round = nil
 	end
 end
-fs.writeFile("playtest/out/stress.json", serde.encode("json", results, true))
+fs.writeFile("playtest/out/stress" .. (if ONLY then "-" .. ONLY else "") .. ".json", serde.encode("json", results, true))
 print(table.concat(lines, "\n"))
 if #problems > 0 then
 	process.exit(1)

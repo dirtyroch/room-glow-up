@@ -25,6 +25,9 @@ local Config = {
 		TourPerRoom = 10,
 		TourLockIn = 1,
 		TourVoteGrace = 1,
+		-- A first vote for the room that just left, sent before the camera
+		-- moved, still counts if it lands this many seconds into the next stop.
+		TourLateVote = 1.5,
 		TourSkipBeat = 1,
 		-- Podium and Auntie Roch first. Rewards and Spot the Theme at this second.
 		Results = 30,
@@ -98,6 +101,16 @@ local Config = {
 		-- at this cap, so decorating stays the better path.
 		EyeNoRoomCoins = 2,
 		EyeNoRoomCap = 8,
+		-- Skip-ahead waits only for kids who voted on one of the last
+		-- QuietAfter rooms. Kids who stopped voting do not hold the tour.
+		QuietAfter = 2,
+		-- Judge's Eye catch-up for slow voters (phones, slow readers): a kid
+		-- with a room who voted on at least EyeCatchMin of the rooms gets
+		-- EyeCatchShare of the other kids' average Eye pay for each room
+		-- they missed. A skipped room pays less than an average vote, and
+		-- the rate is everyone else's, so skipping or picking rooms loses.
+		EyeCatchMin = 0.5,
+		EyeCatchShare = 0.9,
 		-- A room drops after this many different reports, or this share of the
 		-- people who can vote, whichever is higher. Half, rounded up.
 		ReportMin = 3,
@@ -106,7 +119,7 @@ local Config = {
 	},
 	-- Profile saves, levels, and the dream home. The shop reads the hooks later.
 	Progress = {
-		Schema = 1,
+		Schema = 2,
 		ProfileStore = "RoomGlowProfile_v1",
 		DreamStore = "RoomGlowDream_v1",
 		-- Long enough to cover a full 10-player round plus a long lobby sit.
@@ -119,9 +132,16 @@ local Config = {
 		SetBonusXp = 24,
 		QuestCoins = 12,
 		MaxLevel = 50,
-		-- XP to leave level L is XpBase + (L - 1) * XpStep.
-		XpBase = 20,
-		XpStep = 6,
+		-- XP to leave level 1 is XpFirst (one round). After that it is
+		-- XpBase + XpStep * (L - 2) + XpCurve * max(0, L - XpCurveFrom)^2.
+		-- Tuned in the playtest: level 5 (Pibble Rug) in about 15 minutes,
+		-- level 8 (Unc Armchair) in about 30, level 50 in about 11.5 hours.
+		-- Saves from the first curve move over in Save schema 2.
+		XpFirst = 20,
+		XpBase = 75,
+		XpStep = 2.2,
+		XpCurve = 0.21,
+		XpCurveFrom = 8,
 		DuoScale = 1.5,
 		LoftLevel = 15,
 		HouseLevel = 30,
@@ -187,10 +207,22 @@ local Config = {
 		-- No cut before this many build seconds, so early DONE presses
 		-- (when nobody else has placed yet) cannot shorten the round.
 		MinElapsed = 60,
-		-- A DONE only pushes the rush when the room has this many pieces,
-		-- or has spent this share of the budget (Tiny Budget rounds).
-		MinPieces = 3,
+		-- "Done" is measured by budget spent: a DONE only pushes the rush when
+		-- the room spent at least this share of its budget.
 		RealSpend = 0.5,
+		-- A kid still placing (a piece in the last HoldIdle seconds) who has
+		-- spent under HoldSpend holds the rush, up to MaxHold build seconds.
+		HoldSpend = 0.6,
+		HoldIdle = 20,
+		MaxHold = 150,
+	},
+	-- Big tours move faster after the first rooms, so 10 kids do not watch for
+	-- 100 seconds. Votes still close with the stop, and the order is shuffled
+	-- every round, so no room is always on the short end.
+	TourShort = {
+		MinRooms = 8,
+		After = 6,
+		Seconds = 8,
 	},
 	-- A kid who drops and comes back within this many seconds of the same
 	-- build gets their room back instead of starting over as a spectator.

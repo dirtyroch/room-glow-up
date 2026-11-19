@@ -1,11 +1,11 @@
 --!strict
--- Schema 1 profiles and dream homes.
+-- Schema 2 profiles and dream homes. Schema 1 saves are migrated on load.
 -- One session holds the lock. A second session does not write.
 -- Tour and open votes are not a save point. Results, leave, and shutdown are.
 
 local Save = {}
 
-Save.Schema = 1
+Save.Schema = 2
 -- Hard cap per dream home and lookbook page. Matches a maxed two-storey house.
 Save.MaxDreamPieces = 36
 
@@ -25,7 +25,7 @@ end
 
 function Save.blankProfile(): { [string]: any }
 	return {
-		schema = 1,
+		schema = Save.Schema,
 		coins = 0,
 		xp = 0,
 		paid = {},
@@ -54,7 +54,7 @@ end
 
 function Save.blankDream(): { [string]: any }
 	return {
-		schema = 1,
+		schema = Save.Schema,
 		homes = { { pieces = {} } },
 		lookbook = {},
 	}
@@ -107,7 +107,8 @@ end
 -- Drops a tampered luck flag. The server is the only writer of that hook.
 function Save.normalizeProfile(raw: any): { [string]: any }
 	local doc = Save.blankProfile()
-	if type(raw) ~= "table" or raw.schema ~= 1 then
+	raw = Save.upgrade(raw)
+	if type(raw) ~= "table" or raw.schema ~= Save.Schema then
 		return doc
 	end
 	doc.coins = math.max(0, math.floor(asNumber(raw.coins, 0)))
@@ -186,7 +187,8 @@ end
 
 function Save.normalizeDream(raw: any): { [string]: any }
 	local doc = Save.blankDream()
-	if type(raw) ~= "table" or raw.schema ~= 1 then
+	raw = Save.upgrade(raw)
+	if type(raw) ~= "table" or raw.schema ~= Save.Schema then
 		return doc
 	end
 	if type(raw.homes) == "table" then
@@ -223,6 +225,22 @@ end
 -- Schema 1 is the baseline. The next save format adds a step here and bumps Save.Schema.
 local steps: { [number]: (any) -> () } = {}
 
+-- Schema 2: the XP curve got longer at the top. Move a profile's XP onto
+-- the new curve so nobody loses a level they already reached.
+steps[2] = function(doc: any)
+	if doc.homes ~= nil or type(doc.xp) ~= "number" then
+		return
+	end
+	local ok, Levels = pcall(function()
+		local child = script.Parent:WaitForChild("Levels")
+		return (require :: any)(child)
+	end)
+	if not ok then
+		Levels = (require :: any)("./Levels")
+	end
+	doc.xp = Levels.migrateXp(doc.xp)
+end
+
 function Save.migrate(raw: any): (any?, string?)
 	if type(raw) ~= "table" then
 		return nil, "Schema."
@@ -248,6 +266,15 @@ function Save.migrate(raw: any): (any?, string?)
 	return doc, nil
 end
 
+-- An older document comes back migrated. Anything else comes back as is.
+function Save.upgrade(raw: any): any
+	if type(raw) ~= "table" or type(raw.schema) ~= "number" or raw.schema >= Save.Schema then
+		return raw
+	end
+	local migrated = Save.migrate(raw)
+	return migrated
+end
+
 function Save.claim(current: any, sessionId: string, now: number, ttl: number): (any?, string?)
 	if current ~= nil and type(current) ~= "table" then
 		return nil, "Schema."
@@ -266,8 +293,8 @@ function Save.claim(current: any, sessionId: string, now: number, ttl: number): 
 			return nil, "Busy."
 		end
 	end
-	local nextDoc = if type(current) == "table" then Save.clone(current) else { schema = 1 }
-	nextDoc.schema = 1
+	local nextDoc = if type(current) == "table" then Save.clone(current) else { schema = Save.Schema }
+	nextDoc.schema = Save.Schema
 	nextDoc.lock = { session = sessionId, at = now }
 	nextDoc.luck = nil
 	return nextDoc, nil
@@ -377,7 +404,7 @@ function Save.write(
 					end
 				end
 				local nextDoc = Save.clone(doc)
-				nextDoc.schema = 1
+				nextDoc.schema = Save.Schema
 				nextDoc.luck = nil
 				if type(current) == "table" and type(current.lock) == "table" then
 					local at = current.lock.at

@@ -148,9 +148,9 @@ local function commit(key: string, reason: string)
 	local profile = if mode == "settled" then bag.settledProfile else bag.profile
 	local dream = if mode == "settled" then bag.settledDream else bag.dream
 	local profileDoc = Save.clone(profile)
-	profileDoc.schema = 1
+	profileDoc.schema = Save.Schema
 	local dreamDoc = Save.clone(dream)
-	dreamDoc.schema = 1
+	dreamDoc.schema = Save.Schema
 	writeDoc(profileStore, Save.profileKey(key), bag, profileDoc)
 	writeDoc(dreamStore, Save.dreamKey(key), bag, dreamDoc)
 	if mode == "live" then
@@ -212,7 +212,7 @@ function SaveService.init(c: any)
 				return false
 			end
 			local profileDoc = Save.clone(doc)
-			profileDoc.schema = 1
+			profileDoc.schema = Save.Schema
 			profileDoc.luck = nil
 			local live = doc == bag.profile
 			local wrote = writeDoc(profileStore, Save.profileKey(key), bag, profileDoc)

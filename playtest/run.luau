@@ -920,11 +920,65 @@ for k, v in pairs(summary.xpByKind) do
 end
 local avgXp = mean(allXp)
 summary.avgXpPerRound = avgXp
+-- All XP a kid banks per round (round awards plus quests and set bonuses),
+-- from the saved profile, for kids who played every round of a server.
+local gains = {}
+local milestones = { [2] = {}, [5] = {}, [8] = {} }
+local steadyKinds = { builder = true, newbie = true, duo = true, spammer = true, novote = true }
+for _, s in ipairs(report.sessions) do
+	if s.name == "family10" or s.name == "five" or s.name == "pair" or s.name == "solo" then
+		local series = {}
+		local clock = 0
+		for _, r in ipairs(s.rounds) do
+			clock += r.total or 0
+			for _, a in ipairs(r.awards or {}) do
+				if steadyKinds[a.kind] and type(a.totalXp) == "number" then
+					local row = series[a.key] or { first = a.totalXp, firstRound = r.n, last = a.totalXp, lastRound = r.n, rounds = 0 }
+					row.last = a.totalXp
+					row.lastRound = r.n
+					row.rounds += 1
+					series[a.key] = row
+					for L, list in pairs(milestones) do
+						row.hit = row.hit or {}
+						if not row.hit[L] and type(a.level) == "number" and a.level >= L then
+							row.hit[L] = true
+							table.insert(list, { minutes = clock / 60, rounds = r.n })
+						end
+					end
+				end
+			end
+		end
+		for _, row in pairs(series) do
+			if row.rounds >= 4 and row.firstRound == 1 then
+				-- The first award row already includes round one's XP.
+				table.insert(gains, (row.last - 0) / row.lastRound)
+			end
+		end
+	end
+end
+local function median(list, field)
+	local values = {}
+	for _, x in ipairs(list) do
+		table.insert(values, x[field])
+	end
+	table.sort(values)
+	if #values == 0 then
+		return 0
+	end
+	return values[math.floor((#values + 1) / 2)]
+end
+local bankXp = mean(gains)
+summary.bankXpPerRound = bankXp
+summary.milestones = {}
+for _, L in ipairs({ 2, 5, 8 }) do
+	summary.milestones[tostring(L)] = { minutes = median(milestones[L], "minutes"), rounds = median(milestones[L], "rounds"), n = #milestones[L] }
+end
+local roundSeconds = if (pace.roundMean or 0) > 0 then pace.roundMean else 240
 summary.levelPace = {}
-for _, L in ipairs({ 5, 8, 10, 15, 20, 30, 50 }) do
+for _, L in ipairs({ 2, 5, 8, 10, 15, 20, 30, 50 }) do
 	local need = Levels.total(L)
-	local rounds = if avgXp > 0 then need / avgXp else 0
-	table.insert(summary.levelPace, { level = L, xp = need, rounds = math.ceil(rounds), hours = math.floor(rounds * 395 / 360) / 10 })
+	local rounds = if bankXp > 0 then need / bankXp else 0
+	table.insert(summary.levelPace, { level = L, xp = need, rounds = math.ceil(rounds), hours = math.floor(rounds * roundSeconds / 360) / 10 })
 end
 report.summary = summary
 
@@ -988,7 +1042,12 @@ for k, v in pairs(summary.coins) do
 	w(string.format("| %s | %d | %.1f | %d | %d | %.1f |", k, v.n, v.mean, v.min, v.max, summary.xp[k].mean))
 end
 w("")
-w(string.format("Mean XP per round for active builders: %.1f", avgXp))
+w(string.format("Mean XP per round for active builders: %.1f (round awards only)", avgXp))
+w(string.format("XP banked per round, all sources: %.1f. Hours below use the measured 10-player round (%.0fs).", bankXp, roundSeconds))
+for _, L in ipairs({ 2, 5, 8 }) do
+	local m = summary.milestones[tostring(L)]
+	w(string.format("- Level %d reached in play: median %.1f min (round %d, %d kids)", L, m.minutes, m.rounds, m.n))
+end
 w("")
 w("| level | total XP | rounds | hours |")
 w("|---|---|---|---|")

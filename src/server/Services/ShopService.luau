@@ -156,11 +156,11 @@ local function grantContext(player: Player, policy: boolean?): any
 		rng = function()
 			return math.random()
 		end,
-		extend = function(seconds: number): boolean
+		extend = function(seconds: number, purchaseId: string?): boolean
 			if not ctx.round or not RoundEngine then
 				return false
 			end
-			local ok = RoundEngine.extend(ctx.round, seconds, Config.Shop.TimeCap)
+			local ok = RoundEngine.extend(ctx.round, seconds, Config.Shop.TimeCap, purchaseId)
 			return ok == true
 		end,
 		startRain = function(name: string, seconds: number)

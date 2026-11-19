@@ -364,6 +364,7 @@ function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, pr
 			})
 		end
 	end
+	Voting.eyeCatchUp(state, present, hasRoom, config)
 	table.sort(rows, function(a, b)
 		if a.average == b.average then
 			return a.owner < b.owner
@@ -371,6 +372,66 @@ function Voting.finalize(state: State, factsByOwner: { [string]: RoomFacts }, pr
 		return a.average > b.average
 	end)
 	return rows
+end
+
+-- Slow voters (a phone, a slow reader) miss some rooms before the camera
+-- moves. A kid who voted on at least EyeCatchMin of the rooms they could vote
+-- on gets EyeCatchShare of everyone else's Eye rate for each missed room.
+-- A missed room pays less than an average vote, so skipping does not pay.
+function Voting.eyeCatchUp(state: State, present: { [string]: boolean }, hasRoom: { [string]: boolean }, config: any)
+	local minShare = config.Voting.EyeCatchMin
+	local share = config.Voting.EyeCatchShare
+	local purse = config.Voting.EyeCoins
+	if type(minShare) ~= "number" or type(share) ~= "number" or share <= 0 or type(purse) ~= "number" then
+		return
+	end
+	share = math.min(share, 1)
+	local criticId = config.Critic.id
+	local window = config.Voting.EyeWindow
+	-- Per voter: rooms they could vote on, votes cast, and Eye hits.
+	local could: { [string]: number } = {}
+	local cast: { [string]: number } = {}
+	local hits: { [string]: number } = {}
+	local allCast = 0
+	local allHits = 0
+	for voter in pairs(hasRoom) do
+		if hasRoom[voter] == true and voter ~= criticId then
+			could[voter] = 0
+			cast[voter] = 0
+			hits[voter] = 0
+		end
+	end
+	for owner, ballot in pairs(state.rooms) do
+		if ballot.removed ~= true and present[owner] == true then
+			for voter in pairs(could) do
+				if voter ~= owner then
+					could[voter] += 1
+					local value = ballot.votes[voter]
+					if type(value) == "number" then
+						cast[voter] += 1
+						allCast += 1
+						if Voting.withinEye(value, ballot.average, window) then
+							hits[voter] += 1
+							allHits += 1
+						end
+					end
+				end
+			end
+		end
+	end
+	for voter, rooms in pairs(could) do
+		local mine = cast[voter]
+		local missed = rooms - mine
+		-- Everyone else's hit rate, so a kid cannot raise it by picking rooms.
+		local othersCast = allCast - mine
+		if missed > 0 and mine > 0 and mine >= rooms * minShare - 1e-9 and othersCast > 0 then
+			local rate = (allHits - hits[voter]) / othersCast
+			local bonus = math.floor(missed * purse * rate * share + 1e-6)
+			if bonus > 0 then
+				state.eyeCoins[voter] = (state.eyeCoins[voter] or 0) + bonus
+			end
+		end
+	end
 end
 
 -- Move a ballot to the remaining duo partner when the lead leaves.
