@@ -246,20 +246,21 @@ local WINTER = {
 
 
 local GLOW = {
-	{ "ribbon_rug", 2, 2 },
-	{ "lavender_settee", 2, 4 },
-	{ "quilt_table", 2, 3 },
-	{ "star_lamp", 0, 0 },
-	{ "globe_light", 5, 5 },
-	{ "string_lights", 0, 5 },
-	{ "reader_chair", 5, 2 },
-	{ "star_pillow", 4, 4 },
-	{ "spark_accent", 1, 3 },
-	{ "ribbon_sash", 0, 2 },
-	{ "gift_stack", 5, 0 },
-	{ "holly_pot", 0, 3 },
-	{ "star_mat", 1, 1 },
-	{ "book_ledge", 3, 0 },
+	{ "ribbon_rug", 2, 2, 0, "lavender" },
+	{ "lavender_settee", 2, 4, 0, "lavender" },
+	{ "quilt_table", 2, 3, 0, "cream" },
+	{ "star_lamp", 0, 0, 0, "butter" },
+	{ "globe_light", 5, 5, 0, "coral" },
+	{ "string_lights", 0, 2, 0, "butter" },
+	{ "string_lights", 3, 2, 0, "coral" },
+	{ "reader_chair", 5, 2, 0, "coral" },
+	{ "star_pillow", 4, 4, 0, "butter" },
+	{ "spark_accent", 1, 3, 0, "butter" },
+	{ "ribbon_sash", 0, 0, 0, "coral" },
+	{ "gift_stack", 5, 0, 0, "coral" },
+	{ "holly_pot", 0, 3, 0, "mint" },
+	{ "star_mat", 1, 1, 0, "butter" },
+	{ "book_ledge", 3, 0, 0, "cream" },
 }
 
 local function gradeOf(family)
@@ -352,7 +353,7 @@ do
 		return underPlaza(inst) or string.find(inst:GetFullName(), "Plots", 1, true) ~= nil
 	end)
 	scenes.lobby = {
-		camera = { pos = { 8, 13, -6 }, look = { -2, 6.2, -46 } },
+		camera = { pos = { 6, 12, -8 }, look = { -1, 6.6, -46 } },
 		family = "hearth",
 		grade = gradeOf("hearth"),
 		parts = parts,
@@ -401,7 +402,7 @@ do
 	scenes.ginger = {
 		family = "ginger",
 		grade = gradeOf("ginger"),
-		camera = { pos = { 38, 22, 92 }, look = { 0, 12, 42 } },
+		camera = { pos = { 52, 22, 112 }, look = { 0, 16, 46 } },
 		parts = parts,
 	}
 	print("ginger parts", #parts)
@@ -447,7 +448,7 @@ do
 		return underPlaza(inst)
 	end)
 	scenes.podium = {
-		camera = { pos = { 15, 8, -8 }, look = { 15, 3.6, -34 } },
+		camera = { pos = { 18, 8, -4 }, look = { 14, 3.6, -34 } },
 		family = "hearth",
 		grade = gradeOf("hearth"),
 		parts = parts,

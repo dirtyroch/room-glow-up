@@ -186,43 +186,105 @@ local function dressRoom(shellModel: Model, pivot: CFrame, width: number, depth:
 	keyLight(glass, Color3.fromRGB(255, 232, 200), 1.1, 20, Enum.NormalId.Back)
 end
 
-local function dressGinger(shellModel: Model, pivot: CFrame, width: number, depth: number, height: number)
+local function dressGinger(shellModel: Model, pivot: CFrame, width: number, _depth: number, height: number)
 	local planeZ = Bases.wallPlane("gingerbread")
-	local winY = 1 + height * 0.62
-	local glass = decor(
-		shellModel,
-		"Window",
-		"Cylinder",
-		Vector3.new(0.28, 4.2, 4.2),
-		pivot * CFrame.new(0, winY, planeZ + 0.55) * CFrame.Angles(0, math.rad(90), 0),
-		Color3.fromRGB(255, 236, 220),
-		"Glass",
-		0.28
-	)
-	decor(
-		shellModel,
-		"WindowFrame",
-		"Cylinder",
-		Vector3.new(0.36, 5.1, 5.1),
-		pivot * CFrame.new(0, winY, planeZ + 0.4) * CFrame.Angles(0, math.rad(90), 0),
-		shell("icingA"),
-		"SmoothPlastic",
-		nil
-	)
-	wash(glass, Color3.fromRGB(255, 236, 210), 0.22, 10)
-	keyLight(glass, Color3.fromRGB(255, 228, 190), 1.05, 18, Enum.NormalId.Right)
-	decor(shellModel, "Door", "Block", Vector3.new(3.4, 6.2, 0.35), pivot * CFrame.new(-width * 0.22, 4.2, planeZ + 0.48), shell("gingerB"), "Wood", nil)
-	decor(shellModel, "Knob", "Ball", Vector3.new(0.45, 0.45, 0.45), pivot * CFrame.new(-width * 0.22 + 1.1, 4.1, planeZ + 0.75), shell("hook"), "Metal", nil)
-	local caneH = math.clamp(height * 0.45, 6, 10)
-	local caneZ = planeZ + math.clamp(depth * 0.04, 0.45, 1.1)
+	local gable = Bases.gableMetrics("gingerbread")
+	local eaveY = gable.eaveY
+	local rise = gable.rise
+	local frosting = Color3.fromRGB(236, 246, 255)
+	local caneRed = Color3.fromRGB(230, 40, 70)
+	local dropColors = {
+		Color3.fromRGB(230, 40, 70),
+		Color3.fromRGB(40, 180, 90),
+		Color3.fromRGB(255, 120, 170),
+		Color3.fromRGB(255, 252, 248),
+		Color3.fromRGB(255, 200, 60),
+	}
+
+	-- Two frosted windows flanking the door.
 	for _, side in ipairs({ -1, 1 }) do
-		local x = side * (width / 2 - 0.4)
+		local wx = side * width * 0.28
+		local winY = 1 + height * 0.58
+		local winZ = planeZ + 0.55
+		local glass = decor(
+			shellModel,
+			"Window",
+			"Block",
+			Vector3.new(3.6, 3.8, 0.2),
+			pivot * CFrame.new(wx, winY, winZ + 0.12),
+			frosting,
+			"Glass",
+			0.22
+		)
+		decor(
+			shellModel,
+			"WindowFrame",
+			"Block",
+			Vector3.new(4.3, 4.5, 0.28),
+			pivot * CFrame.new(wx, winY, winZ),
+			shell("icingA"),
+			"SmoothPlastic",
+			nil
+		)
+		decor(
+			shellModel,
+			"Mullion",
+			"Block",
+			Vector3.new(0.18, 3.8, 0.16),
+			pivot * CFrame.new(wx, winY, winZ + 0.2),
+			shell("icingA"),
+			"SmoothPlastic",
+			nil
+		)
+		decor(
+			shellModel,
+			"Rail",
+			"Block",
+			Vector3.new(3.6, 0.18, 0.16),
+			pivot * CFrame.new(wx, winY, winZ + 0.2),
+			shell("icingA"),
+			"SmoothPlastic",
+			nil
+		)
+		decor(
+			shellModel,
+			"Sill",
+			"Block",
+			Vector3.new(4.6, 0.32, 0.7),
+			pivot * CFrame.new(wx, winY - 2.15, winZ + 0.22),
+			shell("icingA"),
+			"SmoothPlastic",
+			nil
+		)
+		decor(
+			shellModel,
+			"FrostCap",
+			"Block",
+			Vector3.new(4.7, 0.45, 0.55),
+			pivot * CFrame.new(wx, winY + 2.35, winZ + 0.12),
+			shell("icingA"),
+			"SmoothPlastic",
+			nil
+		)
+		if side < 0 then
+			wash(glass, Color3.fromRGB(255, 236, 210), 0.22, 10)
+			keyLight(glass, Color3.fromRGB(255, 228, 190), 1.05, 18, Enum.NormalId.Back)
+		end
+	end
+
+	-- Center door with a candy-cane frame and hooked tops.
+	local doorZ = planeZ + 0.48
+	decor(shellModel, "Door", "Block", Vector3.new(3.4, 6.4, 0.35), pivot * CFrame.new(0, 4.3, doorZ), shell("gingerB"), "Wood", nil)
+	decor(shellModel, "Knob", "Ball", Vector3.new(0.45, 0.45, 0.45), pivot * CFrame.new(1.15, 4.1, doorZ + 0.28), shell("hook"), "Metal", nil)
+	local caneH = 7.2
+	for _, side in ipairs({ -1, 1 }) do
+		local x = side * 2.15
 		decor(
 			shellModel,
 			"Cane",
 			"Cylinder",
 			Vector3.new(caneH, 0.7, 0.7),
-			pivot * CFrame.new(x, 1 + caneH / 2, caneZ) * CFrame.Angles(0, 0, math.rad(90)),
+			pivot * CFrame.new(x, 1 + caneH / 2, doorZ + 0.15) * CFrame.Angles(0, 0, math.rad(90)),
 			shell("icingA"),
 			"SmoothPlastic",
 			nil
@@ -231,44 +293,90 @@ local function dressGinger(shellModel: Model, pivot: CFrame, width: number, dept
 			shellModel,
 			"CaneStripe",
 			"Cylinder",
-			Vector3.new(caneH * 0.55, 0.78, 0.78),
-			pivot * CFrame.new(x, 1 + caneH * 0.35, caneZ) * CFrame.Angles(0, 0, math.rad(90)),
-			Color3.fromRGB(230, 40, 70),
+			Vector3.new(caneH * 0.5, 0.78, 0.78),
+			pivot * CFrame.new(x, 1 + caneH * 0.38, doorZ + 0.15) * CFrame.Angles(0, 0, math.rad(90)),
+			caneRed,
 			"SmoothPlastic",
 			nil
 		)
-	end
-	decor(
-		shellModel,
-		"Eave",
-		"Block",
-		Vector3.new(width - 0.4, 0.7, 0.9),
-		pivot * CFrame.new(0, height + 0.15, planeZ + 0.5),
-		shell("icingA"),
-		"SmoothPlastic",
-		nil
-	)
-	for index = 0, 4 do
-		local x = -width * 0.36 + index * (width * 0.18)
+		local hookX = x - side * 0.7
 		decor(
 			shellModel,
-			"Drip",
-			"Wedge",
-			Vector3.new(1.3, 1.5, 0.8),
-			pivot * CFrame.new(x, height - 0.35, planeZ + 0.55),
+			"CaneHook",
+			"Cylinder",
+			Vector3.new(1.7, 0.7, 0.7),
+			pivot * CFrame.new(hookX, 1 + caneH - 0.1, doorZ + 0.15) * CFrame.Angles(0, math.rad(90), 0),
 			shell("icingA"),
 			"SmoothPlastic",
 			nil
 		)
-		local drop = if index % 2 == 0 then "trim" else "pine"
-		decor(shellModel, "Gumdrop", "Ball", Vector3.new(1.15, 0.9, 1.15), pivot * CFrame.new(x, 1.7, planeZ + 0.9), shell(drop), "SmoothPlastic", nil)
+		decor(
+			shellModel,
+			"CaneStripe",
+			"Cylinder",
+			Vector3.new(0.8, 0.78, 0.78),
+			pivot * CFrame.new(hookX + side * 0.15, 1 + caneH - 0.1, doorZ + 0.15) * CFrame.Angles(0, math.rad(90), 0),
+			caneRed,
+			"SmoothPlastic",
+			nil
+		)
 	end
+
+	-- Icing rails along the front gable, with drips hanging off the eaves.
+	local slope = math.atan2(rise, width / 2)
+	local slopeLen = math.sqrt((width / 2) ^ 2 + rise ^ 2)
+	for _, side in ipairs({ -1, 1 }) do
+		local midX = side * width / 4
+		local midY = eaveY + rise / 2
+		decor(
+			shellModel,
+			"Eave",
+			"Block",
+			Vector3.new(slopeLen + 0.4, 0.55, 0.7),
+			pivot * CFrame.new(midX, midY + 0.1, planeZ + 0.5) * CFrame.Angles(0, 0, -side * slope),
+			shell("icingA"),
+			"SmoothPlastic",
+			nil
+		)
+		for index = 1, 3 do
+			local t = index / 4
+			local x = side * (width / 2) * (1 - t)
+			local y = eaveY + rise * t - 0.15
+			decor(
+				shellModel,
+				"Drip",
+				"Wedge",
+				Vector3.new(1.15, 1.6, 0.7),
+				pivot * CFrame.new(x, y, planeZ + 0.55),
+				shell("icingA"),
+				"SmoothPlastic",
+				nil
+			)
+		end
+	end
+
+	-- Gumdrop path leading to the door.
+	for index = 1, 5 do
+		local x = math.sin(index * 1.1) * 0.7
+		local z = planeZ + 1.6 + index * 2.05
+		decor(
+			shellModel,
+			"PathDrop",
+			"Ball",
+			Vector3.new(1.35, 1.05, 1.35),
+			pivot * CFrame.new(x, 1.15, z),
+			dropColors[index],
+			"SmoothPlastic",
+			nil
+		)
+	end
+
 	decor(
 		shellModel,
 		"IcingBase",
 		"Block",
-		Vector3.new(width - 0.2, 0.55, 0.7),
-		pivot * CFrame.new(0, 1.35, planeZ + 0.55),
+		Vector3.new(5.2, 0.5, 1.1),
+		pivot * CFrame.new(0, 1.3, planeZ + 0.9),
 		shell("icingA"),
 		"SmoothPlastic",
 		nil
@@ -428,12 +536,19 @@ function Props.gingerbread(shellModel: Model)
 			end
 		end
 	end
+	local gable = Bases.gableMetrics("gingerbread")
+	local rise = gable.rise
+	local eaveY = gable.eaveY
+	local ridgeY = gable.ridgeY
+	local slope = math.atan2(rise, width / 2)
+	local slopeLen = math.sqrt((width / 2) ^ 2 + rise ^ 2) + 1.4
 	for x = 0, roof.x - 1 do
 		for z = 0, roof.z - 1 do
 			local lx, ly, lz = Bases.tileCenter("gingerbread", "roof", x, z)
 			if lx and ly and lz then
 				local tint = if (x + z) % 2 == 0 then "gingerB" else "icingA"
-				part(shellModel, "Cell", "Block", Vector3.new(unit + 0.06, 0.4, unit + 0.06), pivot * CFrame.new(lx, ly, lz), shell(tint), {
+				local tilt = if lx < 0 then slope else -slope
+				part(shellModel, "Cell", "Block", Vector3.new(unit + 0.06, 0.4, unit + 0.06), pivot * CFrame.new(lx, ly, lz) * CFrame.Angles(0, 0, tilt), shell(tint), {
 					collide = false,
 					query = true,
 					shadow = false,
@@ -445,21 +560,64 @@ function Props.gingerbread(shellModel: Model)
 			end
 		end
 	end
-	local frontZ = depth / 2 + 0.35
-	local backZ = -depth / 2 - 0.35
-	local frontY = 1 + height + 0.2
-	local backY = frontY + (roof.z - 1) * unit * 0.38 + 0.2
-	local mid = Vector3.new(0, (frontY + backY) / 2, (frontZ + backZ) / 2)
-	local dest = Vector3.new(0, frontY, frontZ)
-	local span = (Vector3.new(0, backY, backZ) - dest).Magnitude
+	for _, side in ipairs({ -1, 1 }) do
+		local midX = side * width / 4
+		local midY = (eaveY + ridgeY) / 2
+		part(
+			shellModel,
+			"RoofDeck",
+			"Block",
+			Vector3.new(slopeLen, 0.75, depth + 1.8),
+			pivot * CFrame.new(midX, midY, 0) * CFrame.Angles(0, 0, -side * slope),
+			shell("gingerB"),
+			{ collide = false, query = false, shadow = true, material = "SmoothPlastic", shell = "gingerB" }
+		)
+	end
+	-- Front and back gable triangles, sitting on the wall plate.
+	for _, face in ipairs({ { z = gable.planeZ, name = "Gable" }, { z = gable.backZ, name = "GableBack" } }) do
+		for _, side in ipairs({ -1, 1 }) do
+			part(
+				shellModel,
+				face.name,
+				"Wedge",
+				Vector3.new(0.6, rise, width / 2 + 0.2),
+				pivot * CFrame.new(side * width / 4, eaveY + rise / 2, face.z)
+					* CFrame.Angles(0, if side < 0 then math.rad(-90) else math.rad(90), 0),
+				shell("gingerA"),
+				{ collide = false, query = false, shadow = true, shell = "gingerA" }
+			)
+		end
+	end
+	-- Chimney on the right slope, with an icing cap.
+	local chimX = width * 0.28
+	local chimY = Bases.gableY("gingerbread", chimX) + 2.6
+	local chimZ = -depth * 0.12
 	part(
 		shellModel,
-		"RoofDeck",
+		"Chimney",
 		"Block",
-		Vector3.new(width + 0.8, 0.7, span),
-		pivot * CFrame.lookAt(mid, dest, Vector3.yAxis),
+		Vector3.new(2.4, 5.4, 2.4),
+		pivot * CFrame.new(chimX, chimY, chimZ),
 		shell("gingerB"),
-		{ collide = false, query = false, shadow = true, material = "SmoothPlastic" }
+		{ collide = false, query = false, shadow = true, shell = "gingerB", material = "Brick" }
+	)
+	part(
+		shellModel,
+		"ChimneyCap",
+		"Block",
+		Vector3.new(3.0, 0.55, 3.0),
+		pivot * CFrame.new(chimX, chimY + 2.85, chimZ),
+		shell("icingA"),
+		{ collide = false, query = false, shadow = false, material = "SmoothPlastic" }
+	)
+	part(
+		shellModel,
+		"ChimneyPot",
+		"Cylinder",
+		Vector3.new(0.9, 0.8, 0.8),
+		pivot * CFrame.new(chimX, chimY + 3.4, chimZ) * CFrame.Angles(0, 0, math.rad(90)),
+		shell("icingB"),
+		{ collide = false, query = false, shadow = false }
 	)
 	dressGinger(shellModel, pivot, width, depth, height)
 end
@@ -811,6 +969,16 @@ local function sculpt(model: Model, cf: CFrame, item: any, sx: number, sy: numbe
 			put("Loop", "Ball", box(sx * 0.22, sy * 0.8, sz * 0.4), Vector3.new(sx * 0.16, sy * 0.1, 0), main, true, "SmoothPlastic", nil, nil, nil)
 			put("Knot", "Ball", box(sx * 0.14, sy * 0.55, sz * 0.3), Vector3.zero, accent, false, "SmoothPlastic", nil, nil, nil)
 			put("Tail", "Wedge", box(sx * 0.16, sy * 0.7, sz * 0.45), Vector3.new(0, -sy * 0.15, sz * 0.1), cloth, false, "SmoothPlastic", nil, nil, nil)
+		elseif item.id == "string_lights" then
+			-- Hang as a wall swag, not a straight floor stick.
+			local droop = math.max(1.1, sy * 1.15)
+			put("WireL", "Block", box(sx * 0.56, 0.1, 0.1), Vector3.new(-sx * 0.22, droop * 0.12, sz * 0.25), trim, false, "Metal", CFrame.Angles(0, 0, math.rad(26)), nil, nil)
+			put("WireR", "Block", box(sx * 0.56, 0.1, 0.1), Vector3.new(sx * 0.22, droop * 0.12, sz * 0.25), trim, false, "Metal", CFrame.Angles(0, 0, math.rad(-26)), nil, nil)
+			put("Bulb", "Ball", box(0.42, 0.42, 0.42), Vector3.new(-sx * 0.4, droop * 0.5, sz * 0.4), cream, false, "Neon", nil, 0.05, 0.4)
+			put("Bulb", "Ball", box(0.42, 0.42, 0.42), Vector3.new(-sx * 0.18, -droop * 0.02, sz * 0.4), main, true, "Neon", nil, 0.05, 0.4)
+			put("Bulb", "Ball", box(0.42, 0.42, 0.42), Vector3.new(0, -droop * 0.38, sz * 0.4), accent, false, "Neon", nil, 0.05, 0.45)
+			put("Bulb", "Ball", box(0.42, 0.42, 0.42), Vector3.new(sx * 0.18, -droop * 0.02, sz * 0.4), cream, false, "Neon", nil, 0.05, 0.4)
+			put("Bulb", "Ball", box(0.42, 0.42, 0.42), Vector3.new(sx * 0.4, droop * 0.5, sz * 0.4), main, true, "Neon", nil, 0.05, 0.4)
 		elseif item.category == "Lighting" then
 			put("Wire", "Block", box(sx * 0.92, math.max(0.12, sy * 0.25), 0.16), Vector3.zero, trim, false, "Metal", nil, nil, nil)
 			put("Bulb", "Ball", box(0.45, 0.45, 0.45), Vector3.new(-sx * 0.28, sy * 0.15, 0), main, true, "Neon", nil, 0.05, 0.35)
