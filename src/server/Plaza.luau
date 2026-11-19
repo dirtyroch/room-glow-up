@@ -101,6 +101,73 @@ local function labelOn(host: BasePart, name: string, text: string, rank: number?
 	cap.Parent = label
 end
 
+
+local GLYPHS: { [string]: { string } } = {
+	[" "] = { "     ", "     ", "     ", "     ", "     " },
+	A = { " ### ", "#   #", "#####", "#   #", "#   #" },
+	B = { "#### ", "#   #", "#### ", "#   #", "#### " },
+	C = { " ### ", "#    ", "#    ", "#    ", " ### " },
+	D = { "#### ", "#   #", "#   #", "#   #", "#### " },
+	E = { "#####", "#    ", "#### ", "#    ", "#####" },
+	G = { " ### ", "#    ", "#  ##", "#   #", " ### " },
+	H = { "#   #", "#   #", "#####", "#   #", "#   #" },
+	I = { "#####", "  #  ", "  #  ", "  #  ", "#####" },
+	L = { "#    ", "#    ", "#    ", "#    ", "#####" },
+	M = { "#   #", "## ##", "# # #", "#   #", "#   #" },
+	N = { "#   #", "##  #", "# # #", "#  ##", "#   #" },
+	O = { " ### ", "#   #", "#   #", "#   #", " ### " },
+	P = { "#### ", "#   #", "#### ", "#    ", "#    " },
+	R = { "#### ", "#   #", "#### ", "#  # ", "#   #" },
+	S = { " ####", "#    ", " ### ", "    #", "#### " },
+	T = { "#####", "  #  ", "  #  ", "  #  ", "  #  " },
+	U = { "#   #", "#   #", "#   #", "#   #", " ### " },
+	W = { "#   #", "#   #", "# # #", "## ##", "#   #" },
+	Y = { "#   #", " # # ", "  #  ", "  #  ", "  #  " },
+}
+
+local function writeLine(parent: Instance, text: string, origin: CFrame, color: Color3, cell: number, thick: number)
+	local glyphs: { { string } } = {}
+	local width = 0
+	for index = 1, #text do
+		local ch = string.upper(string.sub(text, index, index))
+		local rows = GLYPHS[ch] or GLYPHS[" "]
+		table.insert(glyphs, rows)
+		width += #rows[1]
+		if index < #text then
+			width += 1
+		end
+	end
+	local cursor = -width / 2
+	for _, rows in ipairs(glyphs) do
+		local cols = #rows[1]
+		for r = 1, #rows do
+			for c = 1, cols do
+				if string.sub(rows[r], c, c) == "#" then
+					local x = (cursor + c - 0.5) * cell
+					local y = ((#rows + 1) / 2 - r) * cell
+					bit(parent, "Glyph", "Block", Vector3.new(cell * 0.9, cell * 0.9, thick), origin * CFrame.new(x, y, 0), color, Enum.Material.SmoothPlastic, false, nil)
+				end
+			end
+		end
+		cursor += cols + 1
+	end
+end
+
+local function pine(parent: Instance, at: Vector3, scale: number, pot: Color3, leaf: Color3, snow: Color3)
+	bit(parent, "Pot", "Cylinder", Vector3.new(1.1 * scale, 1.2 * scale, 1.2 * scale), stand(CFrame.new(at.X, 0.7 * scale, at.Z)), pot, Enum.Material.SmoothPlastic, true, nil)
+	bit(parent, "Trunk", "Cylinder", Vector3.new(1.6 * scale, 0.4 * scale, 0.4 * scale), stand(CFrame.new(at.X, 1.6 * scale, at.Z)), Color3.fromRGB(110, 78, 52), Enum.Material.Wood, true, nil)
+	bit(parent, "Leaf", "Cylinder", Vector3.new(1.4 * scale, 2.6 * scale, 2.6 * scale), stand(CFrame.new(at.X, 2.6 * scale, at.Z)), leaf, Enum.Material.Grass, false, nil)
+	bit(parent, "Leaf", "Cylinder", Vector3.new(1.3 * scale, 1.9 * scale, 1.9 * scale), stand(CFrame.new(at.X, 3.7 * scale, at.Z)), leaf, Enum.Material.Grass, false, nil)
+	bit(parent, "Tip", "Cylinder", Vector3.new(1.1 * scale, 1.2 * scale, 1.2 * scale), stand(CFrame.new(at.X, 4.7 * scale, at.Z)), leaf, Enum.Material.Grass, false, nil)
+	bit(parent, "Snow", "Cylinder", Vector3.new(0.28 * scale, 1.4 * scale, 1.4 * scale), stand(CFrame.new(at.X, 5.2 * scale, at.Z)), snow, Enum.Material.Fabric, false, nil)
+end
+
+local function gift(parent: Instance, at: Vector3, box: Color3, ribbon: Color3)
+	bit(parent, "Gift", "Block", Vector3.new(1.4, 1.1, 1.4), CFrame.new(at.X, 0.85, at.Z), box, Enum.Material.SmoothPlastic, true, nil)
+	bit(parent, "Ribbon", "Block", Vector3.new(0.25, 1.25, 1.45), CFrame.new(at.X, 0.9, at.Z), ribbon, Enum.Material.SmoothPlastic, false, nil)
+	bit(parent, "Bow", "Ball", Vector3.new(0.55, 0.35, 0.55), CFrame.new(at.X, 1.55, at.Z), ribbon, Enum.Material.SmoothPlastic, false, nil)
+end
+
 function Plaza.build()
 	local existing = Workspace:FindFirstChild("Plaza")
 	if existing then
@@ -126,8 +193,8 @@ function Plaza.build()
 		bit(folder, "Path", "Block", Vector3.new(6, 0.35, 2.6), CFrame.new(0, 0.3, z), tint, Enum.Material.SmoothPlastic, true, nil)
 	end
 
-	local sign = bit(folder, "Sign", "Block", Vector3.new(18, 5.2, 0.6), CFrame.new(0, 8.2, cz - 16), cream, Enum.Material.SmoothPlastic, true, nil)
-	labelOn(sign, "Title", Config.Title .. "\n" .. Config.SeasonTitle, nil, 64)
+	bit(folder, "Sign", "Block", Vector3.new(18, 5.2, 0.6), CFrame.new(0, 8.2, cz - 16), cream, Enum.Material.SmoothPlastic, true, nil)
+	-- Title is built from letter parts so it also shows in 3D previews.
 	bit(folder, "Post", "Cylinder", Vector3.new(6.2, 0.7, 0.7), stand(CFrame.new(-7.2, 3.2, cz - 16)), ink, Enum.Material.Wood, true, nil)
 	bit(folder, "Post", "Cylinder", Vector3.new(6.2, 0.7, 0.7), stand(CFrame.new(7.2, 3.2, cz - 16)), ink, Enum.Material.Wood, true, nil)
 	bit(folder, "Star", "Ball", Vector3.new(1.4, 1.4, 1.4), CFrame.new(-8.2, 10.6, cz - 15.4), butter, Enum.Material.Neon, false, nil)
@@ -137,9 +204,9 @@ function Plaza.build()
 	bit(folder, "Counter", "Block", Vector3.new(8, 3.2, 3.2), CFrame.new(boothX, 2.2, cz + 2), cream, Enum.Material.Wood, true, nil)
 	bit(folder, "CounterTop", "Block", Vector3.new(8.6, 0.35, 3.6), CFrame.new(boothX, 3.9, cz + 2), butter, Enum.Material.Wood, true, nil)
 	local awning = bit(folder, "Awning", "Wedge", Vector3.new(8.8, 1.4, 3.4), CFrame.new(boothX, 7.4, cz + 1.2), coral, Enum.Material.Fabric, false, nil)
-	glow(awning, coral, 0.6, 12)
+	glow(awning, coral, 0.4, 10)
 	local bell = bit(folder, "Bell", "Ball", Vector3.new(0.8, 0.7, 0.8), CFrame.new(boothX, 4.5, cz + 3.4), butter, Enum.Material.Metal, false, nil)
-	glow(bell, butter, 0.4, 8)
+	glow(bell, butter, 0.3, 7)
 
 	local body = bit(folder, "Auntie", "Cylinder", Vector3.new(2.6, 2.1, 2.1), stand(CFrame.new(boothX, 5.6, cz - 0.4)), lavender, Enum.Material.Fabric, false, nil)
 	local head = bit(folder, "Head", "Ball", Vector3.new(1.8, 1.8, 1.8), CFrame.new(boothX, 7.5, cz - 0.4) * CFrame.Angles(0, math.pi, 0), cream, Enum.Material.SmoothPlastic, false, nil)
@@ -154,10 +221,10 @@ function Plaza.build()
 	bit(folder, "Arm", "Cylinder", Vector3.new(1.5, 0.4, 0.4), stand(CFrame.new(boothX + 1.2, 5.8, cz)), coral, Enum.Material.SmoothPlastic, false, nil)
 	local boothSign = bit(folder, "BoothSign", "Block", Vector3.new(6.4, 1.6, 0.3), CFrame.new(boothX, 9.2, cz + 1.6), cream, Enum.Material.SmoothPlastic, false, nil)
 	labelOn(boothSign, "Booth", Config.Critic.name, nil, 36)
-	glow(body, lavender, 0.45, 10)
+	glow(body, lavender, 0.3, 8)
 
 	local stage = bit(folder, "Stage", "Cylinder", Vector3.new(1.1, 16, 16), stand(CFrame.new(15, 1.05, cz)), mint, Enum.Material.SmoothPlastic, true, nil)
-	glow(stage, mint, 0.35, 16)
+	glow(stage, mint, 0.25, 12)
 	local places = {
 		{ rank = 2, x = -4.2, h = 3.1, color = lavender, word = "2nd" },
 		{ rank = 1, x = 0, h = 4.6, color = butter, word = "1st" },
@@ -171,8 +238,8 @@ function Plaza.build()
 		labelOn(plate, "Place", place.word, place.rank, 40)
 		if place.rank == 1 then
 			local star = bit(folder, "CrownStar", "Ball", Vector3.new(0.9, 0.9, 0.9), CFrame.new(15, 1.7 + place.h + 0.7, cz), butter, Enum.Material.Neon, false, nil)
-			glow(star, butter, 0.8, 14)
-			glow(plinth, butter, 0.35, 10)
+			glow(star, butter, 0.5, 10)
+			glow(plinth, butter, 0.25, 8)
 		end
 		cap.Name = "PlinthCap"
 	end
@@ -203,7 +270,7 @@ function Plaza.build()
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0, 12)
 		corner.Parent = caption
-		glow(cam, butter, 0.25, 8)
+		glow(cam, butter, 0.2, 7)
 	end
 
 	local lamps = { Vector3.new(-22, 0, -22), Vector3.new(22, 0, -22), Vector3.new(-22, 0, -48), Vector3.new(22, 0, -48) }
@@ -211,7 +278,7 @@ function Plaza.build()
 		local tint = if index % 2 == 0 then coral else lavender
 		bit(folder, "LampPost", "Cylinder", Vector3.new(5.4, 0.45, 0.45), stand(CFrame.new(spot.X, 3.2, spot.Z)), ink, Enum.Material.Metal, true, nil)
 		local shade = bit(folder, "LampShade", "Ball", Vector3.new(1.5, 1.2, 1.5), CFrame.new(spot.X, 6.1, spot.Z), tint, Enum.Material.SmoothPlastic, false, 0.05)
-		glow(shade, butter, 0.7, 14)
+		glow(shade, butter, 0.45, 11)
 	end
 
 	for index, spot in ipairs({ Vector3.new(-20, 0, cz), Vector3.new(8, 0, cz - 14), Vector3.new(-8, 0, -20), Vector3.new(22, 0, -40) }) do
@@ -225,6 +292,109 @@ function Plaza.build()
 	bit(folder, "Bench", "Block", Vector3.new(4.4, 0.4, 1.5), CFrame.new(6, 1.5, -18), coral, Enum.Material.Fabric, true, nil)
 	bit(folder, "BenchLeg", "Cylinder", Vector3.new(0.8, 0.3, 0.3), stand(CFrame.new(-7.4, 1.05, -18)), ink, Enum.Material.Wood, true, nil)
 	bit(folder, "BenchLeg", "Cylinder", Vector3.new(0.8, 0.3, 0.3), stand(CFrame.new(7.4, 1.05, -18)), ink, Enum.Material.Wood, true, nil)
+	bit(folder, "Bench", "Block", Vector3.new(4.4, 0.4, 1.5), CFrame.new(-10, 1.5, cz - 8), mint, Enum.Material.Fabric, true, nil)
+	bit(folder, "Bench", "Block", Vector3.new(4.4, 0.4, 1.5), CFrame.new(26, 1.5, cz + 2), butter, Enum.Material.Fabric, true, nil)
+	bit(folder, "BenchLeg", "Cylinder", Vector3.new(0.8, 0.3, 0.3), stand(CFrame.new(-11.4, 1.05, cz - 8)), ink, Enum.Material.Wood, true, nil)
+	bit(folder, "BenchLeg", "Cylinder", Vector3.new(0.8, 0.3, 0.3), stand(CFrame.new(27.4, 1.05, cz + 2)), ink, Enum.Material.Wood, true, nil)
+
+	-- Title letters sit on the +Z face so they read from the plaza and in 3D previews.
+	local words: { string } = {}
+	for word in string.gmatch(Config.Title, "%S+") do
+		table.insert(words, string.upper(word))
+	end
+	local top = words[1] or "ROOM"
+	local bottom = if #words > 1 then table.concat(words, " ", 2) else ""
+	local signCf = CFrame.new(0, 8.2, cz - 15.55)
+	writeLine(folder, top, signCf * CFrame.new(0, 1.25, 0), ink, 0.46, 0.32)
+	if bottom ~= "" then
+		writeLine(folder, bottom, signCf * CFrame.new(0, -1.25, 0), ink, 0.38, 0.32)
+	end
+
+	-- Snowy ring, trees, gifts, and paths around the plaza.
+	local snow = Color3.fromRGB(245, 250, 255)
+	bit(folder, "SnowRing", "Cylinder", Vector3.new(0.7, 64, 64), stand(CFrame.new(0, 0.32, cz)), snow, Enum.Material.Fabric, true, nil)
+	for index = 0, 11 do
+		local angle = index * math.pi / 6
+		local radius = 29
+		local x = math.cos(angle) * radius
+		local z = cz + math.sin(angle) * radius
+		bit(folder, "Drift", "Ball", Vector3.new(4.2, 1.7, 3.0), CFrame.new(x, 0.85, z), snow, Enum.Material.Fabric, false, nil)
+		if index % 2 == 0 then
+			local tx, tz = x * 1.08, cz + (z - cz) * 1.08
+			-- Leave a gap for the display room on the east-ish side of the ring.
+			if not (tx > -30 and tz > cz + 8) then
+				pine(folder, Vector3.new(tx, 0, tz), 1.28, cream, Color3.fromRGB(46, 110, 78), snow)
+			end
+		end
+	end
+
+	for index = 0, 7 do
+		local z = 8 + index * 3.4
+		local tint = if index % 2 == 0 then cream else snow
+		bit(folder, "Path", "Block", Vector3.new(5.2, 0.3, 2.8), CFrame.new(0, 0.28, z), tint, Enum.Material.SmoothPlastic, true, nil)
+	end
+	for index = 0, 5 do
+		local x = 8 + index * 3.2
+		bit(folder, "Path", "Block", Vector3.new(2.6, 0.3, 4.4), CFrame.new(x, 0.28, -18), if index % 2 == 0 then mint else cream, Enum.Material.SmoothPlastic, true, nil)
+	end
+
+	gift(folder, Vector3.new(-24, 0, cz + 6), coral, butter)
+	gift(folder, Vector3.new(-22.2, 0, cz + 7.2), butter, lavender)
+	gift(folder, Vector3.new(24, 0, cz - 6), lavender, coral)
+	gift(folder, Vector3.new(8, 0, cz + 10), mint, butter)
+
+	-- Candy-cane posts at the path mouth.
+	for _, side in ipairs({ -1, 1 }) do
+		bit(folder, "Cane", "Cylinder", Vector3.new(4.2, 0.45, 0.45), stand(CFrame.new(side * 4.2, 2.3, 6)), Color3.fromRGB(245, 245, 250), Enum.Material.SmoothPlastic, true, nil)
+		bit(folder, "CaneStripe", "Cylinder", Vector3.new(2.2, 0.52, 0.52), stand(CFrame.new(side * 4.2, 1.7, 6)), Color3.fromRGB(220, 50, 70), Enum.Material.SmoothPlastic, false, nil)
+	end
+
+	-- String lights between lamp posts.
+	local lampSpots = { Vector3.new(-22, 0, -22), Vector3.new(22, 0, -22), Vector3.new(-22, 0, -48), Vector3.new(22, 0, -48) }
+	for i = 1, #lampSpots do
+		local a = lampSpots[i]
+		local b = lampSpots[i % #lampSpots + 1]
+		for k = 1, 4 do
+			local alpha = k / 5
+			local x = a.X + (b.X - a.X) * alpha
+			local z = a.Z + (b.Z - a.Z) * alpha
+			local bulb = bit(folder, "Fairy", "Ball", Vector3.new(0.45, 0.45, 0.45), CFrame.new(x, 5.4 + math.sin(k + i) * 0.25, z), if k % 2 == 0 then butter else coral, Enum.Material.Neon, false, nil)
+			if i + k == 3 or i + k == 6 then
+				glow(bulb, butter, 0.4, 8)
+			end
+		end
+	end
+
+	-- A compact display room so the lobby always shows a dressed set.
+	local dx, dz = -24, cz + 14
+	local display = Instance.new("Model")
+	display.Name = "DisplayRoom"
+	display.Parent = folder
+	bit(display, "Floor", "Block", Vector3.new(12, 0.5, 10), CFrame.new(dx, 0.4, dz), Color3.fromRGB(168, 108, 70), Enum.Material.Wood, true, nil)
+	bit(display, "FloorB", "Block", Vector3.new(5.8, 0.12, 9.6), CFrame.new(dx - 3, 0.68, dz), Color3.fromRGB(138, 86, 54), Enum.Material.WoodPlanks, false, nil)
+	bit(display, "Back", "Block", Vector3.new(12, 8, 0.5), CFrame.new(dx, 4.4, dz - 5.2), Color3.fromRGB(250, 226, 204), Enum.Material.SmoothPlastic, true, nil)
+	bit(display, "Side", "Block", Vector3.new(0.5, 8, 10), CFrame.new(dx - 6.2, 4.4, dz), Color3.fromRGB(250, 226, 204), Enum.Material.SmoothPlastic, true, nil)
+	bit(display, "Side", "Block", Vector3.new(0.5, 8, 10), CFrame.new(dx + 6.2, 4.4, dz), Color3.fromRGB(236, 206, 184), Enum.Material.SmoothPlastic, true, nil)
+	bit(display, "Baseboard", "Block", Vector3.new(12, 0.5, 0.3), CFrame.new(dx, 0.9, dz - 4.9), Color3.fromRGB(122, 78, 62), Enum.Material.Wood, false, nil)
+	local dwin = bit(display, "Window", "Block", Vector3.new(4.4, 3.4, 0.2), CFrame.new(dx, 5.2, dz - 4.9), Color3.fromRGB(255, 230, 200), Enum.Material.Glass, false, 0.3)
+	bit(display, "WindowFrame", "Block", Vector3.new(4.9, 3.9, 0.16), CFrame.new(dx, 5.2, dz - 5.05), Color3.fromRGB(122, 78, 62), Enum.Material.Wood, false, nil)
+	bit(display, "Mullion", "Block", Vector3.new(0.16, 3.4, 0.14), CFrame.new(dx, 5.2, dz - 4.85), Color3.fromRGB(122, 78, 62), Enum.Material.Wood, false, nil)
+	bit(display, "Rail", "Block", Vector3.new(4.4, 0.16, 0.14), CFrame.new(dx, 5.2, dz - 4.85), Color3.fromRGB(122, 78, 62), Enum.Material.Wood, false, nil)
+	glow(dwin, Color3.fromRGB(255, 186, 120), 0.9, 16)
+	bit(display, "Rug", "Block", Vector3.new(6.5, 0.12, 4.8), CFrame.new(dx, 0.78, dz + 0.4), coral, Enum.Material.Fabric, false, nil)
+	bit(display, "Sofa", "Block", Vector3.new(5.2, 1.3, 2.2), CFrame.new(dx, 1.5, dz - 2.2), butter, Enum.Material.Fabric, true, nil)
+	bit(display, "Back", "Block", Vector3.new(5.2, 1.6, 0.7), CFrame.new(dx, 2.4, dz - 3.1), butter, Enum.Material.Fabric, false, nil)
+	bit(display, "Arm", "Cylinder", Vector3.new(2.0, 0.7, 0.7), stand(CFrame.new(dx - 2.4, 1.8, dz - 2.2)), coral, Enum.Material.SmoothPlastic, false, nil)
+	bit(display, "Arm", "Cylinder", Vector3.new(2.0, 0.7, 0.7), stand(CFrame.new(dx + 2.4, 1.8, dz - 2.2)), coral, Enum.Material.SmoothPlastic, false, nil)
+	bit(display, "LampBase", "Cylinder", Vector3.new(0.35, 1.1, 1.1), stand(CFrame.new(dx + 4, 0.9, dz + 2.2)), Color3.fromRGB(110, 78, 52), Enum.Material.Wood, true, nil)
+	local shade = bit(display, "LampShade", "Ball", Vector3.new(1.5, 1.2, 1.5), CFrame.new(dx + 4, 2.7, dz + 2.2), coral, Enum.Material.SmoothPlastic, false, 0.05)
+	glow(shade, Color3.fromRGB(255, 200, 140), 0.7, 12)
+	bit(display, "PlantPot", "Cylinder", Vector3.new(0.8, 0.9, 0.9), stand(CFrame.new(dx - 4, 0.9, dz + 2.4)), cream, Enum.Material.SmoothPlastic, true, nil)
+	bit(display, "Leaf", "Cylinder", Vector3.new(0.9, 1.4, 1.4), stand(CFrame.new(dx - 4, 1.8, dz + 2.4)), mint, Enum.Material.Grass, false, nil)
+	bit(display, "Leaf", "Cylinder", Vector3.new(0.8, 1.0, 1.0), stand(CFrame.new(dx - 4, 2.5, dz + 2.4)), mint, Enum.Material.Grass, false, nil)
+	bit(display, "Wreath", "Cylinder", Vector3.new(0.25, 1.6, 1.6), CFrame.new(dx - 3.2, 5.4, dz - 4.85) * CFrame.Angles(math.rad(90), 0, 0), coral, Enum.Material.SmoothPlastic, false, 0.05)
+	bit(display, "ShowSign", "Block", Vector3.new(6.4, 1.2, 0.2), CFrame.new(dx, 3.2, dz + 5.2), cream, Enum.Material.SmoothPlastic, false, nil)
+	writeLine(display, "DISPLAY", CFrame.new(dx, 3.2, dz + 5.35), ink, 0.14, 0.14)
 
 	for index = 0, 2 do
 		bit(folder, "Cloud", "Ball", Vector3.new(7 - index, 3.2, 4), CFrame.new(-18 + index * 16, 22 + index, cz - 4), cream, Enum.Material.SmoothPlastic, false, 0.18)

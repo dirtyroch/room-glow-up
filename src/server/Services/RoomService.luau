@@ -18,6 +18,7 @@ local Owned: any = nil
 local Shop: any = nil
 local Modifiers: any = nil
 local Easter: any = nil
+local Look: any = nil
 
 local function catalog(): any
 	return {
@@ -335,21 +336,33 @@ function RoomService.onPhase(round: any)
 	if type(theme) == "table" and type(theme.roundType) == "string" then
 		roundType = theme.roundType
 	end
+	local function familyNow(): string
+		if type(theme) == "table" and type(theme.id) == "string" then
+			return Look.family(theme.id)
+		end
+		if type(round) == "table" and round.season == "winter" then
+			return "winter"
+		end
+		return "hearth"
+	end
 	if phase == "Lobby" then
 		ctx.plots.clearItems()
 		for key in pairs(rooms) do
 			rooms[key] = Placement.empty()
 		end
 		ctx.plots.show("room")
+		ctx.plots.tint(familyNow())
 		return
 	end
 	if phase == "ThemeReveal" then
 		ctx.plots.show(roundType)
+		ctx.plots.tint(familyNow())
 		return
 	end
 	if phase == "Build" then
 		ctx.plots.clearItems()
 		ctx.plots.show(roundType)
+		ctx.plots.tint(familyNow())
 		local made: { [string]: any } = {}
 		for _, player in Players:GetPlayers() do
 			local key = tostring(player.UserId)
@@ -372,6 +385,7 @@ function RoomService.init(c: any)
 	local Shared = ReplicatedStorage:WaitForChild("Shared")
 	Config = require(Shared:WaitForChild("Config") :: ModuleScript) :: any
 	Items = require(Shared:WaitForChild("Items") :: ModuleScript) :: any
+	Look = require(Shared:WaitForChild("Look") :: ModuleScript) :: any
 	local Logic = Shared:WaitForChild("Logic")
 	Placement = require(Logic:WaitForChild("Placement") :: ModuleScript) :: any
 	RoundEngine = require(Logic:WaitForChild("RoundEngine") :: ModuleScript) :: any

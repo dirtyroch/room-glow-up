@@ -83,12 +83,18 @@ local function partPayload(inst)
 	}
 	local lights = {}
 	for _, child in ipairs(inst:GetChildren()) do
-		if child:IsA("PointLight") then
-			table.insert(lights, {
+		if child:IsA("PointLight") or child:IsA("SurfaceLight") or child:IsA("SpotLight") then
+			local light = {
+				kind = child.ClassName,
 				c = col(child.Color),
 				b = child.Brightness or 1,
 				range = child.Range or 8,
-			})
+			}
+			if child:IsA("SurfaceLight") or child:IsA("SpotLight") then
+				light.face = enumName(child.Face, "Back")
+				light.angle = child.Angle or 90
+			end
+			table.insert(lights, light)
 		end
 	end
 	if #lights > 0 then
@@ -137,9 +143,12 @@ local function underPlaza(inst)
 	return false
 end
 
-local function decorate(index, roundType, placements)
+local function decorate(index, roundType, placements, family)
 	ctx.plots.clearIndex(index)
 	ctx.plots.show(roundType)
+	if family and ctx.plots.tint then
+		ctx.plots.tint(family)
+	end
 	for i, row in ipairs(placements) do
 		ctx.plots.spawnPiece(index, {
 			id = i,
@@ -234,6 +243,29 @@ local WINTER = {
 	{ "quilt_square", 5, 2 },
 }
 
+
+local function gradeOf(family)
+	local preset = Look.preset(family)
+	local function rgb01(channels)
+		return { channels[1] / 255, channels[2] / 255, channels[3] / 255 }
+	end
+	return {
+		family = family,
+		brightness = preset.brightness,
+		bloom = preset.bloom,
+		bloomThreshold = preset.bloomThreshold,
+		saturation = preset.saturation,
+		contrast = preset.contrast,
+		grade = preset.grade,
+		exposure = preset.exposure,
+		tint = rgb01(preset.tint),
+		light = rgb01(preset.light),
+		ambient = rgb01(preset.ambient),
+		air = rgb01(preset.air),
+		outdoor = rgb01(preset.outdoor),
+	}
+end
+
 local function cameraOf(roundType, index)
 	local px, py, pz, lx, ly, lz = Bases.camera(roundType, index)
 	return { pos = { px, py, pz }, look = { lx, ly, lz } }
@@ -294,28 +326,33 @@ local partCounts = {}
 -- Lobby: plaza + all room shells, no furniture.
 ctx.plots.clearItems()
 ctx.plots.show("room")
+if ctx.plots.tint then
+	ctx.plots.tint("hearth")
+end
 do
 	local parts = collect(workspace, function(inst)
 		return underPlaza(inst) or string.find(inst:GetFullName(), "Plots", 1, true) ~= nil
 	end)
 	scenes.lobby = {
-		camera = { pos = { 78, 18, -28 }, look = { 4, 3.2, -34 } },
+		camera = { pos = { 8, 13, -6 }, look = { -2, 6.2, -46 } },
 		family = "hearth",
+		grade = gradeOf("hearth"),
 		parts = parts,
 	}
 	print("lobby parts", #parts)
 end
 
 -- Cocoa Hearth on plot 3 (middle of first row-ish; plots 1-5 are first row)
-decorate(3, "room", HEARTH)
+decorate(3, "room", HEARTH, "hearth")
 partCounts.hearth = warnParts()
 do
 	local parts = collect(workspace, function(inst)
 		return underPlot(inst, 3)
 	end)
 	scenes.hearth = {
-		camera = { pos = { 11, 11, 82 }, look = { 0, 4, 38 } },
 		family = "hearth",
+		grade = gradeOf("hearth"),
+		camera = { pos = { 11, 11, 82 }, look = { 0, 4, 38 } },
 		parts = parts,
 	}
 	print("hearth parts", #parts)
@@ -328,38 +365,41 @@ do
 	end)
 	addClientTourFx(parts, "hearth_cocoa", 3)
 	scenes.tour = {
-		camera = { pos = { 10, 10, 80 }, look = { 0, 4.5, 40 } },
 		family = "hearth",
+		grade = gradeOf("hearth"),
+		camera = { pos = { 10, 10, 80 }, look = { 0, 4.5, 40 } },
 		parts = parts,
 	}
 	print("tour parts", #parts)
 end
 
 -- Gingerbread on plot 3
-decorate(3, "gingerbread", GINGER)
+decorate(3, "gingerbread", GINGER, "ginger")
 partCounts.ginger = warnParts()
 do
 	local parts = collect(workspace, function(inst)
 		return underPlot(inst, 3)
 	end)
 	scenes.ginger = {
-		camera = { pos = { 44, 26, 94 }, look = { 0, 14, 40 } },
 		family = "ginger",
+		grade = gradeOf("ginger"),
+		camera = { pos = { 38, 22, 92 }, look = { 0, 12, 42 } },
 		parts = parts,
 	}
 	print("ginger parts", #parts)
 end
 
 -- Winter room on plot 3
-decorate(3, "room", WINTER)
+decorate(3, "room", WINTER, "winter")
 partCounts.winter = warnParts()
 do
 	local parts = collect(workspace, function(inst)
 		return underPlot(inst, 3)
 	end)
 	scenes.winter = {
-		camera = { pos = { 11, 11, 82 }, look = { 0, 4, 38 } },
 		family = "winter",
+		grade = gradeOf("winter"),
+		camera = { pos = { 11, 11, 82 }, look = { 0, 4, 38 } },
 		parts = parts,
 	}
 	print("winter parts", #parts)
@@ -373,8 +413,9 @@ do
 		return underPlaza(inst)
 	end)
 	scenes.podium = {
-		camera = { pos = { 6, 8, -8 }, look = { 15, 3.2, -36 } },
+		camera = { pos = { 15, 8, -8 }, look = { 15, 3.6, -34 } },
 		family = "hearth",
+		grade = gradeOf("hearth"),
 		parts = parts,
 	}
 	print("podium parts", #parts)

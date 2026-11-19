@@ -60,6 +60,9 @@ function Stage.start()
 		pcall(function()
 			Lighting.Technology = if fx.technology == "Future" then Enum.Technology.Future else Enum.Technology.ShadowMap
 		end)
+		pcall(function()
+			(Lighting :: any).ExposureCompensation = grade.exposure
+		end)
 
 		local air = ensure("Atmosphere", "SoftAir")
 		air.Density = if fx.atmosphere then grade.density else 0
@@ -79,22 +82,26 @@ function Stage.start()
 		correction.Enabled = fx.correction == true
 		correction.Saturation = grade.saturation
 		correction.Contrast = grade.contrast
-		correction.Brightness = 0.02
+		correction.Brightness = grade.grade
 		correction.TintColor = rgb(grade.tint)
 
 		local wash = rgb(grade.light)
+		local function isWash(child: Instance): boolean
+			return child.Name == "SoftLight" and (child:IsA("PointLight") or child:IsA("SurfaceLight") or child:IsA("SpotLight"))
+		end
 		for _, child in Workspace:GetDescendants() do
-			if child:IsA("PointLight") and child.Name == "SoftLight" then
-				local saved = child:GetAttribute("SoftB")
+			if isWash(child) then
+				local lamp = child :: any
+				local saved = lamp:GetAttribute("SoftB")
 				if type(saved) ~= "number" then
-					child:SetAttribute("SoftB", child.Brightness)
-					saved = child.Brightness
+					lamp:SetAttribute("SoftB", lamp.Brightness)
+					saved = lamp.Brightness
 				end
-				if child:GetAttribute("Kind") == "wash" then
-					child.Color = wash
+				if lamp:GetAttribute("Kind") == "wash" or lamp:GetAttribute("Kind") == "key" then
+					lamp.Color = wash
 				end
-				child.Enabled = fx.lights == true
-				child.Brightness = if fx.lights then saved else 0
+				lamp.Enabled = fx.lights == true
+				lamp.Brightness = if fx.lights then saved else 0
 			end
 		end
 	end
@@ -104,7 +111,7 @@ function Stage.start()
 	folder:GetAttributeChangedSignal("Season"):Connect(apply)
 	player:GetAttributeChangedSignal("LowEnd"):Connect(apply)
 	Workspace.DescendantAdded:Connect(function(child)
-		if child:IsA("PointLight") and child.Name == "SoftLight" then
+		if child.Name == "SoftLight" and (child:IsA("PointLight") or child:IsA("SurfaceLight") or child:IsA("SpotLight")) then
 			apply()
 		end
 	end)

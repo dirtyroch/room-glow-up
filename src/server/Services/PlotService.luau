@@ -310,6 +310,11 @@ function PlotService.init(c: any)
 			return models[index]
 		end,
 		show = show,
+		tint = function(family: string)
+			for _, model in ipairs(models) do
+				ctx.Props.tintShell(model, family)
+			end
+		end,
 		clearItems = function()
 			for index = 1, #models do
 				clearIndex(index)
