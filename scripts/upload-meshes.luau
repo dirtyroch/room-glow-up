@@ -1,9 +1,11 @@
 --!nocheck
 --[[
 	upload-meshes.luau — dry run by default. Lists the furniture meshes in
-	assets/meshes and what would be uploaded. With --apply it uploads each FBX as
-	a Model and each PNG map as an Image through Open Cloud, then writes the ids
-	into src/shared/Meshes.luau. It never publishes the place and never prints the key.
+	assets/meshes (with their Finish map variants), the room-shell meshes in
+	assets/shell, and the floor/wall textures in assets/surfaces, and what would be
+	uploaded. With --apply it uploads each FBX as a Model and each PNG map as an
+	Image through Open Cloud, then writes the ids into src/shared/Meshes.luau.
+	It never publishes the place and never prints the key.
 
 	  lune run scripts/upload-meshes
 	  ROBLOX_OPEN_CLOUD_KEY=... lune run scripts/upload-meshes --user <userId> --apply
@@ -22,6 +24,9 @@ local task = require("@lune/task")
 
 local LUAU_PATH = "src/shared/Meshes.luau"
 local MAPS = { "color", "normal", "roughness", "metalness", "emissive" }
+-- Finish variants: id key -> file (tools/meshes/finishes.py).
+local FINISH = { satinR = "rough_satin", metalR = "rough_metal", metalM = "metal_metal", glossR = "rough_gloss", matteR = "rough_matte" }
+local FINISH_ORDER = { "satinR", "metalR", "metalM", "glossR", "matteR" }
 
 local args = process.args
 local apply = table.find(args, "--apply") ~= nil
@@ -49,21 +54,23 @@ end
 local manifest = serde.decode("json", fs.readFile("assets/meshes/manifest.json"))
 local source = fs.readFile(LUAU_PATH)
 
-local function currentIds(itemId: string): { [string]: number }
+local function currentIds(itemId: string): ({ [string]: number }, { string })
 	local block = string.match(source, "\n\t" .. itemId .. " = {(.-)\n\t},")
 	local ids = {}
+	local order = {}
 	if block then
 		local line = string.match(block, "ids = {(.-)}")
 		for key, value in string.gmatch(line or "", "(%w+) = (%d+)") do
 			ids[key] = tonumber(value)
+			table.insert(order, key)
 		end
 	end
-	return ids
+	return ids, order
 end
 
-local function writeIds(itemId: string, ids: { [string]: number })
+local function writeIds(itemId: string, ids: { [string]: number }, order: { string })
 	local parts = {}
-	for _, key in ipairs({ "model", "color", "normal", "roughness", "metalness", "emissive" }) do
+	for _, key in ipairs(order) do
 		table.insert(parts, key .. " = " .. tostring(ids[key] or 0))
 	end
 	local line = "ids = { " .. table.concat(parts, ", ") .. " }"
@@ -80,28 +87,53 @@ end
 
 local plan = {}
 local totalBytes = 0
+
+local function addRow(itemId: string, dir: string, fbx: boolean, maps: { string }, files: { [string]: string }?, label: string)
+	if next(only) ~= nil and not only[itemId] then
+		return
+	end
+	local ids, order = currentIds(itemId)
+	local uploads = {}
+	if fbx and (ids.model or 0) == 0 then
+		table.insert(uploads, { key = "model", path = dir .. itemId .. ".fbx", assetType = "Model", mime = "model/fbx" })
+	end
+	for _, map in ipairs(maps) do
+		local file = if files then files[map] else map
+		local path = dir .. file .. ".png"
+		if fs.isFile(path) and (ids[map] or 0) == 0 and table.find(order, map) ~= nil then
+			table.insert(uploads, { key = map, path = path, assetType = "Image", mime = "image/png" })
+		end
+	end
+	for _, up in ipairs(uploads) do
+		totalBytes += #fs.readFile(up.path)
+	end
+	print(string.format("  %-16s %s  %d to upload", itemId, label, #uploads))
+	table.insert(plan, { itemId = itemId, ids = ids, order = order, uploads = uploads })
+end
+
+local itemMaps = table.clone(MAPS)
+for _, key in ipairs(FINISH_ORDER) do
+	table.insert(itemMaps, key)
+end
+local itemFiles = {}
+for _, map in ipairs(MAPS) do
+	itemFiles[map] = map
+end
+for key, file in pairs(FINISH) do
+	itemFiles[key] = file
+end
+
 print("Furniture meshes")
 for _, entry in ipairs(manifest.items) do
-	local itemId = entry.id
-	if next(only) == nil or only[itemId] then
-		local ids = currentIds(itemId)
-		local dir = "assets/meshes/" .. itemId .. "/"
-		local uploads = {}
-		if (ids.model or 0) == 0 then
-			table.insert(uploads, { key = "model", path = dir .. itemId .. ".fbx", assetType = "Model", mime = "model/fbx" })
-		end
-		for _, map in ipairs(MAPS) do
-			local path = dir .. map .. ".png"
-			if fs.isFile(path) and (ids[map] or 0) == 0 then
-				table.insert(uploads, { key = map, path = path, assetType = "Image", mime = "image/png" })
-			end
-		end
-		for _, up in ipairs(uploads) do
-			totalBytes += #fs.readFile(up.path)
-		end
-		print(string.format("  %-16s %6d tris  %d to upload  (model id %d)", itemId, entry.tris, #uploads, ids.model or 0))
-		table.insert(plan, { itemId = itemId, ids = ids, uploads = uploads })
-	end
+	addRow(entry.id, "assets/meshes/" .. entry.id .. "/", true, itemMaps, itemFiles, string.format("%6d tris", entry.tris))
+end
+print("Room shell meshes")
+for _, entry in ipairs(manifest.shell or {}) do
+	addRow(entry.id, "assets/shell/" .. entry.id .. "/", true, MAPS, nil, string.format("%6d tris", entry.tris))
+end
+print("Floor and wall textures (also import them in Studio as MaterialVariants)")
+for _, entry in ipairs(manifest.surfaces or {}) do
+	addRow(entry.id, "assets/surfaces/" .. entry.id .. "/", false, { "color", "normal", "roughness" }, nil, entry.variant)
 end
 local count = 0
 for _, row in ipairs(plan) do
@@ -183,7 +215,7 @@ for _, row in ipairs(plan) do
 	for _, up in ipairs(row.uploads) do
 		local id = upload(row.itemId, up)
 		row.ids[up.key] = id
-		writeIds(row.itemId, row.ids)
+		writeIds(row.itemId, row.ids, row.order)
 		print(string.format("  %s %s -> %d", row.itemId, up.key, id))
 	end
 end

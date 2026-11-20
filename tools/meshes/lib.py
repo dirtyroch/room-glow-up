@@ -73,7 +73,7 @@ def rgb(r, g, b):
 
 
 def material(name, color, kind="plain", tint=False, rough=0.5, metal=0.0, bump=0.0, scale=1.0,
-             color2=None, grain="x", sheen=0.0, image=None, emit=0.0):
+             color2=None, grain="x", sheen=0.0, image=None, emit=0.0, tint_alpha=False):
     """kind: plain, fabric, knit, wood, metal, leaf, soil, ceramic, paper, image."""
     key = name
     if key in MATS:
@@ -83,6 +83,10 @@ def material(name, color, kind="plain", tint=False, rough=0.5, metal=0.0, bump=0
     m["tint"] = 1.0 if tint else 0.0
     m["metal"] = float(metal)
     m["emit"] = float(emit)
+    if tint_alpha:
+        # Image alpha is the tint mask: opaque pixels follow the recolor.
+        m["tint"] = 1.0
+        m["tint_img"] = 1
     nt = m.node_tree
     nodes, links = nt.nodes, nt.links
     for n in list(nodes):
@@ -179,6 +183,9 @@ def material(name, color, kind="plain", tint=False, rough=0.5, metal=0.0, bump=0
         # Planar projection from above (object X/Y), image covers the footprint.
         img = bpy.data.images.load(image)
         tex = nodes.new("ShaderNodeTexImage")
+        tex.name = "tint_src"
+        # Alpha is a mask, not coverage: keep the colour under alpha 0.
+        img.alpha_mode = "CHANNEL_PACKED"
         tex.image = img
         tex.extension = "EXTEND"
         proj = nodes.new("ShaderNodeMapping")
@@ -508,6 +515,8 @@ def _bake_value(obj, img, prop):
         em = nt.nodes.new("ShaderNodeEmission")
         v = float(m.get(prop, 0.0))
         em.inputs["Color"].default_value = (v, v, v, 1)
+        if prop == "tint" and m.get("tint_img") and "tint_src" in nt.nodes:
+            nt.links.new(nt.nodes["tint_src"].outputs["Alpha"], em.inputs["Color"])
         nt.links.new(em.outputs["Emission"], out.inputs["Surface"])
         saved.append((nt, out, old, em))
     _bake(obj, "EMIT", img, samples=1)

@@ -57,6 +57,56 @@ function MeshFit.tint(r: number, g: number, b: number): (number, number, number)
 	return r + (1 - r) * s, g + (1 - g) * s, b + (1 - b) * s
 end
 
+-- Designer Tools Finish on a mesh: the tint moves toward a material look and,
+-- once uploaded, the roughness/metalness maps swap to the variant (ids keys).
+-- Fabric is the baked look. Mirrors tools/meshes/palette.py FINISHES.
+export type Finish = { target: { number }?, mix: number, rough: string?, metal: string?, transparency: number }
+
+MeshFit.Finishes = {
+	Fabric = { target = nil, mix = 0, rough = nil, metal = nil, transparency = 0 },
+	Wood = { target = { 0.66, 0.47, 0.33 }, mix = 0.45, rough = "satinR", metal = nil, transparency = 0 },
+	Metal = { target = { 0.8, 0.82, 0.86 }, mix = 0.2, rough = "metalR", metal = "metalM", transparency = 0 },
+	Glass = { target = { 1, 1, 1 }, mix = 0.35, rough = "glossR", metal = nil, transparency = 0 },
+	Slate = { target = { 0.42, 0.45, 0.5 }, mix = 0.5, rough = "matteR", metal = nil, transparency = 0 },
+} :: { [string]: Finish }
+
+function MeshFit.finish(name: string?): Finish
+	return MeshFit.Finishes[name or "Fabric"] or MeshFit.Finishes.Fabric
+end
+
+-- SurfaceAppearance.Color for a placed mesh: soften, then pull toward the finish.
+function MeshFit.finishTint(r: number, g: number, b: number, name: string?): (number, number, number)
+	local tr, tg, tb = MeshFit.tint(r, g, b)
+	local f = MeshFit.finish(name)
+	local target = f.target
+	if target == nil or f.mix <= 0 then
+		return tr, tg, tb
+	end
+	local k = f.mix
+	return tr + (target[1] - tr) * k, tg + (target[2] - tg) * k, tb + (target[3] - tb) * k
+end
+
+function MeshFit.shell(key: string): any?
+	return (Meshes.Shell or {})[key]
+end
+
+function MeshFit.surface(key: string): any?
+	return (Meshes.Surfaces or {})[key]
+end
+
+function MeshFit.refCell(): number
+	return Meshes.RefCell
+end
+
+function MeshFit.shellIds(): { string }
+	local out: { string } = {}
+	for id in pairs(Meshes.Shell or {}) do
+		table.insert(out, id)
+	end
+	table.sort(out)
+	return out
+end
+
 function MeshFit.ids(): { string }
 	local out: { string } = {}
 	for id in pairs(Meshes.Items) do

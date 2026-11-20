@@ -23,7 +23,7 @@ def build(item_id, bake=True):
     extra = spec(lib.standard_mats()) or {}
     obj = lib.join_all(item_id)
     lib.unwrap(obj)
-    out_dir = os.path.join(ROOT, "assets", "meshes", item_id)
+    out_dir = os.path.join(ROOT, "assets", "shell" if item_id in items.SHELL else "meshes", item_id)
     info = {}
     if bake:
         info = lib.bake_maps(obj, out_dir)

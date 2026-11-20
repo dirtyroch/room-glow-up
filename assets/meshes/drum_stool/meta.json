@@ -1,0 +1,16 @@
+{
+ "id": "drum_stool",
+ "tris": 2920,
+ "size": [
+  3.2591,
+  3.118,
+  3.24
+ ],
+ "center": [
+  0.0,
+  1.561,
+  -0.24
+ ],
+ "metal": true,
+ "emissive": false
+}

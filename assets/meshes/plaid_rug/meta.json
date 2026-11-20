@@ -1,0 +1,16 @@
+{
+ "id": "plaid_rug",
+ "tris": 792,
+ "size": [
+  9.1397,
+  0.17,
+  4.3398
+ ],
+ "center": [
+  0.0,
+  0.085,
+  0.0001
+ ],
+ "metal": false,
+ "emissive": false
+}

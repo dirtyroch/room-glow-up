@@ -1,0 +1,25 @@
+{
+ "id": "window_candle",
+ "tris": 3048,
+ "size": [
+  2.7097,
+  4.09,
+  2.8644
+ ],
+ "center": [
+  0.0974,
+  2.045,
+  0.01
+ ],
+ "light": {
+  "at": [
+   0,
+   1.95,
+   0
+  ],
+  "brightness": 0.55,
+  "range": 10
+ },
+ "metal": true,
+ "emissive": true
+}

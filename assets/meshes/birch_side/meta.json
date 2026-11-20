@@ -1,0 +1,16 @@
+{
+ "id": "birch_side",
+ "tris": 1804,
+ "size": [
+  3.9,
+  4.6446,
+  3.9
+ ],
+ "center": [
+  0.0,
+  2.3138,
+  -0.0
+ ],
+ "metal": false,
+ "emissive": false
+}

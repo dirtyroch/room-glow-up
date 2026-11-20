@@ -21,8 +21,14 @@ def lin(c):
     return tuple((v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4) for v in c)
 
 
-def textured_material(item_id, tint_rgb, name=None):
+def item_dir(item_id):
     d = os.path.join(ROOT, "assets", "meshes", item_id)
+    return d if os.path.isdir(d) else os.path.join(ROOT, "assets", "shell", item_id)
+
+
+def textured_material(item_id, tint_rgb, name=None, finish=None):
+    """finish: None or (rough_file, metal_file_or_None, alpha) from palette.FINISH."""
+    d = item_dir(item_id)
     m = bpy.data.materials.new(name or ("tex_" + item_id))
     m.use_nodes = True
     nt = m.node_tree
@@ -49,9 +55,9 @@ def textured_material(item_id, tint_rgb, name=None):
     nt.links.new(c.outputs["Color"], mix.inputs[6])
     nt.links.new(mul.outputs[2], mix.inputs[7])
     nt.links.new(mix.outputs[2], bsdf.inputs["Base Color"])
-    r = tex("roughness.png", True)
+    r = tex((finish[0] + ".png") if finish and finish[0] else "roughness.png", True)
     nt.links.new(r.outputs["Color"], bsdf.inputs["Roughness"])
-    mt = tex("metalness.png", True)
+    mt = tex((finish[1] + ".png") if finish and finish[1] else "metalness.png", True)
     if mt:
         nt.links.new(mt.outputs["Color"], bsdf.inputs["Metallic"])
     else:
@@ -69,17 +75,20 @@ def textured_material(item_id, tint_rgb, name=None):
         nt.links.new(e.outputs["Color"], em.inputs[7])
         nt.links.new(em.outputs[2], bsdf.inputs["Emission Color"])
         bsdf.inputs["Emission Strength"].default_value = 1.5
+    if finish and finish[2] < 1:
+        bsdf.inputs["Alpha"].default_value = finish[2]
+        m.blend_method = "BLEND"
     return m
 
 
-def import_item(item_id, tint_rgb):
-    path = os.path.join(ROOT, "assets", "meshes", item_id, item_id + ".fbx")
+def import_item(item_id, tint_rgb, finish=None):
+    path = os.path.join(item_dir(item_id), item_id + ".fbx")
     before = set(bpy.data.objects)
     bpy.ops.import_scene.fbx(filepath=path, axis_forward="-Z", axis_up="Y")
     objs = [o for o in bpy.data.objects if o not in before and o.type == "MESH"]
     obj = objs[0]
     obj.data.materials.clear()
-    obj.data.materials.append(textured_material(item_id, tint_rgb))
+    obj.data.materials.append(textured_material(item_id, tint_rgb, finish=finish))
     return obj
 
 
@@ -141,12 +150,16 @@ def camera(target, radius, az=-35, el=22, lens=50):
     bpy.context.scene.camera = co
 
 
-def render_one(item_id, tint_rgb, out):
+def render_one(item_id, tint_rgb, out, finish=None):
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    obj = import_item(item_id, tint_rgb)
+    obj = import_item(item_id, tint_rgb, finish)
     bb = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
     mn = Vector((min(v.x for v in bb), min(v.y for v in bb), min(v.z for v in bb)))
     mx = Vector((max(v.x for v in bb), max(v.y for v in bb), max(v.z for v in bb)))
+    if mn.z < -0.01:
+        # Hanging pieces (curtains) start at the rod: stand them on the floor.
+        obj.location.z -= mn.z
+        mx.z -= mn.z; mn.z = 0
     target = (mn + mx) / 2
     radius = (mx - mn).length / 2
     studio(target, radius)
@@ -165,6 +178,11 @@ if __name__ == "__main__":
     args = sys.argv[sys.argv.index("--") + 1:]
     outdir = args[0]
     for spec in args[1:]:
-        item_id = spec
+        # itemId or itemId@Finish (Wood, Fabric, Metal, Glass, Slate)
+        item_id, _, fin = spec.partition("@")
         tint = palette.tint_for(item_id)
-        render_one(item_id, tint, os.path.join(outdir, "mesh-" + item_id + ".png"))
+        if fin:
+            tint, maps = palette.finish(tint, fin)
+            render_one(item_id, tint, os.path.join(outdir, "mesh-%s-%s.png" % (item_id, fin.lower())), maps)
+        else:
+            render_one(item_id, tint, os.path.join(outdir, "mesh-" + item_id + ".png"))

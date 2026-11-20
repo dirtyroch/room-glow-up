@@ -8,6 +8,7 @@ local UIKit = require(Shared:WaitForChild("UIKit") :: ModuleScript) :: any
 local Bases = require(Shared:WaitForChild("Bases") :: ModuleScript) :: any
 local Look = require(Shared:WaitForChild("Look") :: ModuleScript) :: any
 local MeshProps = require(script.Parent:WaitForChild("MeshProps") :: ModuleScript) :: any
+local ShellDress = require(script.Parent:WaitForChild("ShellDress") :: ModuleScript) :: any
 
 local Props = {}
 
@@ -97,6 +98,10 @@ local function packColor(family: string, name: string): Color3
 		return rgb(pack.wallA)
 	elseif name == "wallB" then
 		return rgb(pack.wallB)
+	elseif name == "cream" then
+		return rgb(pack.cream)
+	elseif name == "cloth" then
+		return rgb(pack.cloth)
 	end
 	return shell(name)
 end
@@ -428,8 +433,9 @@ function Props.room(shellModel: Model)
 		for z = 0, floor.z - 1 do
 			local lx, ly, lz = Bases.tileCenter("room", "floor", x, z)
 			if lx and ly and lz then
-				local tint = if (x + z) % 2 == 0 then "floorA" else "floorB"
-				local floorMat = if (x + z) % 3 == 0 then "Wood" elseif (x + z) % 3 == 1 then "WoodPlanks" else "Fabric"
+				-- One continuous floor; ShellDress picks planks, tile or carpet.
+				local tint = "floorA"
+				local floorMat = "WoodPlanks"
 				part(shellModel, "Cell", "Block", Vector3.new(unit, 1, unit), pivot * CFrame.new(lx, ly, lz), packColor("hearth", tint), {
 					collide = true,
 					query = true,
@@ -447,7 +453,7 @@ function Props.room(shellModel: Model)
 		for row = 0, wall.z - 1 do
 			local lx, ly, lz = Bases.tileCenter("room", "wall", x, row)
 			if lx and ly and lz then
-				local tint = if (x + row) % 2 == 0 then "wallA" else "wallB"
+				local tint = "wallA"
 				part(shellModel, "Cell", "Block", Vector3.new(unit, unit, 0.55), pivot * CFrame.new(lx, ly, lz), packColor("hearth", tint), {
 					collide = false,
 					query = true,
@@ -456,6 +462,7 @@ function Props.room(shellModel: Model)
 					x = x,
 					z = row,
 					shell = tint,
+					material = "Plaster",
 				})
 			end
 		end
@@ -463,18 +470,17 @@ function Props.room(shellModel: Model)
 	local depth = floor.z * unit
 	local width = floor.x * unit
 	local height = wall.z * unit
-	part(shellModel, "Side", "Block", Vector3.new(0.7, height, depth), pivot * CFrame.new(-width / 2 - 0.2, 1 + height / 2, 0), packColor("hearth", "wallA"), {
-		collide = true,
-		query = false,
-		shadow = true,
-		shell = "wallA",
-	})
-	part(shellModel, "Side", "Block", Vector3.new(0.7, height, depth), pivot * CFrame.new(width / 2 + 0.2, 1 + height / 2, 0), packColor("hearth", "wallA"), {
-		collide = true,
-		query = false,
-		shadow = true,
-		shell = "wallA",
-	})
+	for _, side in ipairs({ -1, 1 }) do
+		local wallPart = part(shellModel, "Side", "Block", Vector3.new(0.7, height, depth), pivot * CFrame.new(side * (width / 2 + 0.2), 1 + height / 2, 0), packColor("hearth", "wallA"), {
+			collide = true,
+			query = false,
+			shadow = true,
+			shell = "wallA",
+			material = "Plaster",
+		})
+		wallPart:SetAttribute("SideWall", side)
+		wallPart:SetAttribute("Paint", "wall")
+	end
 	part(shellModel, "Trim", "Block", Vector3.new(width, 0.4, 0.6), pivot * CFrame.new(0, 1.2, depth / 2 + 0.2), shell("trim"), {
 		collide = false,
 		query = false,
@@ -482,6 +488,9 @@ function Props.room(shellModel: Model)
 		material = "Wood",
 	})
 	dressRoom(shellModel, pivot, width, depth, height)
+	shellModel:SetAttribute("RoomShell", true)
+	ShellDress.dress(shellModel, pivot, width, depth, height, unit)
+	ShellDress.restyle(shellModel, "hearth")
 end
 
 function Props.gingerbread(shellModel: Model)
@@ -1125,16 +1134,8 @@ function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string)
 		end
 	end
 	local materialName = piece.material
-	if type(materialName) == "string" then
-		local material = asMaterial(materialName)
-		if material then
-			for _, child in model:GetDescendants() do
-				if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
-					child.Material = material
-				end
-			end
-			model:SetAttribute("Material", materialName)
-		end
+	if type(materialName) == "string" and materialName ~= "" then
+		Props.finish(model, materialName)
 	end
 	return model
 end
@@ -1144,11 +1145,29 @@ function Props.tintShell(plot: Instance, family: string)
 		family = "hearth"
 	end
 	for _, child in plot:GetDescendants() do
-		if child:IsA("BasePart") then
+		if child:IsA("BasePart") or child.ClassName == "MeshPart" then
 			local name = child:GetAttribute("Shell")
 			if type(name) == "string" then
-				child.Color = packColor(family, name)
+				local color = packColor(family, name)
+				local tone = child:GetAttribute("Tone")
+				if type(tone) == "string" then
+					color = ShellDress.shade(color, tone)
+				end
+				if child.ClassName == "MeshPart" then
+					MeshProps.tintShellPiece(child, color)
+				else
+					(child :: BasePart).Color = color
+				end
 			end
+			local paint = child:GetAttribute("Shade")
+			if type(paint) == "string" then
+				(child :: BasePart).Color = ShellDress.shade(packColor(family, "wallA"), paint)
+			end
+		end
+	end
+	for _, child in plot:GetDescendants() do
+		if child:IsA("Model") and child:GetAttribute("RoomShell") == true then
+			ShellDress.restyle(child, family)
 		end
 	end
 end
@@ -1159,8 +1178,15 @@ function Props.paintShell(plot: Instance, surface: string, colorName: string)
 		return
 	end
 	for _, child in plot:GetDescendants() do
-		if child:IsA("BasePart") and child:GetAttribute("Surface") == surface then
-			child.Color = color
+		if child:IsA("BasePart") then
+			if child:GetAttribute("Surface") == surface then
+				child.Color = color
+				ShellDress.sync(child)
+			elseif child:GetAttribute("Paint") == surface then
+				local shade = child:GetAttribute("Shade")
+				child.Color = if type(shade) == "string" then ShellDress.shade(color, shade) else color
+				ShellDress.sync(child)
+			end
 		end
 	end
 end
@@ -1187,6 +1213,8 @@ function Props.finish(model: Model, materialName: string)
 			child.Material = material
 		end
 	end
+	-- Meshes ignore Material visually; their SurfaceAppearance carries the finish.
+	MeshProps.finish(model, materialName)
 end
 
 return Props

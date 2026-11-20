@@ -1068,6 +1068,58 @@ test("at least 20 furniture meshes, each a real floor item with its files", func
 	end
 end)
 
+test("round-2 meshes: starter blocks, pillows, stools, rugs and the soft fern", function()
+	local ids = MeshFit.ids()
+	truthy(#ids >= 35, "mesh count " .. tostring(#ids))
+	for _, id in ipairs({ "window_candle", "cocoa_stool", "drum_stool", "star_pillow", "mint_pouf", "cloud_pouf", "dot_rug", "stripe_rug", "checker_rug", "plaid_rug", "cream_rocker", "reader_chair", "birch_side", "entry_bench", "berry_pot" }) do
+		truthy(table.find(ids, id) ~= nil, id)
+	end
+	for _, id in ipairs(ids) do
+		for _, name in ipairs({ "rough_satin.png", "rough_metal.png", "metal_metal.png", "rough_gloss.png", "rough_matte.png" }) do
+			truthy(fs.isFile("assets/meshes/" .. id .. "/" .. name), id .. " missing finish map " .. name)
+		end
+	end
+end)
+
+test("room shell: curtains mesh, six tileable surfaces, a style per family", function()
+	local curtains = MeshFit.shell("curtains")
+	truthy(curtains ~= nil and curtains.tris <= 12000)
+	truthy(fs.isFile("assets/shell/curtains/curtains.fbx"))
+	local Look = require("../src/shared/Look")
+	for _, family in ipairs({ "hearth", "ginger", "winter", "glow", "frost" }) do
+		local style = Look.shellStyle(family)
+		truthy(MeshFit.surface(style.floor) ~= nil, family .. " floor " .. style.floor)
+		truthy(MeshFit.surface(style.wall) ~= nil, family .. " wall " .. style.wall)
+	end
+	for _, key in ipairs({ "planks", "tile", "carpet", "plaster", "stripe", "sprig" }) do
+		local surface = MeshFit.surface(key)
+		truthy(surface ~= nil, key)
+		truthy(surface.studs > 0 and string.sub(surface.variant, 1, 4) == "RGU ")
+		truthy(table.find({ "WoodPlanks", "CeramicTiles", "Carpet", "Plaster" }, surface.base) ~= nil, key .. " base")
+		for _, name in ipairs({ "color.png", "normal.png", "roughness.png" }) do
+			truthy(fs.isFile("assets/surfaces/" .. key .. "/" .. name), key .. " missing " .. name)
+		end
+	end
+end)
+
+test("finish changes the mesh tint, and Fabric keeps the baked look", function()
+	local fr, fg, fb = MeshFit.finishTint(1, 0.6, 0.55, "Fabric")
+	local tr, tg, tb = MeshFit.tint(1, 0.6, 0.55)
+	eq(fr, tr)
+	eq(fg, tg)
+	eq(fb, tb)
+	for _, name in ipairs(Config.Designer and Config.Designer.Materials or { "Wood", "Fabric", "Metal", "Glass", "Slate" }) do
+		local spec = MeshFit.finish(name)
+		truthy(spec ~= nil, name)
+		if name ~= "Fabric" then
+			local r, g, b = MeshFit.finishTint(1, 0.6, 0.55, name)
+			truthy(math.abs(r - tr) + math.abs(g - tg) + math.abs(b - tb) > 0.05, name .. " looks the same as Fabric")
+			truthy(spec.rough ~= nil, name .. " has no roughness variant")
+		end
+	end
+	eq(MeshFit.finish("Nope"), MeshFit.finish("Fabric"))
+end)
+
 test("a mesh only replaces parts once its model and color ids are set", function()
 	truthy(not MeshFit.uploaded(nil))
 	truthy(not MeshFit.uploaded({ ids = { model = 0, color = 0 } }))

@@ -1,0 +1,16 @@
+{
+ "id": "curtains",
+ "tris": 10512,
+ "size": [
+  16.23,
+  12.8751,
+  0.655
+ ],
+ "center": [
+  0.0,
+  -6.2325,
+  0.3225
+ ],
+ "metal": true,
+ "emissive": false
+}

@@ -1,0 +1,16 @@
+{
+ "id": "cream_rocker",
+ "tris": 4876,
+ "size": [
+  3.08,
+  5.22,
+  4.2044
+ ],
+ "center": [
+  0.0,
+  2.61,
+  -0.0
+ ],
+ "metal": false,
+ "emissive": false
+}

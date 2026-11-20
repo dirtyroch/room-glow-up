@@ -1,0 +1,16 @@
+{
+ "id": "star_pillow",
+ "tris": 5180,
+ "size": [
+  2.7891,
+  2.3423,
+  2.9428
+ ],
+ "center": [
+  0.1207,
+  1.0846,
+  -0.2095
+ ],
+ "metal": false,
+ "emissive": false
+}

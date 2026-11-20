@@ -1,0 +1,16 @@
+{
+ "id": "reader_chair",
+ "tris": 6796,
+ "size": [
+  3.7877,
+  5.233,
+  4.1671
+ ],
+ "center": [
+  0.0,
+  2.6165,
+  -0.4117
+ ],
+ "metal": false,
+ "emissive": false
+}
