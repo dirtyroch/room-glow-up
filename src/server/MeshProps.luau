@@ -107,7 +107,7 @@ function MeshProps.ready(itemId: string): boolean
 	if MeshProps.preview then
 		return MeshFit.entry(itemId) ~= nil
 	end
-	return templates[itemId] ~= nil
+	return (templates[itemId] :: any) ~= nil
 end
 
 local function tintOf(main: Color3): Color3
