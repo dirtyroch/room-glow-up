@@ -1,0 +1,30 @@
+{
+ "id": "mantel_shelf",
+ "tris": 6444,
+ "size": [
+  9.6,
+  5.72,
+  4.45
+ ],
+ "center": [
+  0.0,
+  2.86,
+  -0.075
+ ],
+ "light": {
+  "at": [
+   0,
+   1.2,
+   -0.2
+  ],
+  "brightness": 0.8,
+  "range": 12,
+  "color": [
+   255,
+   170,
+   100
+  ]
+ },
+ "metal": true,
+ "emissive": true
+}

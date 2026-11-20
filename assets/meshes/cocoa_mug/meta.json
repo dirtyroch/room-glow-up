@@ -1,0 +1,16 @@
+{
+ "id": "cocoa_mug",
+ "tris": 4788,
+ "size": [
+  3.5837,
+  2.66,
+  2.6
+ ],
+ "center": [
+  0.4919,
+  1.33,
+  0.1
+ ],
+ "metal": false,
+ "emissive": false
+}

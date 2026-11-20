@@ -1,0 +1,16 @@
+{
+ "id": "retro_stove",
+ "tris": 5444,
+ "size": [
+  4.5,
+  5.76,
+  4.7273
+ ],
+ "center": [
+  0.0,
+  2.88,
+  -0.0114
+ ],
+ "metal": true,
+ "emissive": false
+}

@@ -1,0 +1,16 @@
+{
+ "id": "sink_counter",
+ "tris": 5140,
+ "size": [
+  9.6,
+  5.9973,
+  4.464
+ ],
+ "center": [
+  0.0,
+  2.9986,
+  -0.193
+ ],
+ "metal": true,
+ "emissive": false
+}

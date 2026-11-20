@@ -48,7 +48,7 @@ Props pop in with a short scale tween, a sound, and a few sparkles.
 
 ## Props
 
-130 original chunky props, built a little larger than life (1.2x) so they read on a phone. Eight of them are cheap 2-cell rugs and accents so a room can look full. Two of them are free jokes: a pit-bull rug and a recliner with a remote and reading glasses. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray shows a picture of the real prop, a price, and a star when it fits the theme. Category chips are at least 44px, and item names are at least 16px on a 420px-wide phone. Low-end devices get a colored silhouette instead of the live preview. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
+134 original chunky props (four of them, a coffee bar, sink counter, retro fridge, and retro stove, make up the Kitchen category), built a little larger than life (1.2x) so they read on a phone. Eight of them are cheap 2-cell rugs and accents so a room can look full. Two of them are free jokes: a pit-bull rug and a recliner with a remote and reading glasses. Each one has a category, a coin cost, and tags for a round type and the theme ids. The tray shows a picture of the real prop, a price, and a star when it fits the theme. Category chips are at least 44px, and item names are at least 16px on a 420px-wide phone. Low-end devices get a colored silhouette instead of the live preview. The tray, the Theme Match meter, and the coin budget sit in their own bands so they do not cover the top board, the theme reveal, or the DONE button, including on screens under 520px tall.
 
 ## Voting
 
@@ -155,6 +155,18 @@ Props are multi-part models (cylinders, balls, wedges, and small trims) inside a
 
 The lobby is a pastel plaza with the Auntie Roch booth, a three-place stage, the game sign, and two photo spots. Names are written on the stage plates only during Results. The tour adds a light cone, a rising star, and confetti in the theme colors. Bloom, color grade, atmosphere, and Future lighting run in the lobby and on tour. Low-end turns those off.
 
+### Furniture meshes
+
+The 21 most-seen floor items also have a Blender mesh with PBR maps (color, normal, roughness, and metalness where needed). Each one is 2k to 9k triangles with 1024 px textures and lives in `assets/meshes/<itemId>/` (FBX, maps, `meta.json`, plus `assets/meshes/manifest.json`). The color map's alpha is a tint mask, so the palette and recolor tint only fabric and paint while wood, metal, and glass keep their own colors.
+
+`src/shared/Meshes.luau` lists each mesh's size, center, and asset ids. `src/server/MeshProps.luau` swaps in a MeshPart with a SurfaceAppearance only when an item's model and color ids are non-zero, or when a template exists at `ServerStorage.MeshTemplates.<itemId>`. If the ids are 0 or a load fails, the item uses the part builder. Hitboxes, footprints, and the placement grid do not change.
+
+To rebuild: `bash tools/meshes/run_all.sh` (Blender 4.2, `BLENDER=/path/to/blender`). Then `python3 tools/meshes/manifest.py`.
+
+To upload: `lune run scripts/upload-meshes` is a dry run that lists the files. `lune run scripts/upload-meshes --apply --user <id>` (or `--group <id>`) needs `ROBLOX_OPEN_CLOUD_KEY` with asset write scope. It uploads the FBX as a Model and the maps as Images, then writes the ids into `Meshes.luau`. Building SurfaceAppearances from ids needs `AssetService:CreateSurfaceAppearanceAsync`. The surest path is to import the FBX and maps in Studio once and save them as `ServerStorage.MeshTemplates`.
+
+Renders: `docs/renders/mesh-heroes-sheet.png`, `mesh-hearth-compare.png`, `mesh-kitchen-compare.png`, and `mesh-showroom-close.png`.
+
 ## Renders
 
 ```bash
@@ -193,8 +205,8 @@ That writes `RoomGlowUp.rbxlx` next to the project file. It does not upload the 
 ## Layout
 
 ```
-src/shared/     Config, Themes, Items, Bases, UIKit, Look, Logic
-src/server/     Main.server, Boot, Props, Plaza, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService, FunnelService
+src/shared/     Config, Themes, Items, Bases, UIKit, Look, Logic, Meshes, MeshFit
+src/server/     Main.server, Boot, Props, MeshProps, Plaza, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService, FunnelService
 src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Shop, Juice, Settings, Tutorial, SpotGame, Listen, Stage, Podium
 scripts/        build.sh, create-shop.luau, render_scenes.py
 docs/           store-assets.md, renders/

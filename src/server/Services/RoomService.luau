@@ -567,6 +567,9 @@ function RoomService.start()
 		folder.Parent = ReplicatedStorage
 	end
 	if folder:IsA("Folder") then
+		-- Furniture meshes load before the tray previews so both match.
+		local MeshProps = require(script.Parent.Parent:WaitForChild("MeshProps") :: ModuleScript) :: any
+		MeshProps.preload()
 		Props.previews(folder, Items.list)
 	end
 end

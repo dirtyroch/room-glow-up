@@ -1,0 +1,16 @@
+{
+ "id": "gift_stack",
+ "tris": 2024,
+ "size": [
+  4.0089,
+  3.7494,
+  3.6906
+ ],
+ "center": [
+  0.2845,
+  1.8547,
+  0.2253
+ ],
+ "metal": false,
+ "emissive": false
+}

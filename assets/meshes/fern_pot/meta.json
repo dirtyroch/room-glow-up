@@ -1,0 +1,16 @@
+{
+ "id": "fern_pot",
+ "tris": 6176,
+ "size": [
+  4.485,
+  2.8616,
+  5.4088
+ ],
+ "center": [
+  -0.0927,
+  1.4308,
+  -0.0188
+ ],
+ "metal": false,
+ "emissive": false
+}

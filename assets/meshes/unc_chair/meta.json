@@ -1,0 +1,16 @@
+{
+ "id": "unc_chair",
+ "tris": 8688,
+ "size": [
+  4.2996,
+  5.656,
+  4.865
+ ],
+ "center": [
+  0.0,
+  2.828,
+  -0.1575
+ ],
+ "metal": true,
+ "emissive": false
+}

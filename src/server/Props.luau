@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local UIKit = require(Shared:WaitForChild("UIKit") :: ModuleScript) :: any
 local Bases = require(Shared:WaitForChild("Bases") :: ModuleScript) :: any
 local Look = require(Shared:WaitForChild("Look") :: ModuleScript) :: any
+local MeshProps = require(script.Parent:WaitForChild("MeshProps") :: ModuleScript) :: any
 
 local Props = {}
 
@@ -807,6 +808,42 @@ local function sculpt(model: Model, cf: CFrame, item: any, sx: number, sy: numbe
 			put("Leg", "Cylinder", box(sy * 0.55, 0.35, 0.35), Vector3.new(-sx * 0.32, -sy * 0.16, sz * 0.24), wood, false, "Wood", nil, nil, nil)
 			put("Leg", "Cylinder", box(sy * 0.55, 0.35, 0.35), Vector3.new(sx * 0.32, -sy * 0.16, sz * 0.24), wood, false, "Wood", nil, nil, nil)
 		end
+	elseif shape == "counter" then
+		-- Part version of the kitchen counters (the mesh replaces it once uploaded).
+		local unit = sx / math.max(1, item.w)
+		local ch = math.min(sy * 0.66, unit * 0.8)
+		local base = -sy / 2
+		put("Cabinet", "Block", box(sx * 0.94, ch, sz * 0.8), Vector3.new(0, base + ch / 2, sz * 0.04), main, true, "Wood", nil, nil, nil)
+		put("Top", "Block", box(sx, unit * 0.07, sz * 0.88), Vector3.new(0, base + ch + unit * 0.035, 0), cream, false, "Marble", nil, nil, nil)
+		put("Knob", "Ball", box(0.3, 0.3, 0.3), Vector3.new(-sx * 0.08, base + ch * 0.6, -sz * 0.37), accent, false, "Metal", nil, nil, nil)
+		put("Knob", "Ball", box(0.3, 0.3, 0.3), Vector3.new(sx * 0.08, base + ch * 0.6, -sz * 0.37), accent, false, "Metal", nil, nil, nil)
+		if id == "coffee_bar" then
+			local top = base + ch + unit * 0.07
+			put("Machine", "Block", box(sx * 0.5, unit * 0.36, sz * 0.4), Vector3.new(-sx * 0.08, top + unit * 0.18, sz * 0.1), Color3.fromRGB(205, 208, 214), false, "Metal", nil, nil, nil)
+			put("Grinder", "Cylinder", box(unit * 0.42, sx * 0.18, sx * 0.18), Vector3.new(sx * 0.3, top + unit * 0.21, sz * 0.15), Color3.fromRGB(52, 48, 50), false, "SmoothPlastic", nil, nil, nil)
+			put("Cup", "Cylinder", box(unit * 0.09, sx * 0.1, sx * 0.1), Vector3.new(-sx * 0.08, top + unit * 0.05, -sz * 0.18), cream, false, "SmoothPlastic", nil, nil, nil)
+		else
+			local top = base + ch + unit * 0.07
+			put("Basin", "Block", box(sx * 0.3, unit * 0.03, sz * 0.45), Vector3.new(sx * 0.17, top, 0), Color3.fromRGB(190, 194, 200), false, "Metal", nil, nil, nil)
+			put("Faucet", "Cylinder", box(unit * 0.4, 0.3, 0.3), Vector3.new(sx * 0.17, top + unit * 0.2, sz * 0.3), Color3.fromRGB(220, 222, 226), false, "Metal", nil, nil, nil)
+			put("Splash", "Block", box(sx, unit * 0.22, 0.3), Vector3.new(0, top + unit * 0.11, sz * 0.43), cream, false, "SmoothPlastic", nil, nil, nil)
+		end
+	elseif shape == "fridge" then
+		put("Body", "Block", box(sx * 0.86, sy * 0.95, sz * 0.78), Vector3.new(0, sy * 0.02, sz * 0.05), main, true, "SmoothPlastic", nil, nil, nil)
+		put("Seam", "Block", box(sx * 0.8, 0.14, 0.2), Vector3.new(0, sy * 0.19, -sz * 0.35), trim, false, "SmoothPlastic", nil, nil, nil)
+		put("Handle", "Cylinder", box(sy * 0.28, 0.3, 0.3), Vector3.new(-sx * 0.36, -sy * 0.02, -sz * 0.4), Color3.fromRGB(220, 222, 226), false, "Metal", nil, nil, nil)
+		put("Handle", "Cylinder", box(sy * 0.14, 0.3, 0.3), Vector3.new(-sx * 0.36, sy * 0.32, -sz * 0.4), Color3.fromRGB(220, 222, 226), false, "Metal", nil, nil, nil)
+		put("Badge", "Block", box(sx * 0.18, 0.2, 0.12), Vector3.new(sx * 0.1, sy * 0.4, -sz * 0.36), Color3.fromRGB(220, 222, 226), false, "Metal", nil, nil, nil)
+	elseif shape == "stove" then
+		local unit = sx / math.max(1, item.w)
+		local bh = math.min(sy * 0.68, unit * 0.8)
+		local base = -sy / 2
+		put("Body", "Block", box(sx * 0.92, bh, sz * 0.82), Vector3.new(0, base + bh / 2, 0), main, true, "SmoothPlastic", nil, nil, nil)
+		put("Cooktop", "Block", box(sx * 0.92, 0.2, sz * 0.82), Vector3.new(0, base + bh + 0.1, 0), Color3.fromRGB(46, 42, 44), false, "Metal", nil, nil, nil)
+		put("Window", "Block", box(sx * 0.6, bh * 0.3, 0.12), Vector3.new(0, base + bh * 0.42, -sz * 0.42), Color3.fromRGB(40, 36, 40), false, "Glass", nil, nil, nil)
+		put("Handle", "Cylinder", box(sx * 0.62, 0.24, 0.24), Vector3.new(0, base + bh * 0.66, -sz * 0.45), Color3.fromRGB(220, 222, 226), false, "Metal", CFrame.new(), nil, nil)
+		put("Back", "Block", box(sx * 0.92, unit * 0.26, 0.4), Vector3.new(0, base + bh + unit * 0.13, sz * 0.38), main, true, "SmoothPlastic", nil, nil, nil)
+		put("Kettle", "Ball", box(unit * 0.28, unit * 0.24, unit * 0.28), Vector3.new(-sx * 0.22, base + bh + unit * 0.14, -sz * 0.18), accent, false, "SmoothPlastic", nil, nil, nil)
 	elseif shape == "lamp" then
 		put("Base", "Cylinder", box(sy * 0.12, sx * 0.55, sz * 0.55), Vector3.new(0, -sy * 0.4, 0), wood, false, "Wood", nil, nil, nil)
 		put("Stem", "Cylinder", box(sy * 0.5, sx * 0.12, sz * 0.12), Vector3.new(0, -sy * 0.08, 0), trim, false, "Metal", nil, nil, nil)
@@ -1070,17 +1107,22 @@ function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string)
 	model.PrimaryPart = root
 	model:SetAttribute("PartCount", 1)
 	model:SetAttribute("Pack", Look.packFor(item.roundType, themeTag))
-	sculpt(model, cf, item, sx, sy, sz, {
-		main = main,
-		accent = rgb(pack.accent),
-		wood = rgb(pack.wood),
-		cream = rgb(pack.cream),
-		cloth = rgb(pack.cloth),
-		trim = rgb(pack.trim),
-	})
-	local built = model:GetAttribute("PartCount")
-	if type(built) == "number" and (built < Look.Budget.min or built > Look.Budget.max) then
-		warn("[Props] " .. tostring(item.id) .. " uses " .. tostring(built) .. " parts")
+	-- Uploaded furniture meshes replace the part build. Same root, cell and pivot.
+	if item.surface == "floor" and MeshProps.build(model, cf, item, sy, unit, main) then
+		model:SetAttribute("PartCount", 2)
+	else
+		sculpt(model, cf, item, sx, sy, sz, {
+			main = main,
+			accent = rgb(pack.accent),
+			wood = rgb(pack.wood),
+			cream = rgb(pack.cream),
+			cloth = rgb(pack.cloth),
+			trim = rgb(pack.trim),
+		})
+		local built = model:GetAttribute("PartCount")
+		if type(built) == "number" and (built < Look.Budget.min or built > Look.Budget.max) then
+			warn("[Props] " .. tostring(item.id) .. " uses " .. tostring(built) .. " parts")
+		end
 	end
 	local materialName = piece.material
 	if type(materialName) == "string" then
@@ -1126,6 +1168,7 @@ end
 function Props.recolor(model: Model, colorName: string)
 	local main = named(colorName)
 	model:SetAttribute("Color", colorName)
+	MeshProps.recolor(model, main)
 	for _, child in model:GetDescendants() do
 		if child:IsA("BasePart") and child:GetAttribute("Tint") == true then
 			child.Color = main

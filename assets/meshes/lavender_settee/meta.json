@@ -1,0 +1,16 @@
+{
+ "id": "lavender_settee",
+ "tris": 7516,
+ "size": [
+  9.9957,
+  3.798,
+  4.77
+ ],
+ "center": [
+  0.0,
+  1.899,
+  0.035
+ ],
+ "metal": true,
+ "emissive": false
+}
