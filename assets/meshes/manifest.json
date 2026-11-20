@@ -2,6 +2,86 @@
  "refCell": 4.8,
  "items": [
   {
+   "id": "berry_pot",
+   "tris": 6624,
+   "size": [
+    3.0677,
+    3.3407,
+    3.1862
+   ],
+   "center": [
+    -0.0284,
+    1.6703,
+    -0.0052
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "berry_pot.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "birch_side",
+   "tris": 1804,
+   "size": [
+    3.9,
+    4.6446,
+    3.9
+   ],
+   "center": [
+    0.0,
+    2.3138,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "birch_side.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
    "id": "book_ledge",
    "tris": 7988,
    "size": [
@@ -20,7 +100,12 @@
     "book_ledge.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -28,7 +113,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -50,7 +140,12 @@
     "butter_bench.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -58,7 +153,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -81,7 +181,12 @@
     "color.png",
     "normal.png",
     "roughness.png",
-    "metalness.png"
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -89,7 +194,92 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "checker_rug",
+   "tris": 792,
+   "size": [
+    9.1397,
+    0.17,
+    4.3398
+   ],
+   "center": [
+    0.0,
+    0.085,
+    0.0001
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "checker_rug.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "cloud_pouf",
+   "tris": 4080,
+   "size": [
+    3.8869,
+    2.529,
+    3.9477
+   ],
+   "center": [
+    -0.0,
+    1.2645,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "cloud_pouf.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -111,7 +301,12 @@
     "cocoa_mug.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -119,7 +314,52 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "cocoa_stool",
+   "tris": 2432,
+   "size": [
+    2.64,
+    3.7826,
+    2.64
+   ],
+   "center": [
+    0.0,
+    1.8802,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "cocoa_stool.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -141,7 +381,12 @@
     "cocoa_table.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -149,7 +394,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -172,7 +422,12 @@
     "color.png",
     "normal.png",
     "roughness.png",
-    "metalness.png"
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -180,7 +435,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -202,7 +462,12 @@
     "coral_armchair.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -210,21 +475,187 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "cream_rocker",
+   "tris": 4876,
+   "size": [
+    3.08,
+    5.22,
+    4.2044
+   ],
+   "center": [
+    0.0,
+    2.61,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "cream_rocker.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "dot_rug",
+   "tris": 1800,
+   "size": [
+    9.1396,
+    0.17,
+    4.34
+   ],
+   "center": [
+    -0.0002,
+    0.085,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "dot_rug.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "drum_stool",
+   "tris": 2920,
+   "size": [
+    3.2591,
+    3.118,
+    3.24
+   ],
+   "center": [
+    0.0,
+    1.561,
+    -0.24
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "drum_stool.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "entry_bench",
+   "tris": 3348,
+   "size": [
+    8.858,
+    3.7179,
+    3.9
+   ],
+   "center": [
+    0.0,
+    1.859,
+    -0.1
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "entry_bench.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
    "id": "fern_pot",
-   "tris": 6176,
+   "tris": 10864,
    "size": [
-    4.485,
-    2.8616,
-    5.4088
+    4.7431,
+    2.373,
+    4.6941
    ],
    "center": [
-    -0.0927,
-    1.4308,
-    -0.0188
+    -0.0533,
+    1.1865,
+    0.0908
    ],
    "metal": false,
    "emissive": false,
@@ -232,7 +663,12 @@
     "fern_pot.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -240,7 +676,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -262,7 +703,12 @@
     "gift_stack.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -270,7 +716,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -303,7 +754,12 @@
     "normal.png",
     "roughness.png",
     "metalness.png",
-    "emissive.png"
+    "emissive.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -311,7 +767,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -333,7 +794,12 @@
     "hearth_rug.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -341,7 +807,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -364,7 +835,12 @@
     "color.png",
     "normal.png",
     "roughness.png",
-    "metalness.png"
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -372,7 +848,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -410,7 +891,12 @@
     "normal.png",
     "roughness.png",
     "metalness.png",
-    "emissive.png"
+    "emissive.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -418,7 +904,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -441,7 +932,12 @@
     "color.png",
     "normal.png",
     "roughness.png",
-    "metalness.png"
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -449,7 +945,52 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "mint_pouf",
+   "tris": 3280,
+   "size": [
+    3.8295,
+    2.67,
+    3.8016
+   ],
+   "center": [
+    0.0,
+    1.335,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "mint_pouf.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -472,7 +1013,12 @@
     "color.png",
     "normal.png",
     "roughness.png",
-    "metalness.png"
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -480,7 +1026,92 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "plaid_rug",
+   "tris": 792,
+   "size": [
+    9.1397,
+    0.17,
+    4.3398
+   ],
+   "center": [
+    0.0,
+    0.085,
+    0.0001
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "plaid_rug.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "reader_chair",
+   "tris": 6796,
+   "size": [
+    3.7877,
+    5.233,
+    4.1671
+   ],
+   "center": [
+    0.0,
+    2.6165,
+    -0.4117
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "reader_chair.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -513,7 +1144,12 @@
     "normal.png",
     "roughness.png",
     "metalness.png",
-    "emissive.png"
+    "emissive.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -521,7 +1157,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -544,7 +1185,12 @@
     "color.png",
     "normal.png",
     "roughness.png",
-    "metalness.png"
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -552,7 +1198,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -575,7 +1226,12 @@
     "color.png",
     "normal.png",
     "roughness.png",
-    "metalness.png"
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -583,7 +1239,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -605,7 +1266,12 @@
     "round_side.fbx",
     "color.png",
     "normal.png",
-    "roughness.png"
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -613,7 +1279,12 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -636,7 +1307,12 @@
     "color.png",
     "normal.png",
     "roughness.png",
-    "metalness.png"
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
    ],
    "ids": {
     "model": 0,
@@ -644,7 +1320,92 @@
     "normal": 0,
     "roughness": 0,
     "metalness": 0,
-    "emissive": 0
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "star_pillow",
+   "tris": 5180,
+   "size": [
+    2.7891,
+    2.3423,
+    2.9428
+   ],
+   "center": [
+    0.1207,
+    1.0846,
+    -0.2095
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "star_pillow.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "stripe_rug",
+   "tris": 2604,
+   "size": [
+    9.0368,
+    0.1509,
+    4.2
+   ],
+   "center": [
+    0.0,
+    0.0646,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "stripe_rug.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
    }
   },
   {
@@ -667,6 +1428,100 @@
     "color.png",
     "normal.png",
     "roughness.png",
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "window_candle",
+   "tris": 3048,
+   "size": [
+    2.7097,
+    4.09,
+    2.8644
+   ],
+   "center": [
+    0.0974,
+    2.045,
+    0.01
+   ],
+   "light": {
+    "at": [
+     0,
+     1.95,
+     0
+    ],
+    "brightness": 0.55,
+    "range": 10
+   },
+   "metal": true,
+   "emissive": true,
+   "files": [
+    "window_candle.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "emissive.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  }
+ ],
+ "shell": [
+  {
+   "id": "curtains",
+   "tris": 10512,
+   "size": [
+    16.23,
+    12.8751,
+    0.655
+   ],
+   "center": [
+    0.0,
+    -6.2325,
+    0.3225
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "curtains.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
     "metalness.png"
    ],
    "ids": {
@@ -676,6 +1531,104 @@
     "roughness": 0,
     "metalness": 0,
     "emissive": 0
+   }
+  }
+ ],
+ "surfaces": [
+  {
+   "id": "carpet",
+   "variant": "RGU Carpet",
+   "base": "Carpet",
+   "studs": 4,
+   "files": [
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "color": 0,
+    "normal": 0,
+    "roughness": 0
+   }
+  },
+  {
+   "id": "planks",
+   "variant": "RGU Planks",
+   "base": "WoodPlanks",
+   "studs": 8,
+   "files": [
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "color": 0,
+    "normal": 0,
+    "roughness": 0
+   }
+  },
+  {
+   "id": "plaster",
+   "variant": "RGU Plaster",
+   "base": "Plaster",
+   "studs": 8,
+   "files": [
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "color": 0,
+    "normal": 0,
+    "roughness": 0
+   }
+  },
+  {
+   "id": "sprig",
+   "variant": "RGU Sprig",
+   "base": "Plaster",
+   "studs": 4,
+   "files": [
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "color": 0,
+    "normal": 0,
+    "roughness": 0
+   }
+  },
+  {
+   "id": "stripe",
+   "variant": "RGU Stripe",
+   "base": "Plaster",
+   "studs": 8,
+   "files": [
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "color": 0,
+    "normal": 0,
+    "roughness": 0
+   }
+  },
+  {
+   "id": "tile",
+   "variant": "RGU Tile",
+   "base": "CeramicTiles",
+   "studs": 4,
+   "files": [
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "color": 0,
+    "normal": 0,
+    "roughness": 0
    }
   }
  ]

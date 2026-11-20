@@ -1,0 +1,32 @@
+{
+ "planks": {
+  "variant": "RGU Planks",
+  "base": "WoodPlanks",
+  "studs": 8
+ },
+ "tile": {
+  "variant": "RGU Tile",
+  "base": "CeramicTiles",
+  "studs": 4
+ },
+ "carpet": {
+  "variant": "RGU Carpet",
+  "base": "Carpet",
+  "studs": 4
+ },
+ "plaster": {
+  "variant": "RGU Plaster",
+  "base": "Plaster",
+  "studs": 8
+ },
+ "stripe": {
+  "variant": "RGU Stripe",
+  "base": "Plaster",
+  "studs": 8
+ },
+ "sprig": {
+  "variant": "RGU Sprig",
+  "base": "Plaster",
+  "studs": 4
+ }
+}

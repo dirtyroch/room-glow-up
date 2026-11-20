@@ -498,18 +498,82 @@ def mini_pine(M):
     return {}
 
 
+def soft_frond(length, leaflets, leaf_len, droop, m, seed):
+    """Boston-fern frond: an arching rachis with small rounded leaflets on both
+    sides, shrinking toward the tip. Built along +X, arching down (-Z)."""
+    rnd = random.Random(seed)
+    bm = lib.bmesh.new()
+
+    def spine(t):
+        return (t * length, 0.0, length * (0.32 * t - droop * t * t))
+
+    # Rachis: a thin flat ribbon.
+    prev = None
+    for i in range(9):
+        t = i / 8
+        x, y, z = spine(t)
+        w = 0.045 * (1 - 0.7 * t)
+        cur = (bm.verts.new((x, -w, z)), bm.verts.new((x, w, z)))
+        if prev:
+            bm.faces.new((prev[0], cur[0], cur[1], prev[1]))
+        prev = cur
+    for k in range(leaflets):
+        t = 0.12 + 0.86 * (k + 0.5) / leaflets
+        x, y, z = spine(t)
+        x2, _, z2 = spine(min(1.0, t + 0.02))
+        slope = math.atan2(z2 - z, x2 - x)
+        size = leaf_len * math.sin(math.pi * min(1.0, 0.25 + t * 0.85)) * (1.05 - 0.55 * t)
+        for side in (-1, 1):
+            ang = math.radians(rnd.uniform(52, 64))  # leaflets sweep forward
+            dx, dy = math.cos(ang) * size, side * math.sin(ang) * size
+            wid = size * 0.27
+            ox = x + (0.5 * size / leaflets) * side * 0.2
+            # Rounded oval leaflet: 6-point fan.
+            base = bm.verts.new((ox, side * 0.03, z))
+            pts = []
+            ux, uy = dx / size, dy / size
+            nx, ny = -uy, ux
+            for a in (0.25, 0.55, 0.85):
+                px_ = ox + dx * a
+                py_ = side * 0.03 + dy * a
+                ww = wid * (math.sin(math.pi * min(1.0, a * 1.1)) ** 0.7)
+                droop_z = z + math.tan(slope) * dx * a - 0.12 * size * a * a
+                pts.append((bm.verts.new((px_ + nx * ww, py_ + ny * ww, droop_z + 0.03)),
+                            bm.verts.new((px_ - nx * ww, py_ - ny * ww, droop_z + 0.03))))
+            tip = bm.verts.new((ox + dx, side * 0.03 + dy, z + math.tan(slope) * dx - 0.12 * size))
+            # Width goes across the leaflet direction.
+            ring_v = [base] + [p[0] for p in pts] + [tip] + [p[1] for p in reversed(pts)]
+            try:
+                f = bm.faces.new(ring_v)
+            except ValueError:
+                continue
+    lib.bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
+    back = lib.bmesh.ops.duplicate(bm, geom=list(bm.faces))
+    bfaces = [g for g in back["geom"] if isinstance(g, lib.bmesh.types.BMFace)]
+    for g in back["geom"]:
+        if isinstance(g, lib.bmesh.types.BMVert):
+            g.co.z -= 0.012
+    lib.bmesh.ops.reverse_faces(bm, faces=bfaces)
+    lib.bmesh.ops.recalc_face_normals(bm, faces=[f for f in bm.faces if f not in bfaces])
+    o = lib._mesh_obj("frond", bm)
+    return finish(o, m, 70)
+
+
 @item
 def fern_pot(M):
     pot(M, M["tintceramic"], 1.05, 1.55)
-    fern = material("fern", rgb(96, 168, 92), "leaf", rough=0.55, color2=rgb(60, 124, 70))
+    fern = material("fern", rgb(118, 184, 104), "leaf", rough=0.6, color2=rgb(76, 140, 80))
     random.seed(7)
-    for i in range(22):
-        a = i * 2.39996 + random.uniform(-0.2, 0.2)
-        L = random.uniform(1.6, 2.0)
-        o = frond(L, random.uniform(0.95, 1.15), leaflets=16, bend_amt=random.uniform(0.75, 1.0), gap=0.12)
-        finish(o, fern, 70)
-        elev = random.uniform(56, 84)
-        transform(o, (0.15 * math.cos(a), 0.15 * math.sin(a), 1.35), (random.uniform(-0.2, 0.2), math.radians(-elev), a))
+    # Soft Boston fern: many arching fronds with small rounded leaflets that
+    # spill over the rim instead of pointing up.
+    n = 30
+    for i in range(n):
+        a = i * 2.39996 + random.uniform(-0.15, 0.15)
+        inner = i < 10
+        L = random.uniform(1.3, 1.6) if inner else random.uniform(1.9, 2.2)
+        o = soft_frond(L, 13, 0.52, random.uniform(0.55, 0.75) if not inner else 0.35, fern, 100 + i)
+        lift = random.uniform(30, 45) if inner else random.uniform(5, 22)
+        transform(o, (0.15 * math.cos(a), 0.15 * math.sin(a), 1.42), (random.uniform(-0.2, 0.2), math.radians(-lift), a))
     return {}
 
 
@@ -824,4 +888,419 @@ def retro_stove(M):
     sphere(0.1, (kx, ky, kz + 1.12), black, segs=10, rings=6)
     tube([(kx - 0.35, ky, kz + 0.95), (kx, ky, kz + 1.55), (kx + 0.35, ky, kz + 0.95)], 0.06, black, segs=8)
     tube([(kx + 0.55, ky, kz + 0.35), (kx + 0.85, ky, kz + 0.6), (kx + 1.0, ky, kz + 0.85)], 0.09, kettle, segs=8)
+    return {}
+
+
+# ================================================================== round 2
+# Starter and most-placed items that sat next to the meshes as blocks.
+
+def berries(cx, cy, cz, n, spread, seed, m):
+    random.seed(seed)
+    for i in range(n):
+        a = random.uniform(0, 2 * math.pi)
+        r = random.uniform(0, spread)
+        sphere(random.uniform(0.09, 0.13), (cx + r * math.cos(a), cy + r * math.sin(a), cz + random.uniform(-0.08, 0.1)), m, segs=8, rings=6, name="berry")
+
+
+def sprig_ring(cx, cy, z, r, n, seed, leaf_m, berry_m):
+    random.seed(seed)
+    for i in range(n):
+        a = i * 2 * math.pi / n + random.uniform(-0.15, 0.15)
+        lb = leaf_blade(random.uniform(0.45, 0.6), 0.2, bend=0.15, segs=3)
+        finish(lb, leaf_m)
+        transform(lb, (cx + r * math.cos(a), cy + r * math.sin(a), z), (0, math.radians(random.uniform(-25, -5)), a + random.uniform(0.8, 1.6)))
+    for i in range(n // 3):
+        a = i * 2 * math.pi / (n // 3) + 0.4
+        berries(cx + r * math.cos(a), cy + r * math.sin(a), z + 0.08, 3, 0.1, seed + i, berry_m)
+
+
+HOLLY = None
+
+
+def holly_mats():
+    return (material("holly", rgb(60, 128, 84), "leaf", rough=0.35, color2=rgb(40, 96, 62)),
+            material("berry", rgb(206, 44, 56), "ceramic", rough=0.2))
+
+
+@item
+def window_candle(M):
+    leaf_m, berry_m = holly_mats()
+    paint = M["paint"]
+    # Open candle lantern: no glass, so the candle reads from every side.
+    box((1.9, 1.9, 0.3), (0, 0, 0.15), paint, bevel=0.08, seg=2)
+    box((1.6, 1.6, 0.12), (0, 0, 0.36), paint, bevel=0.04, seg=2)
+    top_z = 2.75
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            box((0.14, 0.14, top_z - 0.36), (sx * 0.72, sy * 0.72, 0.36 + (top_z - 0.36) / 2), paint, bevel=0.03, seg=1)
+    box((1.75, 1.75, 0.16), (0, 0, top_z + 0.08), paint, bevel=0.05, seg=2)
+    roof = lathe([(0, 0), (1.22, 0), (1.22, 0.06), (0.2, 0.62), (0, 0.66)], (0, 0, 0), paint, segs=4, angle=10)
+    transform(roof, (0, 0, top_z + 0.16), (0, 0, math.radians(45)))
+    ring(0.24, 0.05, (0, 0, top_z + 1.05), M["brass"], segs=20, minor_segs=8, rot=(math.radians(90), 0, 0))
+    # Pillar candle with a soft melted top, and the flame.
+    wax = material("wax", rgb(250, 242, 226), "ceramic", rough=0.55)
+    lathe([(0, 0), (0.44, 0), (0.45, 1.25), (0.4, 1.3), (0.3, 1.24), (0, 1.22)], (0, 0, 0.42), wax, segs=28, angle=50)
+    cyl(0.02, 0.14, (0, 0, 1.62), M["black"], segs=6, bevel=0)
+    lathe([(0, 0), (0.09, 0.08), (0.11, 0.2), (0.06, 0.38), (0, 0.5)], (0, 0, 1.72), M["bulb"], segs=14)
+    # Greenery and berries around the base.
+    sprig_ring(0, 0, 0.32, 1.05, 18, 3, leaf_m, berry_m)
+    return {"light": {"at": [0, 1.95, 0], "brightness": 0.55, "range": 10}}
+
+
+@item
+def cocoa_stool(M):
+    h = 0.7 * CELL
+    seat = h - 0.42
+    lathe([(0, 0), (1.25, 0), (1.32, 0.06), (1.32, 0.2), (1.25, 0.26), (0, 0.26)], (0, 0, seat - 0.26), M["oak"], segs=40)
+    cushion((2.3, 2.3, 0.5), (0, 0, seat + 0.2), M["fabric"], round_=0.95, puff=0.18, cuts=4)
+    sphere(0.09, (0, 0, seat + 0.48), M["fabric"], scale=(1, 1, 0.5), segs=10, rings=6)
+    for i in range(4):
+        a = math.pi / 4 + i * math.pi / 2
+        o = cyl(0.11, seat - 0.2, (0, 0, 0), M["oak"], segs=14, bevel=0.03, r2=0.15)
+        transform(o, (0.95 * math.cos(a), 0.95 * math.sin(a), 0), (math.radians(8) * -math.sin(a), math.radians(8) * math.cos(a), 0))
+    ring(0.98, 0.06, (0, 0, 1.05), M["oak"], segs=36, minor_segs=8)
+    return {}
+
+
+@item
+def drum_stool(M):
+    h = 0.65 * CELL
+    top = h
+    lea = M["leather"]
+    # Round padded throne seat with a piped edge.
+    lathe([(0, 0), (1.15, 0), (1.3, 0.12), (1.36, 0.3), (1.3, 0.5), (1.0, 0.62), (0, 0.66)], (0, 0, top - 0.66), lea, segs=40, angle=60)
+    ring(1.33, 0.05, (0, 0, top - 0.36), lea, segs=40, minor_segs=6)
+    lathe([(0, 0), (0.75, 0), (0.75, 0.12), (0, 0.12)], (0, 0, top - 0.8), M["black"], segs=24)
+    cyl(0.13, top - 1.1, (0, 0, 0.6), M["chrome"], segs=16, bevel=0.02)
+    cyl(0.2, 0.3, (0, 0, 1.4), M["chrome"], segs=16, bevel=0.04)
+    cyl(0.06, 0.4, (0.22, 0, 1.55), M["black"], segs=10, bevel=0.02)
+    for i in range(3):
+        a = i * 2 * math.pi / 3 + math.pi / 2
+        tube([(0, 0, 1.3), (1.0 * math.cos(a), 1.0 * math.sin(a), 0.6), (1.7 * math.cos(a), 1.7 * math.sin(a), 0.12)], 0.07, M["chrome"], segs=10, resolution=6)
+        sphere(0.14, (1.72 * math.cos(a), 1.72 * math.sin(a), 0.1), M["rubber"], scale=(1, 1, 0.7), segs=12, rings=8)
+        tube([(0, 0, 0.95), (0.95 * math.cos(a), 0.95 * math.sin(a), 0.62)], 0.04, M["chrome"], segs=8)
+    return {}
+
+
+def puffy_star(r_out, r_in, depth, m):
+    pts = star_outline(r_out, r_in)
+    # Round the tips and the valleys a little.
+    soft = []
+    n = len(pts)
+    for i in range(n):
+        a, b, c = pts[i - 1], pts[i], pts[(i + 1) % n]
+        m0 = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+        m1 = ((b[0] + c[0]) / 2, (b[1] + c[1]) / 2)
+        for t in (0.0, 0.2, 0.4, 0.6, 0.8):
+            u = 1 - t
+            soft.append((u * u * m0[0] + 2 * u * t * b[0] + t * t * m1[0], u * u * m0[1] + 2 * u * t * b[1] + t * t * m1[1]))
+    o = extrude_outline(soft, depth, (0, 0, 0), m, bevel=depth * 0.42, seg=4)
+    sub = o.modifiers.new("sub", "SUBSURF"); sub.levels = 1
+    lib._apply_mods(o)
+    for v in o.data.vertices:
+        r = math.hypot(v.co.x, v.co.y) / r_out
+        f = 0.45 + 0.55 * max(0.0, 1 - r ** 1.6)
+        v.co.z = depth / 2 + (v.co.z - depth / 2) * f * 1.25
+    finish(o, m, 50)
+    return o
+
+
+@item
+def star_pillow(M):
+    back = cushion((2.6, 1.0, 1.7), (0, 0, 0), material("pillow_oat", rgb(236, 226, 208), "knit", rough=0.9, bump=0.6), round_=0.5, puff=0.32, front_puff=0.3, cuts=4)
+    transform(back, (0.15, 0.85, 0.82), (math.radians(-18), 0, math.radians(8)))
+    st = puffy_star(1.55, 0.78, 0.7, M["fabric"])
+    transform(st, (0, -0.25, 0.85), (math.radians(68), 0, math.radians(-6)))
+    for k in range(3):
+        sphere(0.07, (-0.5 + k * 0.5, -0.62, 1.2 + 0.05 * k), M["fabric"], scale=(1, 0.6, 1), segs=8, rings=6, name="tuft")
+    return {}
+
+
+def knit_pouf(M, r, h, m, ribs=26):
+    prof = []
+    for i in range(13):
+        t = i / 12
+        z = t * h
+        bulge = math.sin(math.pi * t) ** 0.35
+        prof.append((max(0.001, r * (0.82 + 0.18 * bulge)), z))
+    prof = [(0, 0)] + prof + [(0, h)]
+    o = lathe(prof, (0, 0, 0), m, segs=ribs * 4, angle=60)
+    for v in o.data.vertices:
+        a = math.atan2(v.co.y, v.co.x)
+        rr = math.hypot(v.co.x, v.co.y)
+        if rr > 0.3:
+            k = 1 + 0.035 * math.cos(a * ribs) * min(1.0, (rr / r) ** 4)
+            v.co.x *= k; v.co.y *= k
+    return o
+
+
+@item
+def mint_pouf(M):
+    h = 0.55 * CELL
+    knit_pouf(M, 1.85, h, M["knit"])
+    # Top seam and a knit handle loop.
+    ring(1.0, 0.07, (0, 0, h - 0.04), M["knit"], segs=36, minor_segs=8)
+    return {}
+
+
+@item
+def cloud_pouf(M):
+    h = 0.55 * CELL
+    boucle = M["knit"]
+    sphere(1.55, (0, 0, h * 0.5), boucle, scale=(1, 1, 0.78), segs=28, rings=16)
+    for i in range(6):
+        a = i * math.pi / 3 + 0.3
+        sphere(0.95, (1.05 * math.cos(a), 1.05 * math.sin(a), h * 0.42), boucle, scale=(1, 1, 0.82), segs=22, rings=12)
+    cyl(1.5, 0.12, (0, 0, 0), M["birch"], segs=28, bevel=0.04)
+    return {}
+
+
+def rug_2x1(M, art_name, outline, fringe=False, binding=True, bind_m=None):
+    img = os.path.join(HERE, "art", art_name + ".png")
+    W, Hh = 2 * CELL, CELL
+    m = material("rug_" + art_name, (1, 1, 1), "image", rough=0.95, image=img, scale=(W - 0.6, Hh - 0.6), bump=0.35, tint_alpha=True)
+    rug_slab(outline, 0.14, m, bevel=0.05)
+    if binding:
+        pts = [(x, y, 0.1) for x, y in outline]
+        tube(pts + [pts[0]], 0.07, bind_m or M["fabric"], segs=8, resolution=1)
+    if fringe:
+        half_x = max(x for x, _ in outline)
+        half_y = max(y for _, y in outline)
+        for side in (-1, 1):
+            for i in range(22):
+                y = -half_y + 0.12 + i * (2 * half_y - 0.24) / 21
+                tube([(side * half_x, y, 0.06), (side * (half_x + 0.2), y + 0.02, 0.03), (side * (half_x + 0.36), y - 0.02, 0.02)], 0.035, M["cream"], segs=4, resolution=2)
+
+
+def rounded_rect(hx, hy, r, n=6):
+    pts = []
+    for cx, cy, a0 in ((hx - r, -hy + r, -90), (hx - r, hy - r, 0), (-hx + r, hy - r, 90), (-hx + r, -hy + r, 180)):
+        for k in range(n + 1):
+            a = math.radians(a0 + 90 * k / n)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    return pts
+
+
+def ellipse_pts(hx, hy, n=64):
+    return [(hx * math.cos(2 * math.pi * i / n), hy * math.sin(2 * math.pi * i / n)) for i in range(n)]
+
+
+@item
+def dot_rug(M):
+    rug_2x1(M, "dot_rug", ellipse_pts(CELL - 0.3, CELL / 2 - 0.3), binding=True)
+    return {}
+
+
+@item
+def stripe_rug(M):
+    rug_2x1(M, "stripe_rug", rounded_rect(CELL - 0.65, CELL / 2 - 0.3, 0.06, 2), fringe=True, binding=False)
+    return {}
+
+
+@item
+def checker_rug(M):
+    rug_2x1(M, "checker_rug", rounded_rect(CELL - 0.3, CELL / 2 - 0.3, 0.35), binding=True)
+    return {}
+
+
+@item
+def plaid_rug(M):
+    rug_2x1(M, "plaid_rug", rounded_rect(CELL - 0.3, CELL / 2 - 0.3, 0.2), binding=True, bind_m=M["cream"])
+    return {}
+
+
+@item
+def cream_rocker(M):
+    paint = M["paint"]
+    linen = material("linen_check", rgb(236, 226, 210), "fabric", rough=0.85, sheen=0.3)
+    # Curved rockers.
+    for sx in (-1, 1):
+        x = sx * 1.3
+        pts = [(x, -2.05 + 4.1 * i / 10, 0.12 + 0.55 * ((i / 10 - 0.5) * 2) ** 2) for i in range(11)]
+        tube(pts, 0.12, paint, segs=10, resolution=2)
+    seat = 2.05
+    for sx in (-1, 1):
+        for y in (-1.25, 1.1):
+            z0 = 0.15 + 0.55 * ((y / 2.05) ** 2) * 0.9
+            cyl(0.13, seat - z0, (sx * 1.3, y, z0), paint, segs=12, bevel=0.03)
+    box((2.95, 2.75, 0.18), (0, -0.05, seat + 0.05), paint, bevel=0.06, seg=2)
+    cushion((2.6, 2.4, 0.4), (0, -0.1, seat + 0.33), linen, round_=0.45, puff=0.12, cuts=4)
+    # Back posts lean back, spindles, curved top rail.
+    lean = math.radians(12)
+    bz0, bz1 = seat, 5.0
+    for sx in (-1, 1):
+        tube([(sx * 1.3, 1.1, bz0), (sx * 1.3, 1.1 + math.tan(lean) * (bz1 - bz0), bz1)], 0.13, paint, segs=12)
+        sphere(0.17, (sx * 1.3, 1.1 + math.tan(lean) * (bz1 - bz0), bz1 + 0.05), paint, segs=12, rings=8)
+    rail_y = 1.1 + math.tan(lean) * (4.75 - bz0)
+    tube([(-1.3, rail_y, 4.7), (0, rail_y + 0.25, 4.85), (1.3, rail_y, 4.7)], 0.13, paint, segs=10, resolution=6)
+    for i in range(5):
+        x = -0.9 + i * 0.45
+        tube([(x, 1.1 + math.tan(lean) * 0.3, seat + 0.3), (x, rail_y + 0.12 - 0.05 * abs(x), 4.65)], 0.06, paint, segs=8)
+    # Arms.
+    for sx in (-1, 1):
+        y_back = 1.1 + math.tan(lean) * (3.35 - bz0)
+        tube([(sx * 1.38, -1.3, 3.3), (sx * 1.42, 0.0, 3.4), (sx * 1.35, y_back, 3.35)], 0.12, paint, segs=10, resolution=6)
+        cyl(0.1, 3.3 - seat, (sx * 1.38, -1.25, seat), paint, segs=10, bevel=0.02)
+    p = cushion((1.7, 0.45, 1.25), (0, 0, 0), linen, round_=0.5, puff=0.3, front_puff=0.3, cuts=4)
+    transform(p, (0, 1.05, seat + 1.15), (math.radians(-14), 0, 0))
+    return {}
+
+
+@item
+def reader_chair(M):
+    fab = M["fabric"]
+    leg_h = 0.6
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            lathe([(0, 0), (0.12, 0), (0.15, 0.1), (0.1, 0.2), (0.16, 0.42), (0.12, 0.62), (0, 0.62)], (sx * 1.45, sy * 1.35, 0), M["walnut"], segs=14)
+    cushion((3.6, 3.4, 1.1), (0, 0.05, leg_h + 0.55), fab, round_=0.3, puff=0.04, cuts=3)
+    cushion((2.5, 2.7, 0.65), (0, -0.25, leg_h + 1.1 + 0.3), fab, round_=0.45, puff=0.15, front_puff=0.12, cuts=4)
+    back = cushion((3.0, 0.8, 3.4), (0, 0, 0), fab, round_=0.4, puff=0.1, front_puff=0.08, cuts=5)
+    transform(back, (0, 1.3, leg_h + 1.1 + 1.65), (math.radians(-8), 0, 0))
+    # Tufting on the back.
+    for row in range(2):
+        for i in range(3 - row):
+            x = -0.8 + i * 0.8 + row * 0.4
+            sphere(0.09, (x, 0.88 + 0.05 * row, 2.95 + row * 0.85), fab, scale=(1, 0.6, 1), segs=10, rings=6)
+    for sx in (-1, 1):
+        arm = cushion((0.65, 3.1, 1.2), (0, 0, 0), fab, round_=0.45, puff=0.08, cuts=3)
+        transform(arm, (sx * 1.45, -0.1, leg_h + 1.1 + 0.55), (0, 0, 0))
+        tube([(sx * 1.45, -1.62, leg_h + 2.1), (sx * 1.45, 1.0, leg_h + 2.1)], 0.36, fab, segs=14, resolution=2)
+        wing = cushion((0.55, 1.3, 2.4), (0, 0, 0), fab, round_=0.45, puff=0.06, cuts=3)
+        transform(wing, (sx * 1.5, 0.75, leg_h + 3.4), (0, 0, math.radians(sx * 14)))
+    throw = material("throw_cream", rgb(246, 238, 222), "knit", rough=0.9, bump=0.7)
+    t = box((1.0, 3.0, 0.14), (0, 0, 0), throw, bevel=0.06, seg=2, cuts=6)
+    bend(t, 1.2, (0, 0))
+    transform(t, (1.45, -0.2, leg_h + 2.55), (0, math.radians(90), 0))
+    return {}
+
+
+@item
+def birch_side(M):
+    h = 0.75 * CELL
+    paint = M["paint"]
+    lathe([(0, 0), (1.85, 0), (1.95, 0.08), (1.95, 0.2), (1.85, 0.26), (0, 0.26)], (0, 0, h - 0.26), M["birch"], segs=48)
+    lathe([(0, 0), (1.3, 0), (1.35, 0.06), (1.35, 0.14), (0, 0.14)], (0, 0, 1.1), M["birch"], segs=40)
+    for i in range(3):
+        a = i * 2 * math.pi / 3 + math.pi / 2
+        o = cyl(0.1, h - 0.24, (0, 0, 0), paint, segs=14, bevel=0.03, r2=0.15)
+        transform(o, (1.15 * math.cos(a), 1.15 * math.sin(a), 0), (math.radians(7) * -math.sin(a), math.radians(7) * math.cos(a), 0))
+    # A little pine sprig in a jar and a candle.
+    lathe([(0, 0), (0.28, 0), (0.3, 0.5), (0.22, 0.6), (0.24, 0.66), (0, 0.66)], (-0.55, 0.3, h), M["white"], segs=20)
+    random.seed(9)
+    leaf_m = material("pine_sprig", rgb(64, 120, 88), "leaf", rough=0.6)
+    for i in range(7):
+        a = i * 0.9
+        lb = leaf_blade(0.7, 0.16, bend=0.25, segs=3)
+        finish(lb, leaf_m)
+        transform(lb, (-0.55, 0.3, h + 0.6), (0, math.radians(-50), a))
+    cyl(0.26, 0.5, (0.65, -0.4, h), material("wax2", rgb(250, 242, 226), "ceramic", rough=0.55), segs=18, bevel=0.03)
+    cyl(0.02, 0.1, (0.65, -0.4, h + 0.5), M["black"], segs=6, bevel=0)
+    book(0.4, 0.65, h, 1.1, 0.8, 0.18, rgb(96, 150, 120), yaw=-0.3)
+    return {}
+
+
+@item
+def entry_bench(M):
+    w, d = 2 * CELL, CELL
+    oak = M["oak"]
+    seat = 1.95
+    for sx in (-1, 1):
+        box((0.3, d - 1.0, seat - 0.1), (sx * (w / 2 - 0.55), 0.1, (seat - 0.1) / 2), oak, bevel=0.06, seg=2)
+        box((0.3, 0.3, 3.6 - seat + 0.2), (sx * (w / 2 - 0.55), d / 2 - 0.65, seat + (3.6 - seat) / 2), oak, bevel=0.06, seg=2)
+    box((w - 0.8, d - 0.9, 0.2), (0, 0.1, seat), oak, bevel=0.06, seg=2)
+    box((w - 1.3, d - 1.2, 0.14), (0, 0.1, 0.45), oak, bevel=0.04, seg=2)
+    box((w - 0.9, 0.22, 0.4), (0, d / 2 - 0.65, 3.45), oak, bevel=0.06, seg=2)
+    for i in range(7):
+        x = -(w - 1.6) / 2 + i * (w - 1.6) / 6
+        box((0.12, 0.12, 3.3 - seat - 0.2), (x, d / 2 - 0.65, seat + 0.1 + (3.3 - seat - 0.2) / 2), oak, bevel=0.03, seg=1)
+    cushion((w - 1.0, d - 1.25, 0.45), (0, 0.0, seat + 0.32), M["fabric"], round_=0.4, puff=0.1, front_puff=0.08, cuts=5)
+    wicker = material("wicker", rgb(206, 170, 120), "knit", rough=0.8, bump=0.8)
+    for sx in (-1, 1):
+        box((2.6, d - 1.6, 1.15), (sx * 1.9, 0.15, 0.52 + 0.58), wicker, bevel=0.12, seg=2)
+        ring(0.25, 0.05, (sx * 1.9, -(d - 1.6) / 2 + 0.12, 1.45), wicker, segs=14, minor_segs=6, rot=(math.radians(90), 0, 0))
+    p = cushion((1.4, 0.45, 1.2), (0, 0, 0), M["cream"], round_=0.5, puff=0.3, front_puff=0.3, cuts=4)
+    transform(p, (-2.4, d / 2 - 1.05, seat + 1.05), (math.radians(-12), 0, math.radians(10)))
+    return {}
+
+
+@item
+def berry_pot(M):
+    pot(M, M["tintceramic"], 1.0, 1.45)
+    leaf_m, berry_m = holly_mats()
+    random.seed(21)
+    for i in range(70):
+        a = i * 2.39996
+        t = (i % 10) / 10
+        r = 0.2 + 1.05 * math.sqrt(random.random())
+        z = 1.45 + 0.55 + 1.3 * (1 - (r / 1.3) ** 2) * random.uniform(0.7, 1.0)
+        lb = leaf_blade(random.uniform(0.55, 0.7), random.uniform(0.32, 0.4), bend=0.2, segs=4)
+        finish(lb, leaf_m)
+        transform(lb, (r * math.cos(a) * 0.8, r * math.sin(a) * 0.8, z - 0.2), (0, math.radians(random.uniform(-40, 10)), a))
+    for i in range(12):
+        a = i * 2.1
+        r = random.uniform(0.3, 1.05)
+        z = 1.45 + 0.55 + 1.3 * (1 - (r / 1.3) ** 2) * 0.95
+        berries(r * math.cos(a) * 0.85, r * math.sin(a) * 0.85, z, 4, 0.14, 50 + i, berry_m)
+    return {}
+
+
+# ------------------------------------------------------------ room shell
+SHELL = set()
+
+
+def shell(fn):
+    SHELL.add(fn.__name__)
+    return item(fn)
+
+
+def pleated_panel(w, L, m, pleats=6, depth=0.11, flare=0.12, nu=40, nv=22, name="panel"):
+    """Curtain panel hanging from z = 0 down to -L, across x in [0, w]."""
+    bm = lib.bmesh.new()
+    grid = []
+    for j in range(nv + 1):
+        v = j / nv
+        row = []
+        for i in range(nu + 1):
+            u = i / nu
+            amp = depth * (0.75 + 0.6 * v)
+            y = -amp * math.sin(u * pleats * 2 * math.pi)
+            x = u * w * (1 + flare * v) - w * flare * v * 0.5
+            z = -v * L
+            if j == nv:
+                z += 0.05 * math.sin(u * pleats * 2 * math.pi + 1.0)
+            row.append(bm.verts.new((x, y, z)))
+        grid.append(row)
+    for j in range(nv):
+        for i in range(nu):
+            bm.faces.new((grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]))
+    o = lib._mesh_obj(name, bm)
+    sol = o.modifiers.new("sol", "SOLIDIFY"); sol.thickness = 0.04; sol.offset = 0
+    lib._apply_mods(o)
+    return finish(o, m, 50)
+
+
+@shell
+def curtains(M):
+    """Pinch-pleat drapes and a brass rod for the back-wall window (engine studs)."""
+    fab = M["fabric"]
+    win_w = 9.0
+    panel_w = 2.5
+    rod_z = 0.0
+    L = 12.3
+    half = win_w / 2 + 0.2
+    for sx in (-1, 1):
+        x0 = sx * half - (panel_w if sx > 0 else 0) * 0 + (0 if sx > 0 else -panel_w)
+        p = pleated_panel(panel_w, L, fab)
+        transform(p, (x0, -0.45, rod_z - 0.32))
+        for k in range(7):
+            ring(0.17, 0.035, (x0 + k * panel_w / 6, -0.45, rod_z), M["brass"], segs=14, minor_segs=6, rot=(0, math.radians(90), 0))
+        # Header band.
+        box((panel_w + 0.05, 0.1, 0.42), (x0 + panel_w / 2, -0.45, rod_z - 0.48), fab, bevel=0.03, seg=1)
+    rod_half = half + panel_w + 0.6
+    rod = cyl(0.09, 2 * rod_half, (0, 0, -rod_half), M["brass"], segs=14, bevel=0.0)
+    transform(rod, (0, -0.45, rod_z), (0, math.radians(90), 0))
+    for sx in (-1, 1):
+        sphere(0.2, (sx * (rod_half + 0.12), -0.45, rod_z), M["brass"], segs=14, rings=8)
+        box((0.18, 0.45, 0.18), (sx * (rod_half - 0.35), -0.22, rod_z), M["brass"], bevel=0.04, seg=1)
     return {}

@@ -120,8 +120,90 @@ def draw_hearth_rug():
     return Image.blend(img, noise, 0.06)
 
 
+# ------------------------------------------------------------ 2x1 accent rugs
+# RGBA, 1024x512 over the rug's x/y extent. Opaque pixels are tinted by the
+# recolor (keep them light grey); alpha 0 keeps the cream/ink yarn as is.
+RW, RH = 1024, 512
+TINT = (236, 234, 230, 255)
+TINT_DEEP = (196, 192, 188, 255)
+CREAM = (250, 244, 230, 0)
+INK = (92, 84, 90, 0)
+
+
+def _weave(img, amount=0.07):
+    from PIL import Image
+    noise = Image.effect_noise((RW, RH), 18).convert("L")
+    px = img.load(); nz = noise.load()
+    for y in range(RH):
+        for x in range(RW):
+            r, g, b, a = px[x, y]
+            k = 1 + amount * ((nz[x, y] - 128) / 128.0) + 0.03 * (1 if (x // 3 + y // 3) % 2 else -1)
+            px[x, y] = (min(255, int(r * k)), min(255, int(g * k)), min(255, int(b * k)), a)
+    return img
+
+
+def draw_dot_rug():
+    from PIL import Image, ImageDraw
+    img = Image.new("RGBA", (RW, RH), TINT)
+    d = ImageDraw.Draw(img)
+    d.ellipse((14, 14, RW - 14, RH - 14), outline=TINT_DEEP, width=26)
+    d.ellipse((58, 58, RW - 58, RH - 58), outline=CREAM, width=8)
+    for gy in range(5):
+        for gx in range(11):
+            cx = 120 + gx * 80 + (40 if gy % 2 else 0)
+            cy = 96 + gy * 80
+            if ((cx - RW / 2) / (RW / 2 - 110)) ** 2 + ((cy - RH / 2) / (RH / 2 - 100)) ** 2 < 1:
+                d.ellipse((cx - 17, cy - 17, cx + 17, cy + 17), fill=CREAM)
+    return _weave(img)
+
+
+def draw_stripe_rug():
+    from PIL import Image, ImageDraw
+    img = Image.new("RGBA", (RW, RH), TINT)
+    d = ImageDraw.Draw(img)
+    x = 0
+    pattern = [(70, TINT), (16, CREAM), (8, INK), (16, CREAM), (56, TINT_DEEP), (16, CREAM)]
+    i = 0
+    while x < RW:
+        w, c = pattern[i % len(pattern)]
+        d.rectangle((x, 0, x + w, RH), fill=c)
+        x += w; i += 1
+    return _weave(img, 0.09)
+
+
+def draw_checker_rug():
+    from PIL import Image, ImageDraw
+    img = Image.new("RGBA", (RW, RH), TINT)
+    d = ImageDraw.Draw(img)
+    s = 64
+    for gy in range(RH // s):
+        for gx in range(RW // s):
+            if (gx + gy) % 2:
+                d.rectangle((gx * s, gy * s, gx * s + s - 1, gy * s + s - 1), fill=CREAM)
+    return _weave(img, 0.06)
+
+
+def draw_plaid_rug():
+    from PIL import Image, ImageDraw
+    img = Image.new("RGBA", (RW, RH), TINT)
+    d = ImageDraw.Draw(img)
+    for k in range(0, RW, 128):
+        d.rectangle((k + 30, 0, k + 74, RH), fill=TINT_DEEP)
+        d.rectangle((k + 100, 0, k + 104, RH), fill=CREAM)
+    for k in range(0, RH, 128):
+        d.rectangle((0, k + 30, RW, k + 74), fill=TINT_DEEP)
+        d.rectangle((0, k + 100, RW, k + 104), fill=CREAM)
+    # Overlap squares a step deeper.
+    for kx in range(0, RW, 128):
+        for ky in range(0, RH, 128):
+            d.rectangle((kx + 30, ky + 30, kx + 74, ky + 74), fill=(170, 166, 162, 255))
+    return _weave(img, 0.08)
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     draw_pibble().save(os.path.join(OUT, "pibble.png"))
     draw_hearth_rug().save(os.path.join(OUT, "hearth_rug.png"))
+    for name, fn in (("dot_rug", draw_dot_rug), ("stripe_rug", draw_stripe_rug), ("checker_rug", draw_checker_rug), ("plaid_rug", draw_plaid_rug)):
+        fn().save(os.path.join(OUT, name + ".png"))
     print("art written")

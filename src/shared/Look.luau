@@ -315,4 +315,21 @@ function Look.swatch(themeId: string): { Rgb }
 	return { colors.accent, colors.cloth, grade.tint }
 end
 
+-- Room shell finish per family: floor and wall surface keys (Meshes.Surfaces),
+-- and whether the walls get painted wainscoting. Colors still come from the
+-- pack (or Designer Tools paint); these only pick the texture and trim.
+export type ShellStyle = { floor: string, wall: string, wainscot: boolean }
+
+Look.ShellStyles = {
+	hearth = { floor = "planks", wall = "stripe", wainscot = true },
+	ginger = { floor = "planks", wall = "plaster", wainscot = false },
+	winter = { floor = "carpet", wall = "plaster", wainscot = true },
+	glow = { floor = "carpet", wall = "sprig", wainscot = true },
+	frost = { floor = "tile", wall = "sprig", wainscot = false },
+} :: { [string]: ShellStyle }
+
+function Look.shellStyle(family: string): ShellStyle
+	return Look.ShellStyles[family] or Look.ShellStyles.hearth
+end
+
 return Look

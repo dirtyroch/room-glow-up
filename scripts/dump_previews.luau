@@ -65,6 +65,10 @@ local function enumName(value, fallback)
 end
 
 local lightAt = {}
+local surfOn = false
+local function MESH_PREVIEW_SURF()
+	return surfOn
+end
 
 local function partPayload(inst)
 	local cf = inst.CFrame
@@ -96,6 +100,11 @@ local function partPayload(inst)
 	}
 	if isMesh then
 		payload.mesh = inst:GetAttribute("MeshItem")
+		payload.finish = inst:GetAttribute("Finish")
+	end
+	local surf = inst:GetAttribute("Surf")
+	if type(surf) == "string" and MESH_PREVIEW_SURF() then
+		payload.surf = surf
 	end
 	local lights = {}
 	local sources = inst:GetChildren()
@@ -186,6 +195,7 @@ local function decorate(index, roundType, placements, family)
 			z = row[3],
 			rot = row[4] or 0,
 			color = row[5] or (Items.get(row[1]) and Items.get(row[1]).color) or "cream",
+			material = row[6],
 			placedAt = 0,
 		}, roundType, true)
 	end
@@ -536,9 +546,33 @@ if WITH_MESHES then
 		{ "gift_stack", 1, 1 },
 		{ "round_side", 4, 4 },
 	}
-	local function both(key, list, family)
-		for _, mode in ipairs({ "parts", "mesh" }) do
+	-- A second nook with the round-2 meshes, on the frost and winter shells.
+	local NOOK = {
+		{ "stripe_rug", 2, 3 },
+		{ "reader_chair", 1, 2, 1 },
+		{ "cream_rocker", 4, 2, 3 },
+		{ "birch_side", 0, 1 },
+		{ "berry_pot", 5, 0 },
+		{ "entry_bench", 2, 0 },
+		{ "mint_pouf", 2, 4 },
+		{ "cloud_pouf", 3, 4 },
+		{ "drum_stool", 5, 4 },
+		{ "window_candle", 0, 0 },
+		{ "fern_pot", 5, 5 },
+		{ "dot_rug", 0, 5 },
+		{ "star_pillow", 1, 5 },
+	}
+	local FINISHES = {
+		{ "coral_armchair", 0, 2, 0, nil, "Fabric" },
+		{ "coral_armchair", 1, 2, 0, nil, "Wood" },
+		{ "coral_armchair", 2, 2, 0, nil, "Metal" },
+		{ "coral_armchair", 3, 2, 0, nil, "Glass" },
+		{ "coral_armchair", 4, 2, 0, nil, "Slate" },
+	}
+	local function both(key, list, family, modes)
+		for _, mode in ipairs(modes or { "parts", "mesh" }) do
 			MeshProps.preview = mode == "mesh"
+			surfOn = mode == "mesh"
 			decorate(3, "room", list, family)
 			local parts = collect(workspace, function(inst)
 				return underPlot(inst, 3)
@@ -558,10 +592,14 @@ if WITH_MESHES then
 			print(key, mode, "parts", #parts, "meshes", meshes)
 		end
 		MeshProps.preview = false
+		surfOn = false
 	end
 	both("hearth", HEARTH, "hearth")
 	both("kitchen", KITCHEN, "hearth")
 	both("showroom", SHOWROOM, "hearth")
+	both("nook", NOOK, "frost", { "mesh" })
+	both("nookwinter", NOOK, "winter", { "mesh" })
+	both("finishes", FINISHES, "hearth", { "mesh" })
 end
 
 local payload = {

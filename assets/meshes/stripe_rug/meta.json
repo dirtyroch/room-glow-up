@@ -1,0 +1,16 @@
+{
+ "id": "stripe_rug",
+ "tris": 2604,
+ "size": [
+  9.0368,
+  0.1509,
+  4.2
+ ],
+ "center": [
+  0.0,
+  0.0646,
+  -0.0
+ ],
+ "metal": false,
+ "emissive": false
+}

@@ -1,0 +1,16 @@
+{
+ "id": "cocoa_stool",
+ "tris": 2432,
+ "size": [
+  2.64,
+  3.7826,
+  2.64
+ ],
+ "center": [
+  0.0,
+  1.8802,
+  -0.0
+ ],
+ "metal": false,
+ "emissive": false
+}

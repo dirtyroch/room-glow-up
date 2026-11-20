@@ -1,0 +1,16 @@
+{
+ "id": "dot_rug",
+ "tris": 1800,
+ "size": [
+  9.1396,
+  0.17,
+  4.34
+ ],
+ "center": [
+  -0.0002,
+  0.085,
+  -0.0
+ ],
+ "metal": false,
+ "emissive": false
+}

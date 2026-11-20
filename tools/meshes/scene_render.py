@@ -122,7 +122,57 @@ def clean_scene():
     MATS.clear()
 
 
+SURF_META = json.load(open(os.path.join(ROOT, "assets", "surfaces", "surfaces.json")))
+
+
+def surf_material(part):
+    """MaterialVariant stand-in: the tileable surface maps in world space, tinted
+    by the part color (as MaterialVariant ColorMaps are in game)."""
+    key = part["surf"]
+    color = tuple(round(c, 4) for c in part["c"])
+    mk = ("surf", key, color)
+    if mk in MATS:
+        return MATS[mk]
+    d = os.path.join(ROOT, "assets", "surfaces", key)
+    studs = float(SURF_META[key]["studs"])
+    mat = bpy.data.materials.new(name="surf_%s_%d" % (key, len(MATS)))
+    mat.use_nodes = True
+    nt = mat.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (1 / studs, 1 / studs, 1 / studs)
+    nt.links.new(geo.outputs["Position"], mp.inputs["Vector"])
+
+    def tex(name, non_color):
+        n = nt.nodes.new("ShaderNodeTexImage")
+        n.image = bpy.data.images.load(os.path.join(d, name), check_existing=True)
+        if non_color:
+            n.image.colorspace_settings.name = "Non-Color"
+        n.projection = "BOX"
+        n.projection_blend = 0.05
+        nt.links.new(mp.outputs["Vector"], n.inputs["Vector"])
+        return n
+    c = tex("color.png", False)
+    mul = nt.nodes.new("ShaderNodeMix"); mul.data_type = "RGBA"; mul.blend_type = "MULTIPLY"
+    mul.inputs["Factor"].default_value = 1.0
+    nt.links.new(c.outputs["Color"], mul.inputs[6])
+    mul.inputs[7].default_value = (*srgb3(color), 1)
+    nt.links.new(mul.outputs[2], bsdf.inputs["Base Color"])
+    r = tex("roughness.png", True)
+    nt.links.new(r.outputs["Color"], bsdf.inputs["Roughness"])
+    n = tex("normal.png", True)
+    nm = nt.nodes.new("ShaderNodeNormalMap"); nm.inputs["Strength"].default_value = 0.8
+    nt.links.new(n.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+    bsdf.inputs["Specular IOR Level"].default_value = 0.35
+    MATS[mk] = mat
+    return mat
+
+
 def material_for(part):
+    if part.get("surf"):
+        return surf_material(part)
     mat_name = part.get("mat") or "SmoothPlastic"
     color = tuple(round(c, 4) for c in part["c"])
     trans = round(float(part.get("t") or 0), 3)
@@ -207,7 +257,7 @@ def make_mesh(shape):
 def mesh_template(item_id):
     if item_id in MESH_CACHE:
         return MESH_CACHE[item_id]
-    path = os.path.join(ROOT, "assets", "meshes", item_id, item_id + ".fbx")
+    path = os.path.join(hero.item_dir(item_id), item_id + ".fbx")
     before = set(bpy.data.objects)
     bpy.ops.import_scene.fbx(filepath=path, axis_forward="-Z", axis_up="Y")
     obj = [o for o in bpy.data.objects if o not in before and o.type == "MESH"][0]
@@ -219,7 +269,7 @@ def mesh_template(item_id):
     for c in list(obj.users_collection):
         c.objects.unlink(obj)
     MESH_CACHE[item_id] = obj.data
-    MESH_META[item_id] = json.load(open(os.path.join(ROOT, "assets", "meshes", item_id, "meta.json")))
+    MESH_META[item_id] = json.load(open(os.path.join(hero.item_dir(item_id), "meta.json")))
     return obj.data
 
 
@@ -230,10 +280,13 @@ def add_mesh(part, collection):
     c = part["c"]
     s = palette.SOFTEN
     tint = tuple(v + (1 - v) * s for v in c[:3])
-    key = (item_id, tuple(round(v, 3) for v in tint))
+    maps = None
+    if part.get("finish"):
+        tint, maps = palette.finish(tint, part["finish"])
+    key = (item_id, tuple(round(v, 3) for v in tint), part.get("finish"))
     mat = MATS.get(key)
     if mat is None:
-        mat = hero.textured_material(item_id, tint, name="mesh_%s_%d" % (item_id, len(MATS)))
+        mat = hero.textured_material(item_id, tint, name="mesh_%s_%d" % (item_id, len(MATS)), finish=maps)
         MATS[key] = mat
     obj = bpy.data.objects.new(item_id, data.copy())
     obj.data.materials.clear()
@@ -522,6 +575,9 @@ def main():
         "kitchen_mesh": "mesh-kitchen-after.png",
         "showroom_parts": "mesh-showroom-before.png",
         "showroom_mesh": "mesh-showroom-after.png",
+        "nook_mesh": "shell-nook-frost.png",
+        "nookwinter_mesh": "shell-nook-winter.png",
+        "finishes_mesh": "finish-row.png",
         "hearth": "rgu3d-v6-hearth.png",
     }
     wanted = args[2:] or [k for k in mapping if k in data["scenes"]]

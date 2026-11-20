@@ -1,0 +1,16 @@
+{
+ "id": "mint_pouf",
+ "tris": 3280,
+ "size": [
+  3.8295,
+  2.67,
+  3.8016
+ ],
+ "center": [
+  0.0,
+  1.335,
+  -0.0
+ ],
+ "metal": false,
+ "emissive": false
+}

@@ -157,15 +157,26 @@ The lobby is a pastel plaza with the Auntie Roch booth, a three-place stage, the
 
 ### Furniture meshes
 
-The 21 most-seen floor items also have a Blender mesh with PBR maps (color, normal, roughness, and metalness where needed). Each one is 2k to 9k triangles with 1024 px textures and lives in `assets/meshes/<itemId>/` (FBX, maps, `meta.json`, plus `assets/meshes/manifest.json`). The color map's alpha is a tint mask, so the palette and recolor tint only fabric and paint while wood, metal, and glass keep their own colors.
+36 floor items have a Blender mesh with PBR maps (color, normal, roughness, and metalness where needed): the round-1 set plus the pieces that sit next to them (window candle, stools, star pillow, poufs, four rugs, rocker, reading chair, birch side table, entry bench, berry pot, and a softer fern). Each one is 0.8k to 11k triangles with 1024 px textures and lives in `assets/meshes/<itemId>/` (FBX, maps, `meta.json`, plus `assets/meshes/manifest.json`). The color map's alpha is a tint mask, so the palette and recolor tint only fabric and paint while wood, metal, and glass keep their own colors.
 
 `src/shared/Meshes.luau` lists each mesh's size, center, and asset ids. `src/server/MeshProps.luau` swaps in a MeshPart with a SurfaceAppearance only when an item's model and color ids are non-zero, or when a template exists at `ServerStorage.MeshTemplates.<itemId>`. If the ids are 0 or a load fails, the item uses the part builder. Hitboxes, footprints, and the placement grid do not change.
 
-To rebuild: `bash tools/meshes/run_all.sh` (Blender 4.2, `BLENDER=/path/to/blender`). Then `python3 tools/meshes/manifest.py`.
+Finish (Designer Tools) also changes meshes. `MeshFit.Finishes` gives each finish a tint shift and a roughness/metalness map: Fabric keeps the baked look, Wood is satin and warmer, Metal is low-roughness with metalness on the tinted parts, Glass is a pale high gloss, and Slate is matte and grey. The maps are 256 px files next to each mesh (`rough_satin`, `rough_metal` + `metal_metal`, `rough_gloss`, `rough_matte`). In Studio you can also save them as `Finish_<Name>` SurfaceAppearances under each template.
 
-To upload: `lune run scripts/upload-meshes` is a dry run that lists the files. `lune run scripts/upload-meshes --apply --user <id>` (or `--group <id>`) needs `ROBLOX_OPEN_CLOUD_KEY` with asset write scope. It uploads the FBX as a Model and the maps as Images, then writes the ids into `Meshes.luau`. Building SurfaceAppearances from ids needs `AssetService:CreateSurfaceAppearanceAsync`. The surest path is to import the FBX and maps in Studio once and save them as `ServerStorage.MeshTemplates`.
+### Room shell
 
-Renders: `docs/renders/mesh-heroes-sheet.png`, `mesh-hearth-compare.png`, `mesh-kitchen-compare.png`, and `mesh-showroom-close.png`.
+`src/server/ShellDress.luau` dresses every room: wainscot boards with raised panels and a chair rail, a window with a curtain rod and pleated curtains (`assets/shell/curtains`, part fallback otherwise), and floor and wall surfaces chosen per theme family by `Look.ShellStyles` (hearth: planks and stripe; ginger: planks and plaster; winter: carpet; glow: carpet and sprig; frost: tile and sprig). Theme pack tint and Designer Tools paint still set the colors; the textures are light and neutral so they take the tint.
+
+Each surface (`assets/surfaces/<key>/`: color, normal, roughness, tileable 1024 px) is used in this order:
+1. a MaterialVariant in MaterialService named `RGU Planks`, `RGU Tile`, `RGU Carpet`, `RGU Plaster`, `RGU Stripe`, or `RGU Sprig` (base materials WoodPlanks, CeramicTiles, Carpet, Plaster). Import the maps once in Studio with the stud size from `assets/surfaces/surfaces.json`.
+2. a Texture overlay if the surface's image ids are set in `Meshes.luau`.
+3. the built-in material (WoodPlanks, CeramicTiles, Carpet, Plaster) plus stripe parts.
+
+To rebuild: `bash tools/meshes/run_all.sh` (Blender 4.2, `BLENDER=/path/to/blender`). It also runs `finishes.py`, `surfaces.py`, and `manifest.py`.
+
+To upload: `lune run scripts/upload-meshes` is a dry run that lists the files (meshes, finish maps, the curtain mesh, and the surface textures). `lune run scripts/upload-meshes --apply --user <id>` (or `--group <id>`) needs `ROBLOX_OPEN_CLOUD_KEY` with asset write scope. It uploads the FBX as a Model and the maps as Images, then writes the ids into `Meshes.luau`. Building SurfaceAppearances from ids needs `AssetService:CreateSurfaceAppearanceAsync`. The surest path is to import the FBX and maps in Studio once and save them as `ServerStorage.MeshTemplates`.
+
+Renders: `docs/renders/mesh-heroes-sheet.png`, `mesh-hearth-compare.png`, `mesh-kitchen-compare.png`, `mesh-showroom-close.png`, and round 2: `r2-kitchen-compare.jpg`, `r2-hearth-compare.jpg`, `r2-showroom-close-compare.jpg`, `r2-shell-nook-frost.jpg`, `r2-finish-sheet.jpg`, `r2-heroes-sheet.jpg`.
 
 ## Renders
 
@@ -206,7 +217,7 @@ That writes `RoomGlowUp.rbxlx` next to the project file. It does not upload the 
 
 ```
 src/shared/     Config, Themes, Items, Bases, UIKit, Look, Logic, Meshes, MeshFit
-src/server/     Main.server, Boot, Props, MeshProps, Plaza, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService, FunnelService
+src/server/     Main.server, Boot, Props, MeshProps, ShellDress, Plaza, ActionService, PlotService, RoomService, VoteService, ProgressService, SaveService, RoundService, ShopService, FunnelService
 src/client/     Main.client, Net, UI, Hud, Tray, Place, TourCam, Show, Vote, Home, Shop, Juice, Settings, Tutorial, SpotGame, Listen, Stage, Podium
 scripts/        build.sh, create-shop.luau, render_scenes.py
 docs/           store-assets.md, renders/

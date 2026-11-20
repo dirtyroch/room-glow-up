@@ -1,0 +1,16 @@
+{
+ "id": "entry_bench",
+ "tris": 3348,
+ "size": [
+  8.858,
+  3.7179,
+  3.9
+ ],
+ "center": [
+  0.0,
+  1.859,
+  -0.1
+ ],
+ "metal": false,
+ "emissive": false
+}
