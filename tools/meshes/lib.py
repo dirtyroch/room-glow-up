@@ -73,7 +73,8 @@ def rgb(r, g, b):
 
 
 def material(name, color, kind="plain", tint=False, rough=0.5, metal=0.0, bump=0.0, scale=1.0,
-             color2=None, grain="x", sheen=0.0, image=None, emit=0.0, tint_alpha=False):
+             color2=None, grain="x", sheen=0.0, image=None, emit=0.0, tint_alpha=False, plane="xy",
+             image_at=(0.0, 0.0)):
     """kind: plain, fabric, knit, wood, metal, leaf, soil, ceramic, paper, image."""
     key = name
     if key in MATS:
@@ -191,8 +192,18 @@ def material(name, color, kind="plain", tint=False, rough=0.5, metal=0.0, bump=0
         proj = nodes.new("ShaderNodeMapping")
         sx, sy = scale if isinstance(scale, tuple) else (scale, scale)
         proj.inputs["Scale"].default_value = (1.0 / sx, 1.0 / sy, 1)
-        proj.inputs["Location"].default_value = (0.5, 0.5, 0)
-        links.new(tc.outputs["Object"], proj.inputs["Vector"])
+        proj.inputs["Location"].default_value = (0.5 - image_at[0] / sx, 0.5 - image_at[1] / sy, 0)
+        if plane == "xz":
+            # Upright art on a wall item: image across object X (right) and Z (up).
+            sep = nodes.new("ShaderNodeSeparateXYZ")
+            comb = nodes.new("ShaderNodeCombineXYZ")
+            links.new(tc.outputs["Object"], sep.inputs["Vector"])
+            links.new(sep.outputs["X"], comb.inputs["X"])
+            links.new(sep.outputs["Z"], comb.inputs["Y"])
+            links.new(sep.outputs["Y"], comb.inputs["Z"])
+            links.new(comb.outputs["Vector"], proj.inputs["Vector"])
+        else:
+            links.new(tc.outputs["Object"], proj.inputs["Vector"])
         links.new(proj.outputs["Vector"], tex.inputs["Vector"])
         links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
         noise = nodes.new("ShaderNodeTexWave")

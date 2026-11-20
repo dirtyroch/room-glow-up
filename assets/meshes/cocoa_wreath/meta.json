@@ -1,0 +1,17 @@
+{
+ "id": "cocoa_wreath",
+ "tris": 9560,
+ "size": [
+  4.6956,
+  5.0257,
+  1.2494
+ ],
+ "center": [
+  -0.0689,
+  2.1655,
+  0.7227
+ ],
+ "mount": "wall",
+ "metal": false,
+ "emissive": false
+}

@@ -92,7 +92,7 @@ def import_item(item_id, tint_rgb, finish=None):
     return obj
 
 
-def studio(target, radius, warm=(1.0, 0.95, 0.92)):
+def studio(target, radius, warm=(1.0, 0.95, 0.92), wall_y=None):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE_NEXT"
     scene.eevee.taa_render_samples = 48
@@ -117,7 +117,8 @@ def studio(target, radius, warm=(1.0, 0.95, 0.92)):
     fb.inputs["Base Color"].default_value = (*lin(warm), 1)
     fb.inputs["Roughness"].default_value = 0.9
     floor.data.materials.append(fm)
-    bpy.ops.mesh.primitive_plane_add(size=radius * 30, location=(target.x, target.y + radius * 3.5, radius * 6), rotation=(math.radians(90), 0, 0))
+    wy = wall_y if wall_y is not None else target.y + radius * 3.5
+    bpy.ops.mesh.primitive_plane_add(size=radius * 30, location=(target.x, wy, radius * 6), rotation=(math.radians(90), 0, 0))
     wall = bpy.context.active_object
     wall.data.materials.append(fm)
 
@@ -160,11 +161,20 @@ def render_one(item_id, tint_rgb, out, finish=None):
         # Hanging pieces (curtains) start at the rod: stand them on the floor.
         obj.location.z -= mn.z
         mx.z -= mn.z; mn.z = 0
+    meta_path = os.path.join(item_dir(item_id), "meta.json")
+    mount = json.load(open(meta_path)).get("mount") if os.path.exists(meta_path) else None
+    if mount == "wall":
+        # Hang it on the backdrop wall at eye height.
+        obj.location.z += 1.5
+        mn.z += 1.5; mx.z += 1.5
     target = (mn + mx) / 2
     radius = (mx - mn).length / 2
-    studio(target, radius)
+    studio(target, radius, wall_y=(mx.y + 0.01) if mount == "wall" else None)
     flat = (mx - mn).z < 0.6
-    camera(target, radius * (0.8 if flat else 1.0), el=(58 if flat else 22))
+    if mount == "wall":
+        camera(target, radius, az=-22, el=8)
+    else:
+        camera(target, radius * (0.8 if flat else 1.0), el=(58 if flat else 22))
     sc = bpy.context.scene
     px = int(os.environ.get("HERO_SIZE", "1024"))
     sc.render.resolution_x = px

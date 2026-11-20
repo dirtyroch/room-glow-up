@@ -80,8 +80,19 @@ local function partPayload(inst)
 	if type(transparency) ~= "number" then
 		transparency = 0
 	end
+	local hidden = false
 	if transparency >= 0.99 then
-		return nil
+		-- Keep lights hosted by hidden parts (the ceiling diffuser under a lamp mesh).
+		local hasLight = false
+		for _, child in ipairs(inst:GetChildren()) do
+			if child:IsA("PointLight") or child:IsA("SpotLight") or child:IsA("SurfaceLight") then
+				hasLight = true
+			end
+		end
+		if not hasLight then
+			return nil
+		end
+		hidden = true
 	end
 	local isMesh = inst.ClassName == "MeshPart"
 	local shape = if isMesh then "Mesh" else enumName(inst.Shape, "Block")
@@ -98,6 +109,13 @@ local function partPayload(inst)
 		shape = shape,
 		mat = material,
 	}
+	if hidden then
+		payload.hidden = true
+	end
+	local ceil = inst:GetAttribute("Ceiling")
+	if type(ceil) == "number" then
+		payload.ceil = ceil
+	end
 	if isMesh then
 		payload.mesh = inst:GetAttribute("MeshItem")
 		payload.finish = inst:GetAttribute("Finish")
@@ -241,7 +259,7 @@ local HEARTH = {
 	{ "mini_pine", 0, 3 },
 	{ "cocoa_mug", 1, 3 },
 	{ "cocoa_wreath", 0, 2 },
-	{ "stocking_row", 3, 2 },
+	{ "stocking_row", 2, 0 },
 	{ "coral_armchair", 5, 2 },
 	{ "star_pillow", 4, 4 },
 }
@@ -529,6 +547,8 @@ if WITH_MESHES then
 		{ "mini_pine", 5, 5 },
 		{ "gift_stack", 4, 5 },
 		{ "cocoa_mug", 0, 5 },
+		{ "globe_frame", 0, 2 },
+		{ "nutcracker_frame", 5, 1 },
 	}
 	-- Every room item here has a mesh, for the store art.
 	local SHOWROOM = {
@@ -545,6 +565,8 @@ if WITH_MESHES then
 		{ "fern_pot", 5, 0 },
 		{ "gift_stack", 1, 1 },
 		{ "round_side", 4, 4 },
+		{ "cocoa_wreath", 0, 1 },
+		{ "frosted_frame", 5, 1 },
 	}
 	-- A second nook with the round-2 meshes, on the frost and winter shells.
 	local NOOK = {
@@ -561,6 +583,8 @@ if WITH_MESHES then
 		{ "fern_pot", 5, 5 },
 		{ "dot_rug", 0, 5 },
 		{ "star_pillow", 1, 5 },
+		{ "quilt_square", 0, 1 },
+		{ "globe_frame", 5, 1 },
 	}
 	local FINISHES = {
 		{ "coral_armchair", 0, 2, 0, nil, "Fabric" },

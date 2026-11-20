@@ -15,7 +15,7 @@ from PIL import Image
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ASSETS = os.path.join(ROOT, "assets", "meshes")
 SIZE = 256
-ROUGH = {"satin": 0.5, "metal": 0.3, "gloss": 0.06, "matte": 0.97}
+ROUGH = {"satin": 0.42, "metal": 0.18, "gloss": 0.03, "matte": 0.98}
 
 
 def load(path, mode="L"):

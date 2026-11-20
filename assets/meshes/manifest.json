@@ -2,6 +2,48 @@
  "refCell": 4.8,
  "items": [
   {
+   "id": "bell_banner",
+   "tris": 9012,
+   "size": [
+    9.9008,
+    2.0342,
+    1.2
+   ],
+   "center": [
+    0.0,
+    3.297,
+    0.6
+   ],
+   "mount": "wall",
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "bell_banner.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
    "id": "berry_pot",
    "tris": 6624,
    "size": [
@@ -403,6 +445,47 @@
    }
   },
   {
+   "id": "cocoa_wreath",
+   "tris": 9560,
+   "size": [
+    4.6956,
+    5.0257,
+    1.2494
+   ],
+   "center": [
+    -0.0689,
+    2.1655,
+    0.7227
+   ],
+   "mount": "wall",
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "cocoa_wreath.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
    "id": "coffee_bar",
    "tris": 7330,
    "size": [
@@ -646,21 +729,62 @@
   },
   {
    "id": "fern_pot",
-   "tris": 10864,
+   "tris": 9888,
    "size": [
-    4.7431,
-    2.373,
-    4.6941
+    4.9324,
+    2.4514,
+    4.9857
    ],
    "center": [
-    -0.0533,
-    1.1865,
-    0.0908
+    0.0111,
+    1.2257,
+    0.062
    ],
    "metal": false,
    "emissive": false,
    "files": [
     "fern_pot.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "frosted_frame",
+   "tris": 3816,
+   "size": [
+    3.6727,
+    4.4446,
+    0.7897
+   ],
+   "center": [
+    0.0251,
+    2.4223,
+    0.3358
+   ],
+   "mount": "wall",
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "frosted_frame.fbx",
     "color.png",
     "normal.png",
     "roughness.png",
@@ -704,6 +828,48 @@
     "color.png",
     "normal.png",
     "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "globe_frame",
+   "tris": 2640,
+   "size": [
+    4.12,
+    4.3234,
+    0.6116
+   ],
+   "center": [
+    0.0,
+    2.4517,
+    0.3258
+   ],
+   "mount": "wall",
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "globe_frame.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
     "rough_satin.png",
     "rough_metal.png",
     "metal_metal.png",
@@ -994,6 +1160,48 @@
    }
   },
   {
+   "id": "nutcracker_frame",
+   "tris": 1832,
+   "size": [
+    3.4,
+    4.65,
+    0.7
+   ],
+   "center": [
+    0.0,
+    2.525,
+    0.16
+   ],
+   "mount": "wall",
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "nutcracker_frame.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
    "id": "pibble_rug",
    "tris": 3392,
    "size": [
@@ -1051,6 +1259,47 @@
    "emissive": false,
    "files": [
     "plaid_rug.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "quilt_square",
+   "tris": 2696,
+   "size": [
+    4.76,
+    4.17,
+    0.4175
+   ],
+   "center": [
+    0.0,
+    2.285,
+    0.2488
+   ],
+   "mount": "wall",
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "quilt_square.fbx",
     "color.png",
     "normal.png",
     "roughness.png",
@@ -1248,6 +1497,47 @@
    }
   },
   {
+   "id": "ribbon_sash",
+   "tris": 2944,
+   "size": [
+    10.1946,
+    2.0692,
+    0.4253
+   ],
+   "center": [
+    0.0,
+    3.3346,
+    0.3954
+   ],
+   "mount": "wall",
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "ribbon_sash.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
    "id": "round_side",
    "tris": 2780,
    "size": [
@@ -1348,6 +1638,105 @@
     "color.png",
     "normal.png",
     "roughness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "stocking_row",
+   "tris": 5928,
+   "size": [
+    9.3,
+    3.9185,
+    1.06
+   ],
+   "center": [
+    0.0,
+    2.5608,
+    0.53
+   ],
+   "mount": "wall",
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "stocking_row.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "rough_satin.png",
+    "rough_metal.png",
+    "metal_metal.png",
+    "rough_gloss.png",
+    "rough_matte.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0,
+    "satinR": 0,
+    "metalR": 0,
+    "metalM": 0,
+    "glossR": 0,
+    "matteR": 0
+   }
+  },
+  {
+   "id": "string_lights",
+   "tris": 6152,
+   "size": [
+    13.28,
+    1.7224,
+    0.4961
+   ],
+   "center": [
+    0.0,
+    3.4271,
+    0.2613
+   ],
+   "mount": "wall",
+   "light": {
+    "at": [
+     0,
+     3.1999999999999997,
+     0.4
+    ],
+    "brightness": 0.5,
+    "range": 11,
+    "color": [
+     255,
+     220,
+     160
+    ]
+   },
+   "metal": true,
+   "emissive": true,
+   "files": [
+    "string_lights.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "emissive.png",
     "rough_satin.png",
     "rough_metal.png",
     "metal_metal.png",
@@ -1502,6 +1891,47 @@
   }
  ],
  "shell": [
+  {
+   "id": "ceiling_lamp",
+   "tris": 1836,
+   "size": [
+    3.02,
+    2.0846,
+    3.02
+   ],
+   "center": [
+    0.0,
+    -1.0423,
+    -0.0
+   ],
+   "light": {
+    "at": [
+     0,
+     -1.6,
+     0
+    ],
+    "brightness": 0.6,
+    "range": 24
+   },
+   "metal": true,
+   "emissive": true,
+   "files": [
+    "ceiling_lamp.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "emissive.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
   {
    "id": "curtains",
    "tris": 10512,

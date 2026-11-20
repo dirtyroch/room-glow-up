@@ -113,12 +113,22 @@ def tile():
 
 
 def carpet():
+    """Berber loop pile: visible loop rows, a soft heather and clumps, so a
+    tinted carpet reads as fibre and not one flat colour."""
+    y, x = np.mgrid[0:N, 0:N]
+    rows = 64  # loop rows per tile (16 per stud at 4 studs)
+    ph = (y % (N // rows)) / (N // rows)
+    off = ((y // (N // rows)) % 2) * 0.5
+    loops = np.abs(np.sin(((x / (N / 96)) + off) * math.pi))  # loops along each row
+    row = np.sin(ph * math.pi) ** 0.6
+    pile = row * (0.55 + 0.45 * loops)
     fib = tile_noise(160, 2, seed=7)
-    clump = tile_noise(14, 4, seed=8)
-    v = 0.9 + 0.07 * (fib - 0.5) + 0.06 * (clump - 0.5)
-    h = 0.6 * fib + 0.4 * clump
-    rough = np.full((N, N), 0.95, np.float32)
-    save("carpet", gray3(v), h, rough, 6.0)
+    clump = tile_noise(10, 4, seed=8)
+    heather = tile_noise(48, 2, seed=14)
+    v = 0.8 + 0.16 * pile + 0.05 * (fib - 0.5) + 0.07 * (clump - 0.5) + 0.06 * (heather - 0.5)
+    h = 0.65 * pile + 0.2 * fib + 0.15 * clump
+    rough = np.full((N, N), 0.96, np.float32)
+    save("carpet", gray3(v, (1.0, 0.99, 0.975)), h, rough, 7.0)
 
 
 def plaster():
@@ -136,15 +146,25 @@ def paper_base(seed):
 
 
 def stripe():
+    """Regency stripe: warm cream paper, a soft peach-cream band and a rose
+    pinstripe. Warm on purpose so the hearth walls stay pastel, not grey."""
     base, n = paper_base(12)
     x = np.mgrid[0:N, 0:N][1]
     u = (x % (N // 4)) / (N // 4)  # 4 repeats per tile = 1 stud each
     band = (u > 0.18) & (u < 0.52)
+    edge = (np.abs(u - 0.18) < 0.012) | (np.abs(u - 0.52) < 0.012)
     pin = (np.abs(u - 0.72) < 0.012)
-    v = base * np.where(band, 0.94, 1.0) * np.where(pin, 0.9, 1.0)
+    paper = np.stack([base * 1.0, base * 0.99, base * 0.975], -1)
+    band_c = np.array([1.0, 0.95, 0.9], np.float32)
+    edge_c = np.array([0.99, 0.9, 0.86], np.float32)
+    pin_c = np.array([0.98, 0.86, 0.84], np.float32)
+    col = paper.copy()
+    col[band] = paper[band] * band_c
+    col[edge] = paper[edge] * edge_c
+    col[pin] = paper[pin] * pin_c
     h = n * 0.2 + np.where(band, 0.03, 0)
     rough = 0.85 + 0.04 * (n - 0.5)
-    save("stripe", gray3(v), h, rough, 0.8)
+    save("stripe", col, h, rough, 0.8)
 
 
 def sprig():

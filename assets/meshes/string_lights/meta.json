@@ -1,0 +1,31 @@
+{
+ "id": "string_lights",
+ "tris": 6152,
+ "size": [
+  13.28,
+  1.7224,
+  0.4961
+ ],
+ "center": [
+  0.0,
+  3.4271,
+  0.2613
+ ],
+ "mount": "wall",
+ "light": {
+  "at": [
+   0,
+   3.1999999999999997,
+   0.4
+  ],
+  "brightness": 0.5,
+  "range": 11,
+  "color": [
+   255,
+   220,
+   160
+  ]
+ },
+ "metal": true,
+ "emissive": true
+}

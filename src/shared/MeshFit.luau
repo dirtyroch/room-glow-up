@@ -45,6 +45,32 @@ function MeshFit.fit(entry: any, sy: number, unit: number): (number, number, num
 	return size[1] * k, size[2] * k, size[3] * k, center[1] * k, center[2] * k - sy / 2, center[3] * k
 end
 
+-- Wall items (Meshes entry mount = "wall") hang on the wall face. Their prop
+-- box is centered on the root with its back on the wall plane (Bases.pivot);
+-- the wall cell's face is WallFace studs in front of that plane. standoff lifts
+-- the mesh off the face (clears the wainscot rail). Returns size and offset.
+MeshFit.WallFace = 0.275
+
+function MeshFit.isWall(entry: any): boolean
+	return type(entry) == "table" and entry.mount == "wall"
+end
+
+function MeshFit.fitWall(entry: any, unit: number, thick: number, standoff: number): (number, number, number, number, number, number)
+	local k = unit / Meshes.RefCell
+	local size = entry.size
+	local w, h, d = size[1] * k, size[2] * k, size[3] * k
+	local oz = -thick / 2 + MeshFit.WallFace + standoff + d / 2
+	return w, h, d, entry.center[1] * k, 0, oz
+end
+
+-- Bulb position relative to the mesh center (MeshPart pivot = bounds center).
+function MeshFit.bulb(entry: any, unit: number): (number, number, number)
+	local k = unit / Meshes.RefCell
+	local at = entry.light.at
+	local c = entry.center
+	return (at[1] - c[1]) * k, (at[2] - c[2]) * k, (at[3] - c[3]) * k
+end
+
 -- Light position from the prop root.
 function MeshFit.light(entry: any, sy: number, unit: number): (number, number, number)
 	local k = unit / Meshes.RefCell
@@ -64,10 +90,11 @@ export type Finish = { target: { number }?, mix: number, rough: string?, metal: 
 
 MeshFit.Finishes = {
 	Fabric = { target = nil, mix = 0, rough = nil, metal = nil, transparency = 0 },
-	Wood = { target = { 0.66, 0.47, 0.33 }, mix = 0.45, rough = "satinR", metal = nil, transparency = 0 },
-	Metal = { target = { 0.8, 0.82, 0.86 }, mix = 0.2, rough = "metalR", metal = "metalM", transparency = 0 },
-	Glass = { target = { 1, 1, 1 }, mix = 0.35, rough = "glossR", metal = nil, transparency = 0 },
-	Slate = { target = { 0.42, 0.45, 0.5 }, mix = 0.5, rough = "matteR", metal = nil, transparency = 0 },
+	-- Strong enough to read from the build camera, not only up close.
+	Wood = { target = { 0.55, 0.37, 0.24 }, mix = 0.62, rough = "satinR", metal = nil, transparency = 0 },
+	Metal = { target = { 0.86, 0.88, 0.92 }, mix = 0.5, rough = "metalR", metal = "metalM", transparency = 0 },
+	Glass = { target = { 0.94, 0.98, 1 }, mix = 0.55, rough = "glossR", metal = nil, transparency = 0 },
+	Slate = { target = { 0.36, 0.39, 0.44 }, mix = 0.68, rough = "matteR", metal = nil, transparency = 0 },
 } :: { [string]: Finish }
 
 function MeshFit.finish(name: string?): Finish
