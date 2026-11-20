@@ -1,0 +1,25 @@
+{
+ "id": "ceiling_lamp",
+ "tris": 1836,
+ "size": [
+  3.02,
+  2.0846,
+  3.02
+ ],
+ "center": [
+  0.0,
+  -1.0423,
+  -0.0
+ ],
+ "light": {
+  "at": [
+   0,
+   -1.6,
+   0
+  ],
+  "brightness": 0.6,
+  "range": 24
+ },
+ "metal": true,
+ "emissive": true
+}

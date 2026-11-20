@@ -490,6 +490,7 @@ function Props.room(shellModel: Model)
 	dressRoom(shellModel, pivot, width, depth, height)
 	shellModel:SetAttribute("RoomShell", true)
 	ShellDress.dress(shellModel, pivot, width, depth, height, unit)
+	ShellDress.ceiling(shellModel, pivot, width, depth, height, unit)
 	ShellDress.restyle(shellModel, "hearth")
 end
 
@@ -1117,7 +1118,17 @@ function Props.prop(plotPivot: CFrame, item: any, piece: any, roundType: string)
 	model:SetAttribute("PartCount", 1)
 	model:SetAttribute("Pack", Look.packFor(item.roundType, themeTag))
 	-- Uploaded furniture meshes replace the part build. Same root, cell and pivot.
-	if item.surface == "floor" and MeshProps.build(model, cf, item, sy, unit, main) then
+	local wallSpec = nil
+	if item.surface == "wall" and roundType == "room" then
+		-- Clear the wainscot chair rail when the piece hangs low enough to meet it.
+		local half = if (piece.rot or 0) % 2 == 1 then sx / 2 else sy / 2
+		local bottom = (if spot then spot.y else 0) - half
+		wallSpec = {
+			thick = math.max(0.4, item.h * unit),
+			standoff = if bottom < 1 + ShellDress.Rail + 0.3 then 0.32 else 0.04,
+		}
+	end
+	if (item.surface == "floor" or wallSpec ~= nil) and MeshProps.build(model, cf, item, sy, unit, main, wallSpec) then
 		model:SetAttribute("PartCount", 2)
 	else
 		sculpt(model, cf, item, sx, sy, sz, {
@@ -1148,7 +1159,7 @@ function Props.tintShell(plot: Instance, family: string)
 		if child:IsA("BasePart") or child.ClassName == "MeshPart" then
 			local name = child:GetAttribute("Shell")
 			if type(name) == "string" then
-				local color = packColor(family, name)
+				local color = ShellDress.accent(family, name, packColor(family, name), child:GetAttribute("Surface"))
 				local tone = child:GetAttribute("Tone")
 				if type(tone) == "string" then
 					color = ShellDress.shade(color, tone)

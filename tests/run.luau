@@ -1052,13 +1052,23 @@ test("at least 20 furniture meshes, each a real floor item with its files", func
 	for _, id in ipairs(ids) do
 		local item = Items.get(id)
 		truthy(item ~= nil, "mesh for unknown item " .. id)
-		eq(item.surface, "floor")
-		eq(item.roundType, "room")
 		local entry = MeshFit.entry(id)
+		if MeshFit.isWall(entry) then
+			eq(item.surface, "wall")
+		else
+			eq(item.surface, "floor")
+		end
+		eq(item.roundType, "room")
 		truthy(entry.tris > 0 and entry.tris <= 12000, id .. " tris " .. tostring(entry.tris))
 		local cell = 4.8
 		truthy(entry.size[1] <= item.w * cell * 1.15, id .. " wider than its cells")
-		truthy(entry.size[3] <= item.d * cell * 1.15, id .. " deeper than its cells")
+		if MeshFit.isWall(entry) then
+			-- On the wall, d is the height in cells.
+			truthy(entry.size[2] <= item.d * cell * 1.15, id .. " taller than its cells")
+			truthy(entry.size[3] <= 1.5, id .. " sticks too far off the wall")
+		else
+			truthy(entry.size[3] <= item.d * cell * 1.15, id .. " deeper than its cells")
+		end
 		for _, name in ipairs({ id .. ".fbx", "color.png", "normal.png", "roughness.png", "meta.json" }) do
 			truthy(fs.isFile("assets/meshes/" .. id .. "/" .. name), id .. " missing " .. name)
 		end
@@ -1084,6 +1094,7 @@ end)
 test("room shell: curtains mesh, six tileable surfaces, a style per family", function()
 	local curtains = MeshFit.shell("curtains")
 	truthy(curtains ~= nil and curtains.tris <= 12000)
+	truthy(fs.isFile("assets/shell/ceiling_lamp/ceiling_lamp.fbx"))
 	truthy(fs.isFile("assets/shell/curtains/curtains.fbx"))
 	local Look = require("../src/shared/Look")
 	for _, family in ipairs({ "hearth", "ginger", "winter", "glow", "frost" }) do
@@ -1120,6 +1131,54 @@ test("finish changes the mesh tint, and Fabric keeps the baked look", function()
 	eq(MeshFit.finish("Nope"), MeshFit.finish("Fabric"))
 end)
 
+test("round-3: every room wall item has a wall mesh that hangs on the wall face", function()
+	local walls = 0
+	for _, item in ipairs(Items.list) do
+		if item.roundType == "room" and item.surface == "wall" then
+			walls += 1
+			local entry = MeshFit.entry(item.id)
+			truthy(entry ~= nil, item.id .. " has no mesh")
+			truthy(MeshFit.isWall(entry), item.id .. " mesh is not wall mounted")
+			for _, standoff in ipairs({ 0.04, 0.32 }) do
+				local thick = math.max(0.4, item.h * 4.8)
+				local _, _, d, _, oy, oz = MeshFit.fitWall(entry, 4.8, thick, standoff)
+				eq(oy, 0)
+				-- The back of the mesh sits standoff in front of the wall face.
+				local back = oz - d / 2
+				truthy(math.abs(back - (-thick / 2 + MeshFit.WallFace + standoff)) < 1e-6, item.id .. " back")
+			end
+		end
+	end
+	truthy(walls >= 9, "room wall items " .. tostring(walls))
+	local lights = MeshFit.entry("string_lights")
+	truthy(lights.light ~= nil)
+	local bx, by, bz = MeshFit.bulb(lights, 4.8)
+	truthy(math.abs(bx) < 7 and math.abs(by) < 3 and math.abs(bz) < 1)
+end)
+
+test("ceiling: a drum light mesh, a cutaway rule and a phone light cap", function()
+	local lamp = MeshFit.shell("ceiling_lamp")
+	truthy(lamp ~= nil and lamp.tris <= 12000 and lamp.light ~= nil)
+	local Cutaway = require("../src/shared/Logic/Cutaway")
+	truthy(Cutaway.hidden(24, 15.4))
+	truthy(not Cutaway.hidden(8, 15.4))
+	truthy(not Cutaway.hidden(nil, 15.4))
+	local LowEnd = require("../src/shared/Logic/LowEnd")
+	local normal = LowEnd.lightCap(false)
+	local low = LowEnd.lightCap(true)
+	truthy(normal.ceiling == true and normal.bulbs >= 1 and normal.bulbs <= 6)
+	truthy(low.ceiling == false and low.bulbs == 0)
+	local Look = require("../src/shared/Look")
+	for _, family in ipairs({ "hearth", "ginger", "winter", "glow", "frost" }) do
+		local style = Look.shellStyle(family)
+		truthy(style.light[1] == 255 and style.light[3] < style.light[2], family .. " light is warm")
+		truthy(style.floorLift >= 0 and style.floorLift < 0.6)
+	end
+	-- Cool families get white/cream accents.
+	truthy(Look.shellStyle("frost").floorLift > 0 and Look.shellStyle("frost").drape == "cream" and Look.shellStyle("frost").wainscot)
+	truthy(Look.shellStyle("winter").floorLift > 0 and Look.shellStyle("winter").drape == "cream")
+end)
+
 test("a mesh only replaces parts once its model and color ids are set", function()
 	truthy(not MeshFit.uploaded(nil))
 	truthy(not MeshFit.uploaded({ ids = { model = 0, color = 0 } }))
@@ -1131,7 +1190,7 @@ test("mesh fit stands on the floor and scales with the cell", function()
 	for _, id in ipairs(MeshFit.ids()) do
 		local item = Items.get(id)
 		local entry = MeshFit.entry(id)
-		for _, unit in ipairs({ 4.8, 2.4 }) do
+		for _, unit in ipairs(if MeshFit.isWall(entry) then {} else { 4.8, 2.4 }) do
 			local sy = math.max(0.35, item.h * unit)
 			local _, h, _, _, oy, _ = MeshFit.fit(entry, sy, unit)
 			local bottom = oy - h / 2

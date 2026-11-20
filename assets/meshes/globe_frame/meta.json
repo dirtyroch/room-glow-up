@@ -1,0 +1,17 @@
+{
+ "id": "globe_frame",
+ "tris": 2640,
+ "size": [
+  4.12,
+  4.3234,
+  0.6116
+ ],
+ "center": [
+  0.0,
+  2.4517,
+  0.3258
+ ],
+ "mount": "wall",
+ "metal": true,
+ "emissive": false
+}

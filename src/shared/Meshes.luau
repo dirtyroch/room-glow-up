@@ -3,13 +3,21 @@
 -- Only the ids lines change by hand or by scripts/upload-meshes.luau.
 -- size and center are studs at Meshes.RefCell, engine axes, floor at y = 0,
 -- +Z is the front. An item uses its mesh once ids.model and ids.color are set.
+-- mount = "wall": the back sits on the wall face (MeshFit.fitWall).
 -- satinR/metalR/metalM/glossR/matteR are the Finish map variants.
 
 export type Light = { at: { number }, brightness: number, range: number, color: { number }? }
-export type Entry = { size: { number }, center: { number }, tris: number, ids: { [string]: number }, light: Light? }
+export type Entry = { size: { number }, center: { number }, tris: number, ids: { [string]: number }, light: Light?, mount: string? }
 export type Surface = { variant: string, base: string, studs: number, ids: { [string]: number } }
 
 local Items: { [string]: Entry } = {
+	bell_banner = {
+		size = { 9.9008, 2.0342, 1.2 },
+		center = { 0, 3.297, 0.6 },
+		tris = 9012,
+		mount = "wall",
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
 	berry_pot = {
 		size = { 3.0677, 3.3407, 3.1862 },
 		center = { -0.0284, 1.6703, -0.0052 },
@@ -70,6 +78,13 @@ local Items: { [string]: Entry } = {
 		tris = 3068,
 		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
 	},
+	cocoa_wreath = {
+		size = { 4.6956, 5.0257, 1.2494 },
+		center = { -0.0689, 2.1655, 0.7227 },
+		tris = 9560,
+		mount = "wall",
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
 	coffee_bar = {
 		size = { 4.8, 6.24, 4.2 },
 		center = { 0, 3.12, -0.3 },
@@ -107,15 +122,29 @@ local Items: { [string]: Entry } = {
 		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
 	},
 	fern_pot = {
-		size = { 4.7431, 2.373, 4.6941 },
-		center = { -0.0533, 1.1865, 0.0908 },
-		tris = 10864,
+		size = { 4.9324, 2.4514, 4.9857 },
+		center = { 0.0111, 1.2257, 0.062 },
+		tris = 9888,
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
+	frosted_frame = {
+		size = { 3.6727, 4.4446, 0.7897 },
+		center = { 0.0251, 2.4223, 0.3358 },
+		tris = 3816,
+		mount = "wall",
 		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
 	},
 	gift_stack = {
 		size = { 4.0089, 3.7494, 3.6906 },
 		center = { 0.2845, 1.8547, 0.2253 },
 		tris = 2024,
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
+	globe_frame = {
+		size = { 4.12, 4.3234, 0.6116 },
+		center = { 0, 2.4517, 0.3258 },
+		tris = 2640,
+		mount = "wall",
 		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
 	},
 	hearth_lamp = {
@@ -156,6 +185,13 @@ local Items: { [string]: Entry } = {
 		tris = 3280,
 		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
 	},
+	nutcracker_frame = {
+		size = { 3.4, 4.65, 0.7 },
+		center = { 0, 2.525, 0.16 },
+		tris = 1832,
+		mount = "wall",
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
 	pibble_rug = {
 		size = { 7.7661, 0.31, 8.3261 },
 		center = { 0, 0.155, -0.1623 },
@@ -166,6 +202,13 @@ local Items: { [string]: Entry } = {
 		size = { 9.1397, 0.17, 4.3398 },
 		center = { 0, 0.085, 0.0001 },
 		tris = 792,
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
+	quilt_square = {
+		size = { 4.76, 4.17, 0.4175 },
+		center = { 0, 2.285, 0.2488 },
+		tris = 2696,
+		mount = "wall",
 		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
 	},
 	reader_chair = {
@@ -193,6 +236,13 @@ local Items: { [string]: Entry } = {
 		tris = 5444,
 		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
 	},
+	ribbon_sash = {
+		size = { 10.1946, 2.0692, 0.4253 },
+		center = { 0, 3.3346, 0.3954 },
+		tris = 2944,
+		mount = "wall",
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
 	round_side = {
 		size = { 4.1, 5.6194, 4.1 },
 		center = { 0, 2.8097, -0 },
@@ -209,6 +259,21 @@ local Items: { [string]: Entry } = {
 		size = { 2.7891, 2.3423, 2.9428 },
 		center = { 0.1207, 1.0846, -0.2095 },
 		tris = 5180,
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
+	stocking_row = {
+		size = { 9.3, 3.9185, 1.06 },
+		center = { 0, 2.5608, 0.53 },
+		tris = 5928,
+		mount = "wall",
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
+	},
+	string_lights = {
+		size = { 13.28, 1.7224, 0.4961 },
+		center = { 0, 3.4271, 0.2613 },
+		tris = 6152,
+		mount = "wall",
+		light = { at = { 0, 3.2, 0.4 }, brightness = 0.5, range = 11, color = { 255, 220, 160 } },
 		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0, satinR = 0, metalR = 0, metalM = 0, glossR = 0, matteR = 0 },
 	},
 	stripe_rug = {
@@ -234,6 +299,13 @@ local Items: { [string]: Entry } = {
 
 -- Room shell pieces (curtains). Same rules as Items.
 local Shell: { [string]: Entry } = {
+	ceiling_lamp = {
+		size = { 3.02, 2.0846, 3.02 },
+		center = { 0, -1.0423, -0 },
+		tris = 1836,
+		light = { at = { 0, -1.6, 0 }, brightness = 0.6, range = 24 },
+		ids = { model = 0, color = 0, normal = 0, roughness = 0, metalness = 0, emissive = 0 },
+	},
 	curtains = {
 		size = { 16.23, 12.8751, 0.655 },
 		center = { 0, -6.2325, 0.3225 },

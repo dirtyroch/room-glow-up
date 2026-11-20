@@ -1,0 +1,17 @@
+{
+ "id": "bell_banner",
+ "tris": 9012,
+ "size": [
+  9.9008,
+  2.0342,
+  1.2
+ ],
+ "center": [
+  0.0,
+  3.297,
+  0.6
+ ],
+ "mount": "wall",
+ "metal": true,
+ "emissive": false
+}

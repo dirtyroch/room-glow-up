@@ -518,35 +518,46 @@ def soft_frond(length, leaflets, leaf_len, droop, m, seed):
             bm.faces.new((prev[0], cur[0], cur[1], prev[1]))
         prev = cur
     for k in range(leaflets):
-        t = 0.12 + 0.86 * (k + 0.5) / leaflets
+        # Leaflets bunch a little toward the tip so the frond ends full, not bare.
+        u = (k + 0.5) / leaflets
+        t = 0.1 + 0.88 * (u ** 0.85)
         x, y, z = spine(t)
         x2, _, z2 = spine(min(1.0, t + 0.02))
         slope = math.atan2(z2 - z, x2 - x)
-        size = leaf_len * math.sin(math.pi * min(1.0, 0.25 + t * 0.85)) * (1.05 - 0.55 * t)
+        ramp = min(1.0, 0.45 + t * 2.2)
+        size = leaf_len * ramp * (1.0 - 0.42 * t * t)
         for side in (-1, 1):
-            ang = math.radians(rnd.uniform(52, 64))  # leaflets sweep forward
+            ang = math.radians(rnd.uniform(50, 62) + 14 * t)  # tips sweep forward
             dx, dy = math.cos(ang) * size, side * math.sin(ang) * size
-            wid = size * 0.27
-            ox = x + (0.5 * size / leaflets) * side * 0.2
-            # Rounded oval leaflet: 6-point fan.
+            wid = size * 0.3
+            ox = x
             base = bm.verts.new((ox, side * 0.03, z))
             pts = []
             ux, uy = dx / size, dy / size
             nx, ny = -uy, ux
-            for a in (0.25, 0.55, 0.85):
+            for a in (0.3, 0.7):
                 px_ = ox + dx * a
                 py_ = side * 0.03 + dy * a
-                ww = wid * (math.sin(math.pi * min(1.0, a * 1.1)) ** 0.7)
+                ww = wid * (math.sin(math.pi * min(1.0, a * 1.05)) ** 0.6)
                 droop_z = z + math.tan(slope) * dx * a - 0.12 * size * a * a
                 pts.append((bm.verts.new((px_ + nx * ww, py_ + ny * ww, droop_z + 0.03)),
                             bm.verts.new((px_ - nx * ww, py_ - ny * ww, droop_z + 0.03))))
             tip = bm.verts.new((ox + dx, side * 0.03 + dy, z + math.tan(slope) * dx - 0.12 * size))
-            # Width goes across the leaflet direction.
             ring_v = [base] + [p[0] for p in pts] + [tip] + [p[1] for p in reversed(pts)]
             try:
-                f = bm.faces.new(ring_v)
+                bm.faces.new(ring_v)
             except ValueError:
                 continue
+    # Terminal leaflet so the frond ends in a soft point.
+    x, y, z = spine(1.0)
+    x0, _, z0 = spine(0.97)
+    L = leaf_len * 0.5
+    dxn, dzn = (x - x0), (z - z0)
+    nrm = math.hypot(dxn, dzn) or 1.0
+    dxn, dzn = dxn / nrm, dzn / nrm
+    tv = [bm.verts.new((x0, 0.0, z0)), bm.verts.new((x + dxn * L * 0.5, -L * 0.22, z + dzn * L * 0.5 + 0.02)),
+          bm.verts.new((x + dxn * L, 0.0, z + dzn * L)), bm.verts.new((x + dxn * L * 0.5, L * 0.22, z + dzn * L * 0.5 + 0.02))]
+    bm.faces.new(tv)
     lib.bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
     back = lib.bmesh.ops.duplicate(bm, geom=list(bm.faces))
     bfaces = [g for g in back["geom"] if isinstance(g, lib.bmesh.types.BMFace)]
@@ -566,12 +577,12 @@ def fern_pot(M):
     random.seed(7)
     # Soft Boston fern: many arching fronds with small rounded leaflets that
     # spill over the rim instead of pointing up.
-    n = 30
+    n = 32
     for i in range(n):
         a = i * 2.39996 + random.uniform(-0.15, 0.15)
-        inner = i < 10
+        inner = i < 11
         L = random.uniform(1.3, 1.6) if inner else random.uniform(1.9, 2.2)
-        o = soft_frond(L, 13, 0.52, random.uniform(0.55, 0.75) if not inner else 0.35, fern, 100 + i)
+        o = soft_frond(L, 16, 0.5, random.uniform(0.55, 0.75) if not inner else 0.35, fern, 100 + i)
         lift = random.uniform(30, 45) if inner else random.uniform(5, 22)
         transform(o, (0.15 * math.cos(a), 0.15 * math.sin(a), 1.42), (random.uniform(-0.2, 0.2), math.radians(-lift), a))
     return {}
@@ -1304,3 +1315,325 @@ def curtains(M):
         sphere(0.2, (sx * (rod_half + 0.12), -0.45, rod_z), M["brass"], segs=14, rings=8)
         box((0.18, 0.45, 0.18), (sx * (rod_half - 0.35), -0.22, rod_z), M["brass"], bevel=0.04, seg=1)
     return {}
+
+
+# ------------------------------------------------------------ wall items
+# Wall items: back flat on y = 0, the front toward -Y, bottom at z = 0,
+# centered on x. Engine side: MeshFit.fitWall hangs them on the wall face.
+WALL = set()
+
+
+def wall(fn):
+    WALL.add(fn.__name__)
+    return item(fn)
+
+
+def needle(x, y, z, phi, m, length=0.5, width=0.075, tilt=0.0):
+    """One fir needle spray lying in the wall plane, pointing at angle phi (XZ)."""
+    lb = leaf_blade(length, width, bend=0.08, segs=2)
+    finish(lb, m)
+    transform(lb, (x, y, z), (math.radians(-90) + tilt, -phi, 0))
+    return lb
+
+
+def fir_mats():
+    return (material("fir", rgb(58, 112, 84), "leaf", rough=0.55, color2=rgb(36, 84, 62)),
+            material("fir_dark", rgb(34, 72, 54), "leaf", rough=0.7, color2=rgb(26, 56, 42)))
+
+
+def ribbon_strip(points, width, m, thick=0.035, name="ribbon"):
+    """Flat ribbon along a polyline in the wall plane, its face toward -Y."""
+    bm = lib.bmesh.new()
+    rows = []
+    n = len(points)
+    for i, (x, y, z) in enumerate(points):
+        a = points[max(0, i - 1)]
+        b = points[min(n - 1, i + 1)]
+        tx, tz = b[0] - a[0], b[2] - a[2]
+        L = math.hypot(tx, tz) or 1.0
+        sx, sz = -tz / L, tx / L
+        rows.append((bm.verts.new((x + sx * width / 2, y, z + sz * width / 2)), bm.verts.new((x - sx * width / 2, y, z - sz * width / 2))))
+    for i in range(n - 1):
+        bm.faces.new((rows[i][0], rows[i + 1][0], rows[i + 1][1], rows[i][1]))
+    o = lib._mesh_obj(name, bm)
+    sol = o.modifiers.new("sol", "SOLIDIFY"); sol.thickness = thick; sol.offset = 0
+    lib._apply_mods(o)
+    return finish(o, m, 50)
+
+
+def catenary(x0, x1, top, sag, y=-0.2, n=16, bulge=0.15):
+    pts = []
+    for i in range(n + 1):
+        t = i / n
+        pts.append((x0 + (x1 - x0) * t, y - bulge * math.sin(math.pi * t), top - sag * math.sin(math.pi * t) ** 1.2))
+    return pts
+
+
+def bow(cx, cy, cz, s, m, tails=True):
+    for side in (-1, 1):
+        lp = ring(0.42 * s, 0.12 * s, (0, 0, 0), m, segs=18, minor_segs=8, rot=(math.radians(90), 0, 0))
+        transform(lp, (cx + side * 0.42 * s, cy, cz + 0.06 * s), (0, side * math.radians(-18), 0), (1.0, 0.55, 0.62))
+        if tails:
+            ribbon_strip([(cx + side * 0.06 * s, cy + 0.02, cz - 0.05 * s), (cx + side * 0.25 * s, cy - 0.03, cz - 0.55 * s),
+                          (cx + side * 0.42 * s, cy, cz - 1.05 * s)], 0.26 * s, m, name="tail")
+    sphere(0.16 * s, (cx, cy - 0.06 * s, cz), m, scale=(1.1, 0.8, 1.0), segs=12, rings=8, name="knot")
+
+
+def bell(x, y, z, s, m, clapper_m):
+    """Hand bell hanging from (x, y, z): mouth down."""
+    prof = [(0, 0), (0.55 * s, 0), (0.6 * s, 0.07 * s), (0.5 * s, 0.2 * s), (0.36 * s, 0.45 * s), (0.3 * s, 0.75 * s), (0.2 * s, 0.9 * s), (0, 0.95 * s)]
+    lathe(prof, (x, y, z - 1.1 * s), m, segs=24, cap_bottom=False, angle=50)
+    sphere(0.14 * s, (x, y, z - 1.12 * s), clapper_m, segs=10, rings=6)
+    ring(0.12 * s, 0.03 * s, (x, y, z - 0.1 * s), m, segs=12, minor_segs=6, rot=(math.radians(90), 0, 0))
+
+
+def frame_rect(cx, cz, w, h, m, bw=0.34, depth=0.32, lip_m=None):
+    """Picture frame molding: outer rails, a stepped inner lip and a back board."""
+    for dz in (-1, 1):
+        box((w, depth, bw), (cx, -depth / 2, cz + dz * (h / 2 - bw / 2)), m, bevel=0.08, seg=3)
+    for dx in (-1, 1):
+        box((bw, depth, h - 2 * bw + 0.02), (cx + dx * (w / 2 - bw / 2), -depth / 2, cz), m, bevel=0.08, seg=3)
+    lip = lip_m or m
+    iw, ih = w - 2 * bw, h - 2 * bw
+    for dz in (-1, 1):
+        box((iw + 0.02, 0.1, 0.09), (cx, -depth + 0.13, cz + dz * (ih / 2 - 0.045)), lip, bevel=0.03, seg=1)
+    for dx in (-1, 1):
+        box((0.09, 0.1, ih), (cx + dx * (iw / 2 - 0.045), -depth + 0.13, cz), lip, bevel=0.03, seg=1)
+    box((w - 0.1, 0.06, h - 0.1), (cx, -0.03, cz), M_BACK(), bevel=0.0)
+    return iw, ih
+
+
+def M_BACK():
+    return material("frame_back", rgb(120, 96, 80), "plain", rough=0.8)
+
+
+def art_panel(name, cx, cz, w, h, y=-0.1, tint=False):
+    img = os.path.join(HERE, "art", name + ".png")
+    m = material("art_" + name, (1, 1, 1), "image", rough=0.55, image=img, scale=(w, h), bump=0.08,
+                 tint_alpha=tint, plane="xz", image_at=(cx, cz))
+    box((w, 0.04, h), (cx, y, cz), m, bevel=0.0)
+    return m
+
+
+@wall
+def cocoa_wreath(M):
+    fir, fir_dark = fir_mats()
+    leaf_m, berry_m = holly_mats()
+    R, cz, y0 = 1.55, 2.4, -0.3
+    base = ring(R, 0.36, (0, 0, 0), fir_dark, segs=32, minor_segs=8, rot=(math.radians(90), 0, 0))
+    transform(base, (0, y0 - 0.05, cz), (0, 0, 0), (1, 0.7, 1))
+    rnd = random.Random(5)
+    for i in range(300):
+        a = rnd.uniform(0, 2 * math.pi)
+        dr = rnd.uniform(-0.5, 0.5)
+        r = R + dr
+        y = y0 - 0.12 - 0.42 * math.cos(dr / 0.5 * math.pi / 2) * rnd.uniform(0.55, 1.0)
+        phi = a + math.pi / 2 + rnd.uniform(-0.9, 0.9)
+        needle(r * math.cos(a), y, cz + r * math.sin(a), phi, fir if i % 3 else fir_dark,
+               length=rnd.uniform(0.42, 0.6), tilt=rnd.uniform(-0.35, 0.35))
+    for k in range(8):
+        a = k * 2 * math.pi / 8 + 0.3
+        if abs(a % (2 * math.pi) - 3 * math.pi / 2) < 0.4:
+            continue
+        x, z = R * math.cos(a), cz + R * math.sin(a)
+        for j in range(3):
+            lb = leaf_blade(0.5, 0.24, bend=0.12, segs=3)
+            finish(lb, leaf_m)
+            transform(lb, (x, y0 - 0.62, z), (math.radians(-90), -(a + j * 2.1), 0))
+        berries(x, y0 - 0.78, z, 3, 0.12, 30 + k, berry_m)
+    for k, a in enumerate((0.9, 2.3, 4.0, 5.6)):
+        x, z = (R + 0.1) * math.cos(a), cz + (R + 0.1) * math.sin(a)
+        cone = lathe([(0, 0), (0.16, 0.06), (0.2, 0.2), (0.16, 0.36), (0.08, 0.46), (0, 0.5)], (0, 0, 0), M["walnut"], segs=10, angle=40)
+        transform(cone, (x, y0 - 0.55, z), (math.radians(70), 0, a))
+        for j in range(3):
+            ring(0.16 - j * 0.03, 0.035, (x, y0 - 0.6, z + 0.05 - j * 0.1), M["walnut"], segs=10, minor_segs=4, rot=(math.radians(70), 0, a))
+    bow(0, y0 - 0.85, cz - R - 0.05, 1.05, M["fabric"])
+    return {"mount": "wall"}
+
+
+def stocking_outline(L, toe):
+    """Boot outline (x right, y up) hanging from y = 0 down to -L."""
+    raw = [(-0.6, 0), (0.6, 0), (0.62, -L * 0.62), (0.7, -L * 0.74), (toe, -L * 0.8), (toe + 0.25, -L * 0.9),
+           (toe, -L), (0.0, -L), (-0.55, -L * 0.94), (-0.68, -L * 0.8), (-0.62, -L * 0.6)]
+    pts = raw
+    for _ in range(2):  # Chaikin rounding
+        nxt = []
+        for i in range(len(pts)):
+            a, b = pts[i], pts[(i + 1) % len(pts)]
+            nxt += [(0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]), (0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1])]
+        pts = nxt
+    return pts
+
+
+@wall
+def stocking_row(M):
+    cuff_m = material("cuff", rgb(250, 246, 238), "knit", rough=0.95, bump=0.6)
+    heel_m = material("heel", rgb(240, 232, 220), "knit", rough=0.95, bump=0.5)
+    W = 2 * CELL
+    rail_z = 4.15
+    box((W - 0.5, 0.36, 0.5), (0, -0.18, rail_z), M["oak"], bevel=0.08, seg=2)
+    box((W - 0.3, 0.46, 0.12), (0, -0.23, rail_z + 0.31), M["oak"], bevel=0.04, seg=2)
+    for k, (x, L) in enumerate(((-3.0, 2.7), (0.0, 2.95), (3.0, 2.6))):
+        top = rail_z - 0.55
+        tube([(x, -0.3, rail_z - 0.1), (x, -0.55, rail_z - 0.2), (x, -0.5, rail_z - 0.42)], 0.05, M["brass"], segs=8, resolution=4)
+        o = extrude_outline(stocking_outline(L, 0.95), 0.5, (0, 0, 0), M["knit"], bevel=0.2, seg=3)
+        transform(o, (x, -0.22, top), (math.radians(90), 0, 0))
+        # Cream heel and toe patches, slightly proud of the front.
+        sphere(0.34, (x + 0.95, -0.76, top - L * 0.93), heel_m, scale=(1.0, 0.25, 0.75), segs=14, rings=8)
+        sphere(0.3, (x - 0.48, -0.76, top - L * 0.88), heel_m, scale=(1.0, 0.25, 0.85), segs=14, rings=8)
+        cushion((1.55, 0.72, 0.62), (x, -0.5, top - 0.18), cuff_m, round_=0.4, puff=0.05, cuts=2)
+        ring(0.14, 0.035, (x, -0.42, top + 0.18), cuff_m, segs=12, minor_segs=6, rot=(math.radians(90), 0, 0))
+        sphere(0.16, (x - 0.55, -0.9, top - 0.2), cuff_m, segs=10, rings=6, name="pom")
+    return {"mount": "wall"}
+
+
+@wall
+def ribbon_sash(M):
+    fab = M["fabric"]
+    top = 3.9
+    xs = (-4.3, 0.0, 4.3)
+    for i in range(2):
+        pts = catenary(xs[i], xs[i + 1], top, 1.25, y=-0.2, n=18, bulge=0.25)
+        ribbon_strip(pts, 0.7, fab, name="swag")
+        # A thinner satin edge ribbon riding on top.
+        edge = [(x, y - 0.04, z - 0.28) for x, y, z in pts]
+        ribbon_strip(edge, 0.12, M["cream"], thick=0.03, name="edge")
+    for x in xs:
+        bow(x, -0.42, top + 0.05, 1.0 if x == 0 else 0.85, fab)
+    return {"mount": "wall"}
+
+
+@wall
+def frosted_frame(M):
+    w, h, cz = 3.6, 4.2, 2.3
+    iw, ih = frame_rect(0, cz, w, h, M["paint"], lip_m=M["white"])
+    art_panel("winter_scene", 0, cz, iw - 0.1, ih - 0.1)
+    snow = material("snow", rgb(250, 252, 255), "ceramic", rough=0.6, bump=0.4)
+    rnd = random.Random(8)
+    for i in range(14):
+        x = rnd.uniform(-w / 2 + 0.2, w / 2 - 0.2)
+        sphere(rnd.uniform(0.14, 0.26), (x, -0.2, cz + h / 2 + 0.02), snow, scale=(1.6, 1.0, 0.55), segs=12, rings=6)
+    for sx, sz in ((-1, 1), (1, -1)):
+        for j in range(4):
+            sphere(0.16 + 0.03 * j, (sx * (w / 2 - 0.25 - 0.2 * j), -0.36, cz + sz * (h / 2 - 0.25)), snow, scale=(1.2, 0.5, 0.8), segs=10, rings=6)
+    fir, _ = fir_mats()
+    leaf_m, berry_m = holly_mats()
+    for j in range(9):
+        needle(-w / 2 + 0.35, -0.5, cz + h / 2 - 0.3, math.radians(-30 + j * 14), fir, length=0.55)
+    berries(-w / 2 + 0.35, -0.6, cz + h / 2 - 0.3, 3, 0.1, 77, berry_m)
+    return {"mount": "wall"}
+
+
+@wall
+def nutcracker_frame(M):
+    w, h, cz = 3.4, 4.3, 2.35
+    iw, ih = frame_rect(0, cz, w, h, M["paint"], bw=0.38, lip_m=M["brass"])
+    art_panel("nutcracker", 0, cz, iw - 0.1, ih - 0.1)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            sphere(0.17, (sx * (w / 2 - 0.19), -0.36, cz + sz * (h / 2 - 0.19)), M["brass"], scale=(1, 0.5, 1), segs=14, rings=8)
+    # Little crest on top.
+    lathe([(0, 0), (0.35, 0), (0.28, 0.2), (0.12, 0.34), (0, 0.4)], (0, -0.16, cz + h / 2 - 0.05), M["brass"], segs=16)
+    return {"mount": "wall"}
+
+
+@wall
+def globe_frame(M):
+    cz, R = 2.35, 1.82
+    o = ring(R, 0.24, (0, 0, 0), M["paint"], segs=48, minor_segs=10, rot=(math.radians(90), 0, 0))
+    transform(o, (0, -0.24, cz), (0, 0, 0), (1, 0.8, 1))
+    ring(R - 0.26, 0.06, (0, -0.3, cz), M["brass"], segs=48, minor_segs=6, rot=(math.radians(90), 0, 0))
+    img = os.path.join(HERE, "art", "snow_globe.png")
+    m = material("art_snow_globe", (1, 1, 1), "image", rough=0.5, image=img, scale=(2 * R - 0.3, 2 * R - 0.3), bump=0.05,
+                 plane="xz", image_at=(0, cz))
+    disc = cyl(R - 0.2, 0.05, (0, 0, 0), m, segs=48, bevel=0)
+    transform(disc, (0, -0.08, cz), (math.radians(90), 0, 0))
+    back = lathe([(0, 0), (R - 0.1, 0), (R - 0.1, 0.06), (0, 0.06)], (0, 0, 0), M_BACK(), segs=32)
+    transform(back, (0, -0.02, cz), (math.radians(90), 0, 0))
+    bow(0, -0.5, cz + R + 0.15, 0.7, M["cream"], tails=True)
+    return {"mount": "wall"}
+
+
+@wall
+def quilt_square(M):
+    img = os.path.join(HERE, "art", "quilt.png")
+    q = 3.7
+    cz = 2.05
+    m = material("quilt_patch", (1, 1, 1), "image", rough=0.92, image=img, scale=(q, q), bump=0.3, tint_alpha=True,
+                 plane="xz", image_at=(0, cz))
+    o = cushion((q, 0.24, q), (0, 0, 0), m, round_=0.25, puff=0.0, cuts=6, front_puff=0.05)
+    transform(o, (0, -0.16, cz))
+    tuft = material("tuft", rgb(250, 244, 230), "fabric", rough=0.9)
+    for gx in range(1, 4):
+        for gz in range(1, 4):
+            sphere(0.06, (-q / 2 + gx * q / 4, -0.31, cz - q / 2 + gz * q / 4), tuft, scale=(1, 0.6, 1), segs=8, rings=5)
+    rod = cyl(0.09, q + 0.7, (0, 0, -(q + 0.7) / 2), M["oak"], segs=12, bevel=0.0)
+    transform(rod, (0, -0.25, cz + q / 2 + 0.32), (0, math.radians(90), 0))
+    for sx in (-1, 1):
+        sphere(0.15, (sx * (q / 2 + 0.38), -0.25, cz + q / 2 + 0.32), M["oak"], segs=12, rings=8)
+    for k in range(5):
+        x = -q / 2 + 0.3 + k * (q - 0.6) / 4
+        box((0.36, 0.3, 0.62), (x, -0.22, cz + q / 2 + 0.16), tuft, bevel=0.08, seg=2)
+    return {"mount": "wall"}
+
+
+@wall
+def bell_banner(M):
+    fir, fir_dark = fir_mats()
+    top = 3.8
+    xs = (-4.2, 0.0, 4.2)
+    rnd = random.Random(12)
+    for i in range(2):
+        pts = catenary(xs[i], xs[i + 1], top, 1.0, y=-0.3, n=24, bulge=0.2)
+        tube(pts[::3], 0.16, fir_dark, segs=8, resolution=3)
+        for k, (x, y, z) in enumerate(pts):
+            for j in range(5):
+                phi = rnd.uniform(0, 2 * math.pi)
+                needle(x + rnd.uniform(-0.1, 0.1), y - rnd.uniform(0.05, 0.3), z + rnd.uniform(-0.12, 0.12), phi,
+                       fir if (k + j) % 3 else fir_dark, length=rnd.uniform(0.38, 0.52), tilt=rnd.uniform(-0.4, 0.4))
+        ribbon_strip([(x, y - 0.3, z + 0.1 * math.sin(k * 1.3)) for k, (x, y, z) in enumerate(pts)], 0.3, M["fabric"], name="weave")
+    clapper = M["black"]
+    for x in xs:
+        s = 1.0 if x == 0 else 0.8
+        bow(x, -0.62, top + 0.1, 0.8, M["fabric"], tails=False)
+        bell(x, -0.6, top - 0.15, s, M["brass"], clapper)
+    return {"mount": "wall"}
+
+
+@wall
+def string_lights(M):
+    W = 3 * CELL
+    top = 4.1
+    xs = [-W / 2 + 0.6 + k * (W - 1.2) / 3 for k in range(4)]
+    wire = material("wire", rgb(46, 78, 58), "plain", rough=0.5)
+    glow = material("bulb_tint", (0.98, 0.96, 0.9), "plain", tint=True, rough=0.18, emit=0.8)
+    for x in xs:
+        tube([(x, -0.02, top + 0.1), (x, -0.22, top + 0.14), (x, -0.24, top - 0.02)], 0.04, M["brass"], segs=6, resolution=3)
+    for i in range(3):
+        pts = catenary(xs[i], xs[i + 1], top, 0.9, y=-0.24, n=30, bulge=0.12)
+        tube(pts, 0.035, wire, segs=6, resolution=2)
+        for k in range(1, 9):
+            x, y, z = pts[int(k * 30 / 9)]
+            cyl(0.07, 0.18, (x, y, z - 0.2), wire, segs=8, bevel=0.0)
+            lathe([(0, 0), (0.1, 0.03), (0.15, 0.14), (0.12, 0.3), (0.075, 0.42), (0.07, 0.46), (0, 0.46)],
+                  (x, y, z - 0.64), glow, segs=12, angle=50)
+    return {"mount": "wall", "light": {"at": [0, top - 0.9, 0.4], "brightness": 0.5, "range": 11, "color": [255, 220, 160]}}
+
+
+@shell
+def ceiling_lamp(M):
+    """Semi-flush drum light hanging from the ceiling at z = 0 (engine studs)."""
+    linen = material("linen", rgb(250, 244, 232), "fabric", rough=0.9, sheen=0.3)
+    lathe([(0, 0), (0.6, 0), (0.62, -0.04), (0.55, -0.16), (0, -0.18)], (0, 0, 0), M["brass"], segs=28)
+    cyl(0.06, 0.75, (0, 0, -0.9), M["brass"], segs=10, bevel=0.0)
+    lathe([(0, 0), (0.32, 0), (0.3, 0.12), (0, 0.14)], (0, 0, -1.0), M["brass"], segs=20)
+    # Drum shade, open at the bottom with a frosted diffuser.
+    lathe([(1.45, 0), (1.48, 0.02), (1.48, 1.0), (1.45, 1.02), (1.4, 1.02), (1.4, 0.0)], (0, 0, -2.05), linen, segs=40,
+          cap_top=False, cap_bottom=False, angle=50)
+    ring(1.47, 0.04, (0, 0, -2.05), M["brass"], segs=40, minor_segs=6)
+    ring(1.47, 0.04, (0, 0, -1.03), M["brass"], segs=40, minor_segs=6)
+    lathe([(0, 0), (1.38, 0), (1.38, 0.03), (0, 0.06)], (0, 0, -1.95), M["bulb"], segs=32)
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        tube([(0.3 * math.cos(a), 0.3 * math.sin(a), -1.0), (1.4 * math.cos(a), 1.4 * math.sin(a), -1.06)], 0.025, M["brass"], segs=6, resolution=1)
+    return {"light": {"at": [0, -1.6, 0], "brightness": 0.6, "range": 24}}

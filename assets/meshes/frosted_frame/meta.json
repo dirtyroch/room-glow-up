@@ -1,0 +1,17 @@
+{
+ "id": "frosted_frame",
+ "tris": 3816,
+ "size": [
+  3.6727,
+  4.4446,
+  0.7897
+ ],
+ "center": [
+  0.0251,
+  2.4223,
+  0.3358
+ ],
+ "mount": "wall",
+ "metal": false,
+ "emissive": false
+}

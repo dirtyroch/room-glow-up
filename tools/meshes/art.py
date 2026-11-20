@@ -200,10 +200,153 @@ def draw_plaid_rug():
     return _weave(img, 0.08)
 
 
+# ------------------------------------------------------------ wall art
+# 512x512 paintings for the framed wall items (not tinted), plus the quilt
+# patchwork (RGBA: opaque = tinted patches, alpha 0 = cream/ink fabric).
+AW = 512
+
+
+def _soft(img, blur=0.8, grain=0.05):
+    from PIL import Image, ImageFilter
+    img = img.filter(ImageFilter.GaussianBlur(blur))
+    noise = Image.effect_noise(img.size, 20).convert("RGB")
+    return Image.blend(img.convert("RGB"), noise, grain)
+
+
+def _vgrad(d, w, h, top, bottom, y0=0):
+    for y in range(h):
+        t = y / max(1, h - 1)
+        d.line([(0, y0 + y), (w, y0 + y)], fill=tuple(int(top[i] + (bottom[i] - top[i]) * t) for i in range(3)))
+
+
+def _pine(d, x, base, h, col, snow=(250, 252, 255)):
+    for k in range(4):
+        w = h * (0.42 - k * 0.08)
+        y = base - k * h * 0.22
+        d.polygon([(x - w, y), (x + w, y), (x, y - h * 0.38)], fill=col)
+        d.polygon([(x - w * 0.75, y - h * 0.05), (x + w * 0.2, y - h * 0.05), (x - w * 0.1, y - h * 0.16)], fill=snow)
+    d.rectangle((x - h * 0.04, base, x + h * 0.04, base + h * 0.08), fill=(110, 80, 64))
+
+
+def draw_winter_scene():
+    """Frosted Frame painting: dusk snowfield, pines and a lit cottage."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (AW, AW))
+    d = ImageDraw.Draw(img)
+    _vgrad(d, AW, 300, (164, 196, 232), (250, 214, 210))
+    _vgrad(d, AW, AW - 300, (246, 248, 255), (214, 228, 246), 300)
+    d.ellipse((330, 70, 400, 140), fill=(255, 246, 220))
+    d.polygon([(0, 300), (140, 230), (260, 290), (380, 220), (512, 300)], fill=(196, 214, 238))
+    d.polygon([(0, 330), (512, 310), (512, 340), (0, 360)], fill=(236, 242, 252))
+    for x, h in ((60, 150), (120, 110), (430, 170), (480, 120), (380, 90)):
+        _pine(d, x, 360, h, (70, 120, 110))
+    d.rectangle((200, 300, 320, 380), fill=(196, 110, 96))
+    d.polygon([(186, 304), (260, 248), (334, 304)], fill=(248, 250, 255))
+    d.rectangle((222, 322, 252, 350), fill=(255, 214, 140))
+    d.rectangle((270, 330, 296, 380), fill=(120, 76, 66))
+    import random
+    r = random.Random(4)
+    for _ in range(220):
+        x, y = r.uniform(0, AW), r.uniform(0, AW)
+        s = r.uniform(1.5, 3.5)
+        d.ellipse((x - s, y - s, x + s, y + s), fill=(255, 255, 255))
+    return _soft(img)
+
+
+def draw_snow_globe():
+    """Snow Globe Frame painting: a glass globe with a tiny village on a stand."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (AW, AW))
+    d = ImageDraw.Draw(img)
+    _vgrad(d, AW, AW, (220, 244, 236), (196, 226, 218))
+    c, r = 256, 170
+    d.ellipse((c - r, 220 - r, c + r, 220 + r), fill=(188, 218, 244))
+    d.ellipse((c - r + 14, 220 - r + 14, c + r - 14, 220 + r - 14), fill=(206, 230, 250))
+    d.chord((c - r + 14, 220 - r + 14, c + r - 14, 220 + r - 14), 20, 160, fill=(246, 250, 255))
+    _pine(d, 190, 300, 120, (60, 128, 104))
+    _pine(d, 330, 296, 96, (60, 128, 104))
+    d.rectangle((236, 250, 300, 300), fill=(232, 120, 120))
+    d.polygon([(228, 252), (268, 218), (308, 252)], fill=(255, 255, 255))
+    d.rectangle((258, 266, 276, 284), fill=(255, 216, 150))
+    d.ellipse((150, 90, 230, 130), fill=(236, 246, 255))
+    d.polygon([(110, 380), (402, 380), (372, 460), (140, 460)], fill=(176, 112, 76))
+    d.rectangle((120, 372, 392, 392), fill=(214, 168, 96))
+    d.rectangle((140, 448, 372, 462), fill=(150, 92, 62))
+    import random
+    rr = random.Random(9)
+    for _ in range(90):
+        a, t = rr.uniform(0, 6.283), rr.uniform(0, 0.92)
+        x, y = c + math.cos(a) * r * t, 220 + math.sin(a) * r * t
+        d.ellipse((x - 3, y - 3, x + 3, y + 3), fill=(255, 255, 255))
+    d.arc((c - r + 30, 220 - r + 30, c + r - 30, 220 + r - 30), 200, 250, fill=(255, 255, 255), width=10)
+    return _soft(img)
+
+
+def draw_nutcracker():
+    """Nutcracker Portrait: a toy soldier on a deep teal ground."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (AW, AW))
+    d = ImageDraw.Draw(img)
+    _vgrad(d, AW, AW, (64, 120, 128), (40, 88, 96))
+    d.ellipse((96, 40, 416, 480), fill=(78, 140, 146))
+    cx = 256
+    d.rectangle((cx - 52, 70, cx + 52, 170), fill=(40, 40, 52))
+    d.rectangle((cx - 58, 160, cx + 58, 176), fill=(232, 184, 80))
+    d.ellipse((cx - 14, 54, cx + 14, 82), fill=(232, 184, 80))
+    d.rectangle((cx - 46, 176, cx + 46, 250), fill=(252, 220, 196))
+    d.ellipse((cx - 28, 196, cx - 14, 210), fill=(40, 40, 52))
+    d.ellipse((cx + 14, 196, cx + 28, 210), fill=(40, 40, 52))
+    d.ellipse((cx - 8, 208, cx + 8, 226), fill=(236, 150, 140))
+    d.rectangle((cx - 40, 228, cx + 40, 236), fill=(255, 255, 255))
+    d.polygon([(cx - 46, 236), (cx + 46, 236), (cx + 30, 286), (cx - 30, 286)], fill=(250, 250, 250))
+    d.rectangle((cx - 64, 260, cx + 64, 380), fill=(206, 52, 64))
+    for y in (290, 320, 350):
+        d.ellipse((cx - 6, y - 6, cx + 6, y + 6), fill=(232, 184, 80))
+    d.rectangle((cx - 64, 300, cx - 50, 380), fill=(232, 184, 80))
+    d.rectangle((cx + 50, 300, cx + 64, 380), fill=(232, 184, 80))
+    d.rectangle((cx - 92, 266, cx - 64, 360), fill=(206, 52, 64))
+    d.rectangle((cx + 64, 266, cx + 92, 360), fill=(206, 52, 64))
+    d.rectangle((cx - 64, 370, cx + 64, 384), fill=(40, 40, 52))
+    d.rectangle((cx - 52, 384, cx - 8, 450), fill=(244, 244, 250))
+    d.rectangle((cx + 8, 384, cx + 52, 450), fill=(244, 244, 250))
+    d.rectangle((cx - 56, 440, cx - 4, 466), fill=(40, 40, 52))
+    d.rectangle((cx + 4, 440, cx + 56, 466), fill=(40, 40, 52))
+    return _soft(img, 0.7, 0.04)
+
+
+def draw_quilt():
+    """Quilt Square patchwork: tinted patches (opaque) and cream/ink (alpha 0)."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGBA", (AW, AW), (236, 234, 230, 255))
+    d = ImageDraw.Draw(img)
+    s = AW // 4
+    cream = (250, 244, 230, 0)
+    deep = (196, 192, 188, 255)
+    for gy in range(4):
+        for gx in range(4):
+            x0, y0 = gx * s, gy * s
+            if (gx + gy) % 2 == 0:
+                # Pinwheel block.
+                d.rectangle((x0, y0, x0 + s, y0 + s), fill=cream)
+                d.polygon([(x0, y0), (x0 + s / 2, y0), (x0 + s / 2, y0 + s / 2)], fill=deep)
+                d.polygon([(x0 + s, y0), (x0 + s, y0 + s / 2), (x0 + s / 2, y0 + s / 2)], fill=deep)
+                d.polygon([(x0 + s, y0 + s), (x0 + s / 2, y0 + s), (x0 + s / 2, y0 + s / 2)], fill=deep)
+                d.polygon([(x0, y0 + s), (x0, y0 + s / 2), (x0 + s / 2, y0 + s / 2)], fill=deep)
+            else:
+                d.rectangle((x0 + 18, y0 + 18, x0 + s - 18, y0 + s - 18), fill=cream)
+                d.ellipse((x0 + s / 2 - 20, y0 + s / 2 - 20, x0 + s / 2 + 20, y0 + s / 2 + 20), fill=deep)
+    for k in range(5):
+        d.line([(k * s, 0), (k * s, AW)], fill=(92, 84, 90, 0), width=3)
+        d.line([(0, k * s), (AW, k * s)], fill=(92, 84, 90, 0), width=3)
+    return img
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     draw_pibble().save(os.path.join(OUT, "pibble.png"))
     draw_hearth_rug().save(os.path.join(OUT, "hearth_rug.png"))
     for name, fn in (("dot_rug", draw_dot_rug), ("stripe_rug", draw_stripe_rug), ("checker_rug", draw_checker_rug), ("plaid_rug", draw_plaid_rug)):
+        fn().save(os.path.join(OUT, name + ".png"))
+    for name, fn in (("winter_scene", draw_winter_scene), ("snow_globe", draw_snow_globe), ("nutcracker", draw_nutcracker), ("quilt", draw_quilt)):
         fn().save(os.path.join(OUT, name + ".png"))
     print("art written")

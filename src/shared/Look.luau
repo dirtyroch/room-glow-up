@@ -116,11 +116,11 @@ local Packs: { [string]: Pack } = {
 	winter = {
 		accent = { 80, 186, 230 },
 		trim = { 90, 120, 150 },
-		cream = { 240, 246, 255 },
+		cream = { 252, 248, 242 },
 		wood = { 160, 140, 124 },
 		cloth = { 160, 200, 236 },
-		wallA = { 240, 246, 255 },
-		wallB = { 226, 236, 250 },
+		wallA = { 246, 248, 252 },
+		wallB = { 234, 240, 250 },
 		floorA = { 120, 154, 190 },
 		floorB = { 96, 132, 172 },
 	},
@@ -138,11 +138,11 @@ local Packs: { [string]: Pack } = {
 	frost = {
 		accent = { 120, 214, 240 },
 		trim = { 80, 114, 148 },
-		cream = { 240, 248, 255 },
+		cream = { 250, 249, 245 },
 		wood = { 150, 136, 124 },
 		cloth = { 160, 210, 236 },
-		wallA = { 236, 244, 252 },
-		wallB = { 220, 232, 246 },
+		wallA = { 244, 248, 252 },
+		wallB = { 228, 238, 248 },
 		floorA = { 118, 150, 186 },
 		floorB = { 94, 126, 166 },
 	},
@@ -218,9 +218,9 @@ local Presets: { [string]: Preset } = {
 	winter = {
 		clock = 14.5,
 		brightness = 2.2,
-		ambient = { 160, 170, 185 },
-		outdoor = { 155, 175, 205 },
-		shift = { 210, 230, 255 },
+		ambient = { 172, 174, 182 },
+		outdoor = { 160, 174, 198 },
+		shift = { 236, 242, 252 },
 		density = 0.04,
 		haze = 0.06,
 		glare = 0.02,
@@ -235,14 +235,14 @@ local Presets: { [string]: Preset } = {
 		grade = 0.02,
 		exposure = 0,
 		tint = { 255, 255, 255 },
-		light = { 220, 236, 255 },
+		light = { 244, 246, 252 },
 	},
 	frost = {
 		clock = 14.8,
 		brightness = 2.15,
-		ambient = { 158, 168, 185 },
-		outdoor = { 155, 172, 200 },
-		shift = { 210, 228, 250 },
+		ambient = { 170, 173, 182 },
+		outdoor = { 158, 172, 198 },
+		shift = { 234, 240, 252 },
 		density = 0.04,
 		haze = 0.06,
 		glare = 0.02,
@@ -257,7 +257,7 @@ local Presets: { [string]: Preset } = {
 		grade = 0.02,
 		exposure = 0,
 		tint = { 255, 255, 255 },
-		light = { 210, 230, 255 },
+		light = { 242, 246, 254 },
 	},
 }
 
@@ -318,14 +318,17 @@ end
 -- Room shell finish per family: floor and wall surface keys (Meshes.Surfaces),
 -- and whether the walls get painted wainscoting. Colors still come from the
 -- pack (or Designer Tools paint); these only pick the texture and trim.
-export type ShellStyle = { floor: string, wall: string, wainscot: boolean }
+-- floorLift mixes the theme floor toward white (cool families read less flat
+-- blue), drape "cream" hangs cream curtains with a hint of the pack cloth, and
+-- light is the warm ceiling-light color.
+export type ShellStyle = { floor: string, wall: string, wainscot: boolean, floorLift: number, drape: string, light: Rgb }
 
 Look.ShellStyles = {
-	hearth = { floor = "planks", wall = "stripe", wainscot = true },
-	ginger = { floor = "planks", wall = "plaster", wainscot = false },
-	winter = { floor = "carpet", wall = "plaster", wainscot = true },
-	glow = { floor = "carpet", wall = "sprig", wainscot = true },
-	frost = { floor = "tile", wall = "sprig", wainscot = false },
+	hearth = { floor = "planks", wall = "stripe", wainscot = true, floorLift = 0, drape = "cloth", light = { 255, 206, 150 } },
+	ginger = { floor = "planks", wall = "plaster", wainscot = false, floorLift = 0, drape = "cloth", light = { 255, 204, 146 } },
+	winter = { floor = "carpet", wall = "plaster", wainscot = true, floorLift = 0.5, drape = "cream", light = { 255, 222, 184 } },
+	glow = { floor = "carpet", wall = "sprig", wainscot = true, floorLift = 0, drape = "cloth", light = { 255, 210, 160 } },
+	frost = { floor = "tile", wall = "sprig", wainscot = true, floorLift = 0.55, drape = "cream", light = { 255, 226, 192 } },
 } :: { [string]: ShellStyle }
 
 function Look.shellStyle(family: string): ShellStyle

@@ -187,14 +187,24 @@ local function newPart(template: MeshPart?): MeshPart
 	return piece
 end
 
+-- Warm lamp light for mesh lamps (Stage caps how many stay on per room).
+MeshProps.LampColor = Color3.fromRGB(255, 206, 150)
+
 -- Builds the mesh into the prop model. Returns false to fall back to parts.
-function MeshProps.build(model: Model, cf: CFrame, item: any, sy: number, unit: number, main: Color3): boolean
+-- Wall items pass wall = { thick, standoff } (see MeshFit.fitWall).
+function MeshProps.build(model: Model, cf: CFrame, item: any, sy: number, unit: number, main: Color3, wall: { thick: number, standoff: number }?): boolean
 	local entry = MeshFit.entry(item.id)
 	if entry == nil or not MeshProps.ready(item.id) then
 		return false
 	end
 	local piece = newPart(templates[item.id])
-	local w, h, d, ox, oy, oz = MeshFit.fit(entry, sy, unit)
+	local w, h, d, ox, oy, oz
+	if MeshFit.isWall(entry) then
+		local spec = wall or { thick = 0.4, standoff = 0 }
+		w, h, d, ox, oy, oz = MeshFit.fitWall(entry, unit, spec.thick, spec.standoff)
+	else
+		w, h, d, ox, oy, oz = MeshFit.fit(entry, sy, unit)
+	end
 	piece.Name = "Mesh"
 	piece.Size = Vector3.new(w, h, d)
 	piece.CFrame = cf * CFrame.new(ox, oy, oz)
@@ -210,15 +220,15 @@ function MeshProps.build(model: Model, cf: CFrame, item: any, sy: number, unit: 
 	end
 	piece.Parent = model
 	if entry.light then
-		local lx, ly, lz = MeshFit.light(entry, sy, unit)
+		local bx, by, bz = MeshFit.bulb(entry, unit)
 		local spot = Instance.new("Attachment")
 		spot.Name = "Bulb"
-		spot.Position = Vector3.new(lx, ly, lz) - Vector3.new(ox, oy, oz)
+		spot.Position = Vector3.new(bx, by, bz)
 		spot.Parent = piece
 		local glow = Instance.new("PointLight")
 		glow.Name = "SoftLight"
 		local c = entry.light.color
-		glow.Color = if c then Color3.fromRGB(c[1], c[2], c[3]) else Color3.fromRGB(255, 226, 180)
+		glow.Color = if c then Color3.fromRGB(c[1], c[2], c[3]) else MeshProps.LampColor
 		glow.Brightness = entry.light.brightness
 		glow.Range = entry.light.range
 		glow.Shadows = false

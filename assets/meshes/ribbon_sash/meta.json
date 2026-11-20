@@ -1,0 +1,17 @@
+{
+ "id": "ribbon_sash",
+ "tris": 2944,
+ "size": [
+  10.1946,
+  2.0692,
+  0.4253
+ ],
+ "center": [
+  0.0,
+  3.3346,
+  0.3954
+ ],
+ "mount": "wall",
+ "metal": false,
+ "emissive": false
+}

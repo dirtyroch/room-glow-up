@@ -74,6 +74,15 @@ function LowEnd.lightScale(enabled: boolean): number
 	return 1
 end
 
+-- Room lights on a phone: each room keeps its 3 ceiling lights and at most
+-- this many lamp bulbs (the earliest placed). Low-end turns all of them off.
+function LowEnd.lightCap(enabled: boolean): { [string]: any }
+	if enabled == true then
+		return { ceiling = false, bulbs = 0 }
+	end
+	return { ceiling = true, bulbs = 4 }
+end
+
 -- Heavy grade (bloom, color grade, atmosphere, future lights) drops out on low-end.
 function LowEnd.effects(enabled: boolean): { [string]: any }
 	if enabled == true then

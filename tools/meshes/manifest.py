@@ -61,6 +61,8 @@ def entries_in(folder, keep, finishes):
 
 def entry_lines(e):
     out = ["\t%s = {" % e["id"], "\t\tsize = %s," % vec(e["size"]), "\t\tcenter = %s," % vec(e["center"]), "\t\ttris = %d," % e["tris"]]
+    if e.get("mount"):
+        out.append('\t\tmount = "%s",' % e["mount"])
     if e.get("light"):
         L = e["light"]
         parts = ["at = %s" % vec(L["at"]), "brightness = %s" % num(float(L["brightness"])), "range = %s" % num(float(L["range"]))]
@@ -91,10 +93,11 @@ def main():
         "-- Only the ids lines change by hand or by scripts/upload-meshes.luau.",
         "-- size and center are studs at Meshes.RefCell, engine axes, floor at y = 0,",
         "-- +Z is the front. An item uses its mesh once ids.model and ids.color are set.",
+        "-- mount = \"wall\": the back sits on the wall face (MeshFit.fitWall).",
         "-- satinR/metalR/metalM/glossR/matteR are the Finish map variants.",
         "",
         "export type Light = { at: { number }, brightness: number, range: number, color: { number }? }",
-        "export type Entry = { size: { number }, center: { number }, tris: number, ids: { [string]: number }, light: Light? }",
+        "export type Entry = { size: { number }, center: { number }, tris: number, ids: { [string]: number }, light: Light?, mount: string? }",
         "export type Surface = { variant: string, base: string, studs: number, ids: { [string]: number } }",
         "",
         "local Items: { [string]: Entry } = {",

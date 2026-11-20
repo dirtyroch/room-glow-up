@@ -320,16 +320,7 @@ def add_mesh(part, collection):
     return obj
 
 
-def add_part(part, collection):
-    if part.get("mesh"):
-        return add_mesh(part, collection)
-    obj = make_mesh(part.get("shape"))
-    obj.name = (part.get("name") or "Part")[:60]
-    obj.matrix_world = part_matrix(part)
-    obj.data.materials.append(material_for(part))
-    collection.objects.link(obj)
-    if obj.name in bpy.context.scene.collection.objects:
-        bpy.context.scene.collection.objects.unlink(obj)
+def part_lights(part, collection, base):
     for i, lamp in enumerate(part.get("lights") or []):
         kind = (lamp.get("kind") or "PointLight")
         c = lamp.get("c") or part["c"]
@@ -337,8 +328,24 @@ def add_part(part, collection):
         brightness = float(lamp.get("b") or 1)
         radius = float(lamp.get("range") or 8)
         loc = rbx_to_b(part["p"])
-        if kind in ("SurfaceLight", "SpotLight"):
-            light = bpy.data.lights.new(name=f"{obj.name}_L{i}", type="AREA")
+        if kind == "SpotLight":
+            # Ceiling cans: a real cone so the back wall gets soft scallops.
+            light = bpy.data.lights.new(name=f"{base}_L{i}", type="SPOT")
+            light.spot_size = math.radians(float(lamp.get("angle") or 70) * 1.3)
+            light.spot_blend = 0.65
+            light.energy = max(20.0, brightness * radius * 5.0)
+            light.shadow_soft_size = 0.4
+            light.color = color
+            lo = bpy.data.objects.new(light.name, light)
+            face = FACE_LOCAL.get(lamp.get("face") or "Bottom", FACE_LOCAL["Bottom"])
+            right, up, back = part["right"], part["up"], part["back"]
+            direction = tuple(right[j] * face[0] + up[j] * face[1] + back[j] * face[2] for j in range(3))
+            emit = rbx_to_b(direction)
+            emit.normalize()
+            lo.location = loc + emit * 0.1
+            lo.rotation_euler = emit.to_track_quat("-Z", "Y").to_euler()
+        elif kind == "SurfaceLight":
+            light = bpy.data.lights.new(name=f"{base}_L{i}", type="AREA")
             light.shape = "DISK"
             light.size = max(1.5, min(part["s"][0], part["s"][1]) * 0.6)
             light.energy = max(20.0, brightness * radius * 8.0)
@@ -362,7 +369,7 @@ def add_part(part, collection):
             # Area lights emit along local -Z.
             lo.rotation_euler = emit.to_track_quat("-Z", "Y").to_euler()
         else:
-            light = bpy.data.lights.new(name=f"{obj.name}_L{i}", type="POINT")
+            light = bpy.data.lights.new(name=f"{base}_L{i}", type="POINT")
             light.energy = max(3.0, brightness * radius * 2.4)
             light.shadow_soft_size = 1.2
             light.use_shadow = True
@@ -370,6 +377,19 @@ def add_part(part, collection):
             lo = bpy.data.objects.new(light.name, light)
             lo.location = loc
         collection.objects.link(lo)
+
+
+def add_part(part, collection):
+    if part.get("mesh"):
+        return add_mesh(part, collection)
+    obj = make_mesh(part.get("shape"))
+    obj.name = (part.get("name") or "Part")[:60]
+    obj.matrix_world = part_matrix(part)
+    obj.data.materials.append(material_for(part))
+    collection.objects.link(obj)
+    if obj.name in bpy.context.scene.collection.objects:
+        bpy.context.scene.collection.objects.unlink(obj)
+    part_lights(part, collection, obj.name)
     return obj
 
 
@@ -395,7 +415,7 @@ def apply_grade(grade, family):
     tree.links.new(flip.outputs["Image"], comp.inputs["Image"])
 
 
-def setup_world(family, look, cam_pos, scene_name="", lens=35):
+def setup_world(family, look, cam_pos, scene_name="", lens=35, grade_light=None):
     pal = dict(FAMILIES.get(family, FAMILIES["hearth"]))
     if scene_name in ("lobby", "lobby_phone", "lobby_wide", "podium"):
         pal["horizon"] = (0.62, 0.84, 0.98)
@@ -408,6 +428,14 @@ def setup_world(family, look, cam_pos, scene_name="", lens=35):
         pal["key"] = (1.0, 0.95, 0.86)
         pal["fill"] = (1.0, 0.96, 0.90)
         pal["rim"] = (1.0, 0.88, 0.80)
+    elif scene_name.split("_")[0] in ("nook", "nookwinter"):
+        # Interior frost/winter stills: the same open-front sky as the hearth
+        # interiors, keyed by the family's own daylight from the dumped grade.
+        pal["horizon"] = (0.80, 0.89, 0.98)
+        pal["ground"] = (0.92, 0.94, 0.96)
+        pal["key"] = tuple(grade_light or (0.96, 0.97, 1.0))
+        pal["fill"] = (0.97, 0.97, 1.0)
+        pal["rim"] = (1.0, 0.92, 0.86)
     elif scene_name == "ginger":
         pal["horizon"] = (0.72, 0.88, 0.98)
         pal["ground"] = (0.93, 0.86, 0.70)
@@ -544,19 +572,33 @@ def render_scene(name, scene_data, outfile):
     bpy.context.scene.collection.children.link(col)
     cam = scene_data["camera"]
     family = scene_data.get("family") or "hearth"
-    setup_world(family, cam["look"], cam["pos"], name, lens=cam.get("lens") or 35)
+    setup_world(family, cam["look"], cam["pos"], name, lens=cam.get("lens") or 35,
+                grade_light=(scene_data.get("grade") or {}).get("light"))
     size = scene_data.get("size") or SIZE
     bpy.context.scene.render.resolution_x = int(size[0])
     bpy.context.scene.render.resolution_y = int(size[1])
     apply_grade(scene_data.get("grade"), family)
     skip_signs = name in ("hearth", "winter", "tour", "ginger") or "_" in name
+    cam_y = cam["pos"][1]
     for part in scene_data["parts"]:
         n = part.get("name") or ""
         if skip_signs and n == "Sign":
             continue
         if n == "Cone":
             continue
-        add_part(part, col)
+        ceil = part.get("ceil")
+        if part.get("hidden") and ceil is None:
+            # Same as earlier rounds: hidden window glass etc. stay out.
+            continue
+        # Hidden light hosts, and ceilings the camera is above (the client
+        # cutaway hides those in game): lights only.
+        if part.get("hidden") or (ceil is not None and cam_y > ceil - 0.5):
+            part_lights(part, col, n or "hidden")
+            continue
+        obj = add_part(part, col)
+        if ceil is not None and obj is not None:
+            # CastShadow is off on the ceiling in game: it must not block the sky.
+            obj.visible_shadow = False
     add_labels(scene_data.get("family"), name, cam["pos"])
     bpy.context.scene.render.filepath = outfile
     bpy.ops.render.render(write_still=True)
@@ -580,9 +622,25 @@ def main():
         "finishes_mesh": "finish-row.png",
         "hearth": "rgu3d-v6-hearth.png",
     }
+    # Extra cameras on an existing scene: name -> (scene, camera, size).
+    views = {
+        "showroom_close": ("showroom_mesh", {"pos": [2, 12, 58], "look": [0, 7, 30], "lens": 24}, (1024, 576)),
+        "kitchen_close": ("kitchen_mesh", {"pos": [2, 12, 58], "look": [0, 7, 30], "lens": 24}, (1024, 576)),
+        "showroom_eye": ("showroom_mesh", {"pos": [9, 6.5, 50], "look": [-3, 9.5, 27], "lens": 20}, (1280, 720)),
+        # The in-game build camera (Bases.camera room rig): the ceiling is cut away.
+        "hearth_build": ("hearth_mesh", {"pos": [0, 24, 76], "look": [0, 5, 40], "lens": 16}, (1280, 720)),
+        "nook_eye": ("nook_mesh", {"pos": [-8, 6.5, 50], "look": [3, 9, 27], "lens": 20}, (1280, 720)),
+    }
     wanted = args[2:] or [k for k in mapping if k in data["scenes"]]
     for key in wanted:
         MESH_CACHE.clear()
+        if key in views:
+            base, cam, size = views[key]
+            scene = dict(data["scenes"][base])
+            scene["camera"] = cam
+            scene["size"] = list(size)
+            render_scene(base.split("_")[0] + "_view", scene, os.path.join(out_dir, key + ".png"))
+            continue
         render_scene(key, data["scenes"][key], os.path.join(out_dir, mapping.get(key, key + ".png")))
 
 

@@ -93,6 +93,8 @@ function Stage.start()
 		local function isWash(child: Instance): boolean
 			return child.Name == "SoftLight" and (child:IsA("PointLight") or child:IsA("SurfaceLight") or child:IsA("SpotLight"))
 		end
+		local cap = LowEnd.lightCap(low)
+		local bulbs: { [Instance]: { any } } = {}
 		for _, child in Workspace:GetDescendants() do
 			if isWash(child) then
 				local lamp = child :: any
@@ -101,11 +103,38 @@ function Stage.start()
 					lamp:SetAttribute("SoftB", lamp.Brightness)
 					saved = lamp.Brightness
 				end
-				if lamp:GetAttribute("Kind") == "wash" or lamp:GetAttribute("Kind") == "key" then
+				local kind = lamp:GetAttribute("Kind")
+				if kind == "wash" or kind == "key" then
 					lamp.Color = wash
 				end
-				lamp.Enabled = fx.lights == true
-				lamp.Brightness = if fx.lights then saved else 0
+				local on = fx.lights == true
+				if kind == "ceiling" then
+					on = on and cap.ceiling == true
+				elseif kind == "bulb" then
+					-- Counted per room below; the cap keeps phones smooth.
+					local room = lamp:FindFirstAncestor("Items")
+					if room then
+						local list = bulbs[room] or {}
+						bulbs[room] = list
+						table.insert(list, lamp)
+					end
+				end
+				lamp.Enabled = on
+				lamp.Brightness = if on then saved else 0
+			end
+		end
+		for _, list in bulbs do
+			table.sort(list, function(a, b)
+				local ma = a:FindFirstAncestorWhichIsA("Model")
+				local mb = b:FindFirstAncestorWhichIsA("Model")
+				local pa = if ma then ma:GetAttribute("PlacedAt") else 0
+				local pb = if mb then mb:GetAttribute("PlacedAt") else 0
+				return (tonumber(pa) or 0) < (tonumber(pb) or 0)
+			end)
+			for index, lamp in ipairs(list) do
+				local on = fx.lights == true and index <= cap.bulbs
+				lamp.Enabled = on
+				lamp.Brightness = if on then lamp:GetAttribute("SoftB") else 0
 			end
 		end
 	end
@@ -114,9 +143,18 @@ function Stage.start()
 	folder:GetAttributeChangedSignal("ThemeId"):Connect(apply)
 	folder:GetAttributeChangedSignal("Season"):Connect(apply)
 	player:GetAttributeChangedSignal("LowEnd"):Connect(apply)
+	local function isLight(child: Instance): boolean
+		return child.Name == "SoftLight" and (child:IsA("PointLight") or child:IsA("SurfaceLight") or child:IsA("SpotLight"))
+	end
 	Workspace.DescendantAdded:Connect(function(child)
-		if child.Name == "SoftLight" and (child:IsA("PointLight") or child:IsA("SurfaceLight") or child:IsA("SpotLight")) then
+		if isLight(child) then
 			apply()
+		end
+	end)
+	-- A removed lamp frees a slot under the per-room bulb cap.
+	Workspace.DescendantRemoving:Connect(function(child)
+		if isLight(child) and child:GetAttribute("Kind") == "bulb" then
+			task.defer(apply)
 		end
 	end)
 	apply()

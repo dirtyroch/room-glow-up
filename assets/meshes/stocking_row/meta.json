@@ -1,0 +1,17 @@
+{
+ "id": "stocking_row",
+ "tris": 5928,
+ "size": [
+  9.3,
+  3.9185,
+  1.06
+ ],
+ "center": [
+  0.0,
+  2.5608,
+  0.53
+ ],
+ "mount": "wall",
+ "metal": true,
+ "emissive": false
+}

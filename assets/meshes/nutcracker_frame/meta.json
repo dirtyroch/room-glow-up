@@ -1,0 +1,17 @@
+{
+ "id": "nutcracker_frame",
+ "tris": 1832,
+ "size": [
+  3.4,
+  4.65,
+  0.7
+ ],
+ "center": [
+  0.0,
+  2.525,
+  0.16
+ ],
+ "mount": "wall",
+ "metal": true,
+ "emissive": false
+}
