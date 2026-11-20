@@ -149,6 +149,10 @@ garland_bell|Garland Bell|Charms|6|hook|1|1|0.5|bell|coral|tree popcorn_garland 
 berry_strand|Berry Strand|Charms|8|hook|1|1|0.4|slab|coral|tree cranberry_strand snowflake_ladder
 pibble_rug|Pibble Rug|Rugs|8|floor|2|2|0.08|slab|coral|room hearth_cocoa blanket_fort
 unc_chair|Unc Armchair|Seating|12|floor|1|1|1.1|recliner|butter|room starlight_nook flannel_corner
+coffee_bar|Coffee Bar|Kitchen|12|floor|1|1|1.3|counter|mint|room thermos_table hearth_cocoa
+sink_counter|Sink Counter|Kitchen|14|floor|2|1|1.25|counter|cream|room thermos_table lantern_mudroom
+retro_fridge|Retro Fridge|Kitchen|16|floor|1|1|1.95|fridge|mint|room thermos_table frosted_window
+retro_stove|Retro Stove|Kitchen|14|floor|1|1|1.2|stove|coral|room hearth_cocoa thermos_table
 ]]
 
 local function parse(raw: string): { Item }

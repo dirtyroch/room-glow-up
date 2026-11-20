@@ -1,0 +1,16 @@
+{
+ "id": "book_ledge",
+ "tris": 7988,
+ "size": [
+  9.3,
+  4.99,
+  2.2
+ ],
+ "center": [
+  0.0,
+  2.595,
+  -0.9
+ ],
+ "metal": false,
+ "emissive": false
+}

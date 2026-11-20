@@ -13,7 +13,17 @@ local Items = require("../src/shared/Items")
 local Bases = require("../src/shared/Bases")
 local Look = require("../src/shared/Look")
 
-local OUT = "/workspace/renders/rgu3d-scenes.json"
+local process = require("@lune/process")
+
+-- lune run scripts/dump_previews [out.json] [--meshes]
+-- --meshes also dumps the furniture-mesh scenes (hearth/kitchen, parts vs mesh).
+local OUT = "/workspace/rgu-renders/rgu3d-scenes.json"
+for _, arg in ipairs(process.args) do
+	if string.sub(arg, -5) == ".json" then
+		OUT = arg
+	end
+end
+local WITH_MESHES = table.find(process.args, "--meshes") ~= nil
 
 local world = World.new({
 	root = ".",
@@ -54,6 +64,8 @@ local function enumName(value, fallback)
 	return fallback
 end
 
+local lightAt = {}
+
 local function partPayload(inst)
 	local cf = inst.CFrame
 	if cf == nil then
@@ -67,7 +79,8 @@ local function partPayload(inst)
 	if transparency >= 0.99 then
 		return nil
 	end
-	local shape = enumName(inst.Shape, "Block")
+	local isMesh = inst.ClassName == "MeshPart"
+	local shape = if isMesh then "Mesh" else enumName(inst.Shape, "Block")
 	local material = enumName(inst.Material, "SmoothPlastic")
 	local payload = {
 		name = inst.Name,
@@ -81,8 +94,20 @@ local function partPayload(inst)
 		shape = shape,
 		mat = material,
 	}
+	if isMesh then
+		payload.mesh = inst:GetAttribute("MeshItem")
+	end
 	local lights = {}
+	local sources = inst:GetChildren()
 	for _, child in ipairs(inst:GetChildren()) do
+		if child:IsA("Attachment") then
+			for _, inner in ipairs(child:GetChildren()) do
+				table.insert(sources, inner)
+				rawset(lightAt, inner, cf * CFrame.new(child.Position))
+			end
+		end
+	end
+	for _, child in ipairs(sources) do
 		if child:IsA("PointLight") or child:IsA("SurfaceLight") or child:IsA("SpotLight") then
 			local light = {
 				kind = child.ClassName,
@@ -90,6 +115,10 @@ local function partPayload(inst)
 				b = child.Brightness or 1,
 				range = child.Range or 8,
 			}
+			local at = lightAt[child]
+			if at then
+				light.p = vec(at.Position)
+			end
 			if child:IsA("SurfaceLight") or child:IsA("SpotLight") then
 				light.face = enumName(child.Face, "Back")
 				light.angle = child.Angle or 90
@@ -107,7 +136,7 @@ local function collect(root, filterFn)
 	local parts = {}
 	local skipped = 0
 	for _, inst in ipairs(root:GetDescendants()) do
-		if inst:IsA("BasePart") then
+		if inst:IsA("BasePart") or inst.ClassName == "MeshPart" then
 			if filterFn == nil or filterFn(inst) then
 				local row = partPayload(inst)
 				if row then
@@ -472,6 +501,67 @@ do
 		parts = parts,
 	}
 	print("podium parts", #parts)
+end
+
+if WITH_MESHES then
+	local MeshProps = world:require(world.server:FindFirstChild("MeshProps"), world.server:FindFirstChild("Main"))
+	local KITCHEN = {
+		{ "retro_fridge", 0, 0 },
+		{ "sink_counter", 1, 0 },
+		{ "retro_stove", 3, 0 },
+		{ "coffee_bar", 4, 0 },
+		{ "fern_pot", 5, 0 },
+		{ "pibble_rug", 2, 2 },
+		{ "cocoa_table", 2, 3 },
+		{ "coral_armchair", 1, 3, 1 },
+		{ "coral_armchair", 4, 3, 3, "mint" },
+		{ "hearth_lamp", 0, 4 },
+		{ "mini_pine", 5, 5 },
+		{ "gift_stack", 4, 5 },
+		{ "cocoa_mug", 0, 5 },
+	}
+	-- Every room item here has a mesh, for the store art.
+	local SHOWROOM = {
+		{ "hearth_rug", 2, 2 },
+		{ "butter_bench", 2, 4 },
+		{ "cocoa_table", 2, 3 },
+		{ "mantel_shelf", 2, 0 },
+		{ "unc_chair", 5, 3, 3 },
+		{ "coral_armchair", 0, 3, 1 },
+		{ "hearth_lamp", 0, 5 },
+		{ "reading_lamp", 5, 5 },
+		{ "mini_pine", 0, 0 },
+		{ "book_ledge", 4, 1 },
+		{ "fern_pot", 5, 0 },
+		{ "gift_stack", 1, 1 },
+		{ "round_side", 4, 4 },
+	}
+	local function both(key, list, family)
+		for _, mode in ipairs({ "parts", "mesh" }) do
+			MeshProps.preview = mode == "mesh"
+			decorate(3, "room", list, family)
+			local parts = collect(workspace, function(inst)
+				return underPlot(inst, 3)
+			end)
+			local meshes = 0
+			for _, row in ipairs(parts) do
+				if row.mesh then
+					meshes += 1
+				end
+			end
+			scenes[key .. "_" .. mode] = {
+				family = family,
+				grade = gradeOf(family),
+				camera = { pos = { 11, 11, 82 }, look = { 0, 4, 38 } },
+				parts = parts,
+			}
+			print(key, mode, "parts", #parts, "meshes", meshes)
+		end
+		MeshProps.preview = false
+	end
+	both("hearth", HEARTH, "hearth")
+	both("kitchen", KITCHEN, "hearth")
+	both("showroom", SHOWROOM, "hearth")
 end
 
 local payload = {

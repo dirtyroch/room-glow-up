@@ -1,0 +1,16 @@
+{
+ "id": "cocoa_table",
+ "tris": 3068,
+ "size": [
+  9.1,
+  4.0923,
+  4.4266
+ ],
+ "center": [
+  0.0,
+  2.0338,
+  -0.0
+ ],
+ "metal": false,
+ "emissive": false
+}

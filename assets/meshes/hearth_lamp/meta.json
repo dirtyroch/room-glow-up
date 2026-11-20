@@ -1,0 +1,25 @@
+{
+ "id": "hearth_lamp",
+ "tris": 2944,
+ "size": [
+  2.92,
+  6.34,
+  2.92
+ ],
+ "center": [
+  0.0,
+  3.17,
+  -0.0
+ ],
+ "light": {
+  "at": [
+   0,
+   5.2,
+   0
+  ],
+  "brightness": 0.6,
+  "range": 12
+ },
+ "metal": true,
+ "emissive": true
+}

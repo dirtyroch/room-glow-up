@@ -1,0 +1,25 @@
+{
+ "id": "reading_lamp",
+ "tris": 2296,
+ "size": [
+  2.554,
+  6.3801,
+  4.77
+ ],
+ "center": [
+  0.157,
+  3.19,
+  -0.165
+ ],
+ "light": {
+  "at": [
+   0,
+   5.0,
+   1.1
+  ],
+  "brightness": 0.6,
+  "range": 12
+ },
+ "metal": true,
+ "emissive": true
+}

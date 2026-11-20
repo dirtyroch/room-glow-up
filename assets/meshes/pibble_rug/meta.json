@@ -1,0 +1,16 @@
+{
+ "id": "pibble_rug",
+ "tris": 3392,
+ "size": [
+  7.7661,
+  0.31,
+  8.3261
+ ],
+ "center": [
+  0.0,
+  0.155,
+  -0.1623
+ ],
+ "metal": false,
+ "emissive": false
+}

@@ -38,6 +38,7 @@ local Audio = require("../src/shared/Logic/Audio")
 local LowEnd = require("../src/shared/Logic/LowEnd")
 local Look = require("../src/shared/Look")
 local Analytics = require("../src/shared/Logic/Analytics")
+local MeshFit = require("../src/shared/MeshFit")
 local Preview = require("../src/shared/Logic/Preview")
 local Easter = require("../src/shared/Logic/Easter")
 
@@ -1041,9 +1042,58 @@ test("ten plots are assigned on join and freed for the next player", function()
 	truthy(math.abs((z6 - z1) - Bases.Spacing) < 1e-6)
 end)
 
+print("Furniture meshes")
+test("at least 20 furniture meshes, each a real floor item with its files", function()
+	local ids = MeshFit.ids()
+	truthy(#ids >= 20, "mesh count " .. tostring(#ids))
+	for _, kitchen in ipairs({ "coffee_bar", "sink_counter", "retro_fridge", "retro_stove" }) do
+		truthy(table.find(ids, kitchen) ~= nil, kitchen)
+	end
+	for _, id in ipairs(ids) do
+		local item = Items.get(id)
+		truthy(item ~= nil, "mesh for unknown item " .. id)
+		eq(item.surface, "floor")
+		eq(item.roundType, "room")
+		local entry = MeshFit.entry(id)
+		truthy(entry.tris > 0 and entry.tris <= 12000, id .. " tris " .. tostring(entry.tris))
+		local cell = 4.8
+		truthy(entry.size[1] <= item.w * cell * 1.15, id .. " wider than its cells")
+		truthy(entry.size[3] <= item.d * cell * 1.15, id .. " deeper than its cells")
+		for _, name in ipairs({ id .. ".fbx", "color.png", "normal.png", "roughness.png", "meta.json" }) do
+			truthy(fs.isFile("assets/meshes/" .. id .. "/" .. name), id .. " missing " .. name)
+		end
+		for key, value in pairs(entry.ids) do
+			truthy(type(value) == "number" and value >= 0 and value == math.floor(value), id .. " id " .. key)
+		end
+	end
+end)
+
+test("a mesh only replaces parts once its model and color ids are set", function()
+	truthy(not MeshFit.uploaded(nil))
+	truthy(not MeshFit.uploaded({ ids = { model = 0, color = 0 } }))
+	truthy(not MeshFit.uploaded({ ids = { model = 5, color = 0 } }))
+	truthy(MeshFit.uploaded({ ids = { model = 5, color = 6 } }))
+end)
+
+test("mesh fit stands on the floor and scales with the cell", function()
+	for _, id in ipairs(MeshFit.ids()) do
+		local item = Items.get(id)
+		local entry = MeshFit.entry(id)
+		for _, unit in ipairs({ 4.8, 2.4 }) do
+			local sy = math.max(0.35, item.h * unit)
+			local _, h, _, _, oy, _ = MeshFit.fit(entry, sy, unit)
+			local bottom = oy - h / 2
+			truthy(math.abs(bottom + sy / 2) < 0.05 * unit, id .. " floats or sinks " .. tostring(bottom + sy / 2))
+		end
+	end
+	local r, g, b = MeshFit.tint(1, 0.5, 0)
+	eq(r, 1)
+	truthy(g > 0.5 and g < 1 and b > 0 and b < 0.5)
+end)
+
 print("Library")
-test("130 props, theme tags, and no banned words", function()
-	eq(#Items.list, 130)
+test("134 props, theme tags, and no banned words", function()
+	eq(#Items.list, 134)
 	eq(Config.ItemScale, 1.2)
 	truthy(math.abs(Bases.worldCell() - Config.Cell * Config.ItemScale) < 1e-6)
 	local ids = {}
@@ -1109,7 +1159,7 @@ test("130 props, theme tags, and no banned words", function()
 			end
 		end
 	end
-	eq(counts.room + counts.gingerbread + counts.tree, 130)
+	eq(counts.room + counts.gingerbread + counts.tree, 134)
 	local cheap = 0
 	for _, item in ipairs(Items.list) do
 		if item.cost <= 4 and item.w * item.d == 2 then

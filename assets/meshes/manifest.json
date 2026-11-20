@@ -1,0 +1,682 @@
+{
+ "refCell": 4.8,
+ "items": [
+  {
+   "id": "book_ledge",
+   "tris": 7988,
+   "size": [
+    9.3,
+    4.99,
+    2.2
+   ],
+   "center": [
+    0.0,
+    2.595,
+    -0.9
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "book_ledge.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "butter_bench",
+   "tris": 7532,
+   "size": [
+    9.682,
+    3.7862,
+    4.675
+   ],
+   "center": [
+    0.0,
+    1.8794,
+    -0.0125
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "butter_bench.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "carol_piano",
+   "tris": 7300,
+   "size": [
+    8.7,
+    5.0174,
+    4.7398
+   ],
+   "center": [
+    0.0,
+    2.5013,
+    0.0449
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "carol_piano.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "cocoa_mug",
+   "tris": 4788,
+   "size": [
+    3.5837,
+    2.66,
+    2.6
+   ],
+   "center": [
+    0.4919,
+    1.33,
+    0.1
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "cocoa_mug.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "cocoa_table",
+   "tris": 3068,
+   "size": [
+    9.1,
+    4.0923,
+    4.4266
+   ],
+   "center": [
+    0.0,
+    2.0338,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "cocoa_table.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "coffee_bar",
+   "tris": 7330,
+   "size": [
+    4.8,
+    6.24,
+    4.2
+   ],
+   "center": [
+    0.0,
+    3.12,
+    -0.3
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "coffee_bar.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "coral_armchair",
+   "tris": 5580,
+   "size": [
+    4.421,
+    4.358,
+    4.5052
+   ],
+   "center": [
+    0.0,
+    2.1644,
+    -0.4335
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "coral_armchair.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "fern_pot",
+   "tris": 6176,
+   "size": [
+    4.485,
+    2.8616,
+    5.4088
+   ],
+   "center": [
+    -0.0927,
+    1.4308,
+    -0.0188
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "fern_pot.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "gift_stack",
+   "tris": 2024,
+   "size": [
+    4.0089,
+    3.7494,
+    3.6906
+   ],
+   "center": [
+    0.2845,
+    1.8547,
+    0.2253
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "gift_stack.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "hearth_lamp",
+   "tris": 2944,
+   "size": [
+    2.92,
+    6.34,
+    2.92
+   ],
+   "center": [
+    0.0,
+    3.17,
+    -0.0
+   ],
+   "light": {
+    "at": [
+     0,
+     5.2,
+     0
+    ],
+    "brightness": 0.6,
+    "range": 12
+   },
+   "metal": true,
+   "emissive": true,
+   "files": [
+    "hearth_lamp.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "emissive.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "hearth_rug",
+   "tris": 4332,
+   "size": [
+    8.9,
+    0.1708,
+    9.6768
+   ],
+   "center": [
+    0.0,
+    0.0746,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "hearth_rug.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "lavender_settee",
+   "tris": 7516,
+   "size": [
+    9.9957,
+    3.798,
+    4.77
+   ],
+   "center": [
+    0.0,
+    1.899,
+    0.035
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "lavender_settee.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "mantel_shelf",
+   "tris": 6444,
+   "size": [
+    9.6,
+    5.72,
+    4.45
+   ],
+   "center": [
+    0.0,
+    2.86,
+    -0.075
+   ],
+   "light": {
+    "at": [
+     0,
+     1.2,
+     -0.2
+    ],
+    "brightness": 0.8,
+    "range": 12,
+    "color": [
+     255,
+     170,
+     100
+    ]
+   },
+   "metal": true,
+   "emissive": true,
+   "files": [
+    "mantel_shelf.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "emissive.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "mini_pine",
+   "tris": 8940,
+   "size": [
+    3.2588,
+    7.5582,
+    2.9098
+   ],
+   "center": [
+    0.1806,
+    3.7791,
+    -0.0404
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "mini_pine.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "pibble_rug",
+   "tris": 3392,
+   "size": [
+    7.7661,
+    0.31,
+    8.3261
+   ],
+   "center": [
+    0.0,
+    0.155,
+    -0.1623
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "pibble_rug.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "reading_lamp",
+   "tris": 2296,
+   "size": [
+    2.554,
+    6.3801,
+    4.77
+   ],
+   "center": [
+    0.157,
+    3.19,
+    -0.165
+   ],
+   "light": {
+    "at": [
+     0,
+     5.0,
+     1.1
+    ],
+    "brightness": 0.6,
+    "range": 12
+   },
+   "metal": true,
+   "emissive": true,
+   "files": [
+    "reading_lamp.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png",
+    "emissive.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "retro_fridge",
+   "tris": 4320,
+   "size": [
+    4.1,
+    9.36,
+    4.5674
+   ],
+   "center": [
+    0.0,
+    4.68,
+    -0.1163
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "retro_fridge.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "retro_stove",
+   "tris": 5444,
+   "size": [
+    4.5,
+    5.76,
+    4.7273
+   ],
+   "center": [
+    0.0,
+    2.88,
+    -0.0114
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "retro_stove.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "round_side",
+   "tris": 2780,
+   "size": [
+    4.1,
+    5.6194,
+    4.1
+   ],
+   "center": [
+    0.0,
+    2.8097,
+    -0.0
+   ],
+   "metal": false,
+   "emissive": false,
+   "files": [
+    "round_side.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "sink_counter",
+   "tris": 5140,
+   "size": [
+    9.6,
+    5.9973,
+    4.464
+   ],
+   "center": [
+    0.0,
+    2.9986,
+    -0.193
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "sink_counter.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  },
+  {
+   "id": "unc_chair",
+   "tris": 8688,
+   "size": [
+    4.2996,
+    5.656,
+    4.865
+   ],
+   "center": [
+    0.0,
+    2.828,
+    -0.1575
+   ],
+   "metal": true,
+   "emissive": false,
+   "files": [
+    "unc_chair.fbx",
+    "color.png",
+    "normal.png",
+    "roughness.png",
+    "metalness.png"
+   ],
+   "ids": {
+    "model": 0,
+    "color": 0,
+    "normal": 0,
+    "roughness": 0,
+    "metalness": 0,
+    "emissive": 0
+   }
+  }
+ ]
+}

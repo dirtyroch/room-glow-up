@@ -1,0 +1,16 @@
+{
+ "id": "hearth_rug",
+ "tris": 4332,
+ "size": [
+  8.9,
+  0.1708,
+  9.6768
+ ],
+ "center": [
+  0.0,
+  0.0746,
+  -0.0
+ ],
+ "metal": false,
+ "emissive": false
+}

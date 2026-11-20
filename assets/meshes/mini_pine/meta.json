@@ -1,0 +1,16 @@
+{
+ "id": "mini_pine",
+ "tris": 8940,
+ "size": [
+  3.2588,
+  7.5582,
+  2.9098
+ ],
+ "center": [
+  0.1806,
+  3.7791,
+  -0.0404
+ ],
+ "metal": true,
+ "emissive": false
+}

@@ -1,0 +1,16 @@
+{
+ "id": "butter_bench",
+ "tris": 7532,
+ "size": [
+  9.682,
+  3.7862,
+  4.675
+ ],
+ "center": [
+  0.0,
+  1.8794,
+  -0.0125
+ ],
+ "metal": false,
+ "emissive": false
+}

@@ -1,0 +1,16 @@
+{
+ "id": "carol_piano",
+ "tris": 7300,
+ "size": [
+  8.7,
+  5.0174,
+  4.7398
+ ],
+ "center": [
+  0.0,
+  2.5013,
+  0.0449
+ ],
+ "metal": true,
+ "emissive": false
+}

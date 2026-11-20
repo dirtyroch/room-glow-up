@@ -1,0 +1,16 @@
+{
+ "id": "coral_armchair",
+ "tris": 5580,
+ "size": [
+  4.421,
+  4.358,
+  4.5052
+ ],
+ "center": [
+  0.0,
+  2.1644,
+  -0.4335
+ ],
+ "metal": false,
+ "emissive": false
+}
